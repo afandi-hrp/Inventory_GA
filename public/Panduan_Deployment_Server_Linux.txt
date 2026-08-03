@@ -1,0 +1,117 @@
+Panduan Deployment Aplikasi di Server Linux & Docker
+===================================================
+
+Berikut adalah jawaban detail untuk pertanyaan-pertanyaan Anda mengenai deployment aplikasi:
+
+1. Apakah bisa aplikasi di-deploy pada server sendiri yang berbasis Linux dan Docker?
+-----------------------------------------------------------------------------------
+Ya, sangat bisa. Aplikasi ini dibangun menggunakan React (Vite) untuk frontend, yang pada akhirnya akan di-build menjadi file statis (HTML, CSS, JS). File statis ini sangat ringan dan sangat ideal untuk di-deploy menggunakan Docker (biasanya dibungkus dengan Nginx) di server Linux mana pun (Ubuntu, Debian, CentOS, dll).
+
+
+2 & 3. Step-by-step dan Setup File untuk Docker di Linux
+-----------------------------------------------------------------------------------
+Berikut adalah panduan langkah demi langkah beserta file setup yang Anda butuhkan agar tinggal running di server Linux Anda.
+
+Langkah 1: Export/Download Source Code
+Download source code aplikasi ini dari AI Studio (biasanya ada opsi Export to ZIP/GitHub) dan pindahkan ke server Linux Anda.
+
+Langkah 2: Buat file Dockerfile
+Di dalam folder utama aplikasi (sejajar dengan package.json), buat file bernama Dockerfile dan isi dengan kode berikut. Setup ini menggunakan multi-stage build agar image Docker sangat kecil dan ringan:
+
+# Stage 1: Build aplikasi React/Vite
+FROM node:20-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+# Build aplikasi untuk production
+RUN npm run build
+
+# Stage 2: Serve dengan Nginx
+FROM nginx:alpine
+# Copy hasil build dari stage 1 ke folder Nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
+# Konfigurasi Nginx untuk SPA (Single Page Application)
+RUN echo "server { \
+    listen 80; \
+    location / { \
+        root /usr/share/nginx/html; \
+        index index.html index.htm; \
+        try_files \$uri \$uri/ /index.html; \
+    } \
+}" > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+
+Langkah 3: Buat file docker-compose.yml
+Di folder yang sama, buat file docker-compose.yml:
+
+version: '3.8'
+services:
+  inventory-web:
+    build: .
+    container_name: inventory-web
+    ports:
+      - "8088:80" # Akses aplikasi di port 8088 (sesuai permintaan Anda)
+    restart: always
+    env_file:
+      - .env
+
+
+Langkah 4: Buat file .env
+Buat file .env di folder yang sama dan masukkan kredensial Supabase Anda:
+
+VITE_SUPABASE_URL=url_supabase_anda
+VITE_SUPABASE_ANON_KEY=anon_key_supabase_anda
+
+
+Langkah 5: Jalankan Aplikasi
+Buka terminal di Linux Anda, masuk ke folder aplikasi, dan jalankan perintah:
+
+docker compose up -d --build
+
+Aplikasi Anda sekarang sudah berjalan dan bisa diakses melalui http://ip-server-linux-anda:8088.
+
+
+4. Software apa saja yang harus di-install di Linux?
+-----------------------------------------------------------------------------------
+Karena Supabase sudah di-handle di server terpisah, server Linux Anda untuk aplikasi ini sangat minim kebutuhan. Anda HANYA perlu menginstal:
+
+1. Docker Engine: Mesin utama untuk menjalankan container.
+2. Docker Compose Plugin: Alat untuk menjalankan file docker-compose.yml.
+3. (Opsional) Git: Jika Anda ingin menarik (pull) source code langsung dari repository GitHub/GitLab ke server.
+4. (Opsional) Nginx / Caddy (di level Host): Jika Anda ingin menggunakan nama domain (misal: inventory.perusahaan.com) dan memasang SSL/HTTPS (Let's Encrypt), Anda bisa menginstal Nginx atau Caddy sebagai Reverse Proxy yang meneruskan trafik ke port 8088 Docker Anda.
+
+Tidak perlu menginstal Node.js atau NPM di server Linux Anda, karena semuanya sudah diisolasi dan ditangani di dalam Docker.
+
+
+5. Apakah aplikasi ini akan stabil jika item lebih dari 100.000?
+-----------------------------------------------------------------------------------
+Ya, aplikasi ini akan tetap stabil, namun dengan beberapa catatan teknis yang perlu Anda perhatikan di sisi database (Supabase):
+
+* Dari sisi Frontend (Aplikasi React ini): Sangat stabil. Aplikasi ini sudah menggunakan sistem Paginasi (Pagination) di mana ia hanya meminta data per 10, 20, atau 50 baris ke Supabase (menggunakan fungsi .range(from, to)). Browser tidak akan pernah dipaksa memuat 100.000 data sekaligus, sehingga tidak akan lag atau crash.
+* Dari sisi Backend/Database (Supabase/PostgreSQL): PostgreSQL sangat tangguh dan 100.000 baris data itu tergolong sangat kecil untuknya. 
+* Satu Hal yang Harus Dioptimasi (Penting): Karena aplikasi ini menggunakan fitur pencarian teks (ilike.%keyword%) pada kolom nama_barang dan kode_barang, pencarian pada 100.000+ baris bisa mulai terasa lambat (memakan waktu beberapa detik). Agar pencarian tetap secepat kilat (di bawah 100ms), Anda wajib menambahkan Index (B-Tree atau GIN/pg_trgm) pada kolom pencarian di database Supabase Anda. 
+
+Perintah optimasi ini (membuat Index dan Extension) tidak bisa dieksekusi secara otomatis dari kode aplikasi frontend (React) demi alasan keamanan. Anda harus menjalankannya secara manual melalui dashboard Supabase Anda.
+
+Langkahnya:
+1. Buka Dashboard Supabase Anda.
+2. Masuk ke menu SQL Editor (ikon terminal di menu sebelah kiri).
+3. Klik New Query.
+4. Copy-paste kode SQL di bawah ini, lalu klik tombol Run.
+
+-- 1. Aktifkan extension pencarian teks (hanya perlu dijalankan sekali)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- 2. Buat index pada kolom nama_barang secara background (tanpa mengunci tabel)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_items_nama_barang 
+ON items USING gin (nama_barang gin_trgm_ops);
+
+-- 3. Buat index pada kolom kode_barang secara background (tanpa mengunci tabel)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_items_kode_barang 
+ON items USING gin (kode_barang gin_trgm_ops);
+
+Kode SQL di atas sangat standar, resmi didukung oleh PostgreSQL/Supabase, dan menggunakan metode CONCURRENTLY yang merupakan best practice di industri untuk database skala besar. Anda bisa langsung menjalankannya sekarang juga di Supabase Anda dengan aman.

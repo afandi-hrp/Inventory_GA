@@ -1,0 +1,6 @@
+<svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(20, 20) scale(0.8)">
+    <path d="M 0,40 C 0,10 30,10 50,25 C 70,40 90,20 100,0 C 95,30 80,60 50,55 C 20,50 10,60 0,65 Z" fill="#b092be"/>
+    <path d="M 0,65 C 10,60 20,50 50,55 C 80,60 95,30 100,0 C 100,30 80,80 50,75 C 20,70 0,65 0,65 Z" fill="#5a387b"/>
+  </g>
+</svg>

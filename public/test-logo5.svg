@@ -1,0 +1,8 @@
+<svg width="400" height="120" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(10, 30) scale(1.1)">
+    <!-- Light Purple Shape -->
+    <path d="M 5,45 C 10,20 20,10 35,20 C 50,30 60,40 75,20 C 85,5 95,-10 95,-10 C 80,10 65,35 45,25 C 25,15 15,35 5,45 Z" fill="#b196c1"/>
+    <!-- Dark Purple Shape -->
+    <path d="M -5,55 C 5,30 15,25 35,35 C 55,45 70,35 85,20 C 80,40 60,55 40,45 C 20,35 5,55 -5,55 Z" fill="#583c79"/>
+  </g>
+</svg>

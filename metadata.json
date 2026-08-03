@@ -1,0 +1,5 @@
+{
+  "name": "Stock GA",
+  "description": "A professional inventory management system with Master Barang and Master Lokasi management, powered by Supabase and React.",
+  "requestFramePermissions": []
+}

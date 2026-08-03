@@ -1,0 +1,10 @@
+<svg width="400" height="120" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(10, 30) scale(1.1)">
+    <!-- Light Purple Shape -->
+    <path d="M 5,55 C -5,40 5,20 15,10 C 35,10 45,25 65,20 C 80,15 90,5 95,0 C 90,15 85,25 80,30 C 65,45 40,25 20,35 C 10,40 5,50 5,55 Z" fill="#b092be"/>
+    <!-- Dark Purple Shape -->
+    <path d="M 0,60 C 5,50 15,40 25,40 C 45,35 65,55 80,35 C 80,35 75,45 70,50 C 50,70 20,50 0,60 Z" fill="#5a387b"/>
+  </g>
+  <text x="130" y="65" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="44" fill="#583c79" letter-spacing="1">WARUNA</text>
+  <text x="135" y="85" font-family="Arial, Helvetica, sans-serif" font-weight="normal" font-size="16" fill="#4a4a4a" letter-spacing="2">Shipyard - Shipping</text>
+</svg>

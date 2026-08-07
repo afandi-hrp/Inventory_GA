@@ -8,6 +8,8 @@ import DashboardHome from './components/Dashboard/Home';
 import MasterBarang from './components/Inventory/MasterBarang';
 import MasterLokasi from './components/Inventory/MasterLokasi';
 import MasterKategori from './components/Inventory/MasterKategori';
+import MasterKepemilikan from './components/Inventory/MasterKepemilikan';
+import OfficeItemsRequester from './components/Inventory/OfficeItemsRequester';
 import TakeItemHistory from './components/Inventory/TakeItemHistory';
 import LogItemChange from './components/Inventory/LogItemChange';
 import StockOutHistory from './components/Inventory/StockOutHistory';
@@ -17,8 +19,9 @@ import { Loader2 } from 'lucide-react';
 import { ToastProvider } from './components/UI/Toast';
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [historySearch, setHistorySearch] = useState('');
+  const isRequester = profile?.role === 'requester';
   
   // Set idle timeout ke 1 jam (3600000 ms) saat user sudah login
   useIdleTimeout(!!user, 3600000);
@@ -45,15 +48,21 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardHome />} />
-            <Route path="/barang" element={<MasterBarang setHistorySearch={setHistorySearch} />} />
-            <Route path="/lokasi" element={<MasterLokasi setHistorySearch={setHistorySearch} />} />
-            <Route path="/kategori" element={<MasterKategori />} />
-            <Route path="/take-item-history" element={<TakeItemHistory initialSearch={historySearch} />} />
-            <Route path="/log-item-change" element={<LogItemChange initialSearch={historySearch} />} />
-            <Route path="/stock-out-history" element={<StockOutHistory setHistorySearch={setHistorySearch} />} />
-            <Route path="/login-settings" element={<LoginSettings />} />
+            <Route path="/office-items" element={<OfficeItemsRequester />} />
             <Route path="/manage-users" element={<ManageUsers />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {!isRequester && (
+              <>
+                <Route path="/barang" element={<MasterBarang setHistorySearch={setHistorySearch} />} />
+                <Route path="/lokasi" element={<MasterLokasi setHistorySearch={setHistorySearch} />} />
+                <Route path="/kategori" element={<MasterKategori />} />
+                <Route path="/kepemilikan" element={<MasterKepemilikan />} />
+                <Route path="/take-item-history" element={<TakeItemHistory initialSearch={historySearch} />} />
+                <Route path="/log-item-change" element={<LogItemChange initialSearch={historySearch} />} />
+                <Route path="/stock-out-history" element={<StockOutHistory setHistorySearch={setHistorySearch} />} />
+                <Route path="/login-settings" element={<LoginSettings />} />
+              </>
+            )}
+            <Route path="*" element={<Navigate to={isRequester ? "/office-items" : "/dashboard"} replace />} />
           </Routes>
         </Layout>
       )}

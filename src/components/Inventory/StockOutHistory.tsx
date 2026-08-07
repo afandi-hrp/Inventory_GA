@@ -8,6 +8,8 @@ import {
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../UI/Toast';
+import SignedImage from '../UI/SignedImage';
+import { getSignedUrls } from '../../lib/signedStorage';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -77,8 +79,9 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
     setCurrentImageIndex((prev) => (prev === 0 ? lightboxImages.length - 1 : prev - 1));
   };
 
-  const openLightbox = (images: string[], index: number) => {
-    setLightboxImages(images);
+  const openLightbox = async (images: string[], index: number) => {
+    const signedMap = await getSignedUrls('item-photos', images);
+    setLightboxImages(images.map((url) => signedMap[url] || url));
     setCurrentImageIndex(index);
     setIsLightboxOpen(true);
   };
@@ -598,7 +601,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                         onClick={() => openLightbox(selectedEntry.foto_urls, idx)}
                         className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer"
                       >
-                        <img src={url} alt="Snapshot" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <SignedImage bucket="item-photos" path={url} alt="Snapshot" className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -631,8 +634,8 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
               <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -643,7 +646,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
-                      <th key={key} className="pb-3 px-2">{key}</th>
+                      <th key={key} className="pb-3 px-2 whitespace-nowrap">{key}</th>
                     ))}
                   </tr>
                 </thead>
@@ -651,14 +654,14 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                   {exportData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       {Object.values(row).map((val: any, i) => (
-                        <td key={i} className="py-2 px-2 text-gray-600">{val}</td>
+                        <td key={i} className="py-2 px-2 text-gray-600 whitespace-nowrap">{val}</td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
@@ -680,8 +683,8 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {/* Restore Confirmation Modal */}
       {isRestoreModalOpen && entryToRestore && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col">
+            <div className="p-6 overflow-y-auto">
               <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-4 mx-auto">
                 <RotateCcw className="text-emerald-600" size={24} />
               </div>
@@ -745,49 +748,49 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setIsLightboxOpen(false)}
         >
-          <button 
-            className="absolute top-6 right-6 p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-10"
+          <button
+            className="absolute top-2 right-2 sm:top-6 sm:right-6 p-1.5 sm:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-20"
             onClick={() => setIsLightboxOpen(false)}
           >
-            <X size={32} />
+            <X size={22} className="sm:w-8 sm:h-8" />
           </button>
 
-          <div className="relative w-full h-full flex items-center justify-center p-4">
+          <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
             {lightboxImages.length > 1 && (
-              <button 
-                className="absolute left-6 p-4 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-10"
+              <button
+                className="absolute left-1 sm:left-6 p-1.5 sm:p-4 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-10"
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePrevImage();
                 }}
               >
-                <ChevronLeft size={48} />
+                <ChevronLeft size={24} className="sm:w-12 sm:h-12" />
               </button>
             )}
 
-            <div className="max-w-5xl max-h-[85vh] relative group" onClick={(e) => e.stopPropagation()}>
-              <img 
-                src={lightboxImages[currentImageIndex]} 
-                alt="Enlarged view" 
-                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
+            <div className="max-w-full sm:max-w-5xl max-h-[80dvh] sm:max-h-[85dvh] relative group" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={lightboxImages[currentImageIndex]}
+                alt="Enlarged view"
+                className="max-w-full max-h-[80dvh] sm:max-h-[85dvh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
                 referrerPolicy="no-referrer"
               />
             </div>
 
             {lightboxImages.length > 1 && (
-              <button 
-                className="absolute right-6 p-4 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-10"
+              <button
+                className="absolute right-1 sm:right-6 p-1.5 sm:p-4 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-10"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleNextImage();
                 }}
               >
-                <ChevronRight size={48} />
+                <ChevronRight size={24} className="sm:w-12 sm:h-12" />
               </button>
             )}
 
             {lightboxImages.length > 1 && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/50 rounded-full text-white text-lg font-medium backdrop-blur-md border border-white/10">
+              <div className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 px-4 sm:px-6 py-2 sm:py-3 bg-black/50 rounded-full text-white text-sm sm:text-lg font-medium backdrop-blur-md border border-white/10 whitespace-nowrap">
                 {currentImageIndex + 1} / {lightboxImages.length}
               </div>
             )}

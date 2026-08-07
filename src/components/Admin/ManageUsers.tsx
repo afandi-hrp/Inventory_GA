@@ -8,6 +8,7 @@ import {
   Edit2, X
 } from 'lucide-react';
 import { Profile } from '../../types';
+import SignedImage from '../UI/SignedImage';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -28,7 +29,7 @@ export default function ManageUsers() {
     email: '',
     password: '',
     full_name: '',
-    role: 'user' as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur'
+    role: 'user' as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester'
   });
 
   // Profile Edit State
@@ -203,7 +204,7 @@ export default function ManageUsers() {
     <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Users & Profile</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
           <p className="text-gray-500">
             {profile?.role === 'admin' 
               ? 'Kelola hak akses dan profil seluruh pengguna aplikasi' 
@@ -212,9 +213,9 @@ export default function ManageUsers() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className={cn("grid grid-cols-1 gap-8", profile?.role === 'requester' ? "max-w-4xl mx-auto" : "lg:grid-cols-3")}>
         {/* Profile Section */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className={cn(profile?.role === 'requester' ? "grid grid-cols-1 sm:grid-cols-2 gap-6" : "lg:col-span-1 space-y-6")}>
           <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
             <div className="p-6 border-b border-white/30 bg-white/20">
               <h3 className="font-bold text-gray-900 flex items-center">
@@ -227,7 +228,7 @@ export default function ManageUsers() {
                 <div className="relative group">
                   <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-md overflow-hidden flex items-center justify-center">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <SignedImage bucket="item-photos" path={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <UserIcon size={40} className="text-gray-300" />
                     )}
@@ -239,14 +240,16 @@ export default function ManageUsers() {
                 </div>
                 <div className="mt-4 text-center">
                   <p className="font-bold text-gray-900">{profile?.full_name || 'User'}</p>
-                  <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">
-                    <span className={cn(
-                      "px-2 py-0.5 rounded",
-                      profile?.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                    )}>
-                      {profile?.role}
-                    </span>
-                  </p>
+                  {profile?.role !== 'requester' && (
+                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">
+                      <span className={cn(
+                        "px-2 py-0.5 rounded",
+                        profile?.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                      )}>
+                        {profile?.role}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -324,7 +327,8 @@ export default function ManageUsers() {
           </div>
         </div>
 
-        {/* User List Section (Admin Only) */}
+        {/* User List Section (Admin Only) — disembunyikan sepenuhnya untuk requester */}
+        {profile?.role !== 'requester' && (
         <div className="lg:col-span-2">
           {profile?.role === 'admin' ? (
             <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden h-full flex flex-col">
@@ -337,8 +341,8 @@ export default function ManageUsers() {
                   {profiles.length} Users
                 </span>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                <table className="w-full text-left">
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-left min-w-[480px]">
                   <thead className="bg-gray-50 text-[10px] uppercase tracking-wider font-bold text-gray-400 border-b border-gray-100">
                     <tr>
                       <th className="px-6 py-4">User</th>
@@ -350,28 +354,28 @@ export default function ManageUsers() {
                     {profiles.map((p) => (
                       <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
                         <td className="px-6 py-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-200">
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-200 shrink-0">
                               {p.avatar_url ? (
-                                <img src={p.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <SignedImage bucket="item-photos" path={p.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
                                 <UserIcon size={14} className="text-gray-400" />
                               )}
                             </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900">{p.full_name || 'No Name'}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900 truncate">{p.full_name || 'No Name'}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={cn(
-                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
+                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
                             p.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
                           )}>
                             {p.role}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-xs text-gray-500">
+                        <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
                           {new Date(p.created_at).toLocaleDateString('id-ID')}
                         </td>
                       </tr>
@@ -388,7 +392,7 @@ export default function ManageUsers() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Akses Terbatas</h3>
                 <p className="text-sm text-gray-600 max-w-sm mt-2">
-                  Sebagai pengguna dengan role <strong>User</strong>, Anda hanya dapat mengelola profil dan keamanan akun Anda sendiri.
+                  Sebagai pengguna dengan role <strong className="capitalize">{profile?.role || 'User'}</strong>, Anda hanya dapat mengelola profil dan keamanan akun Anda sendiri.
                 </p>
               </div>
               <div className="pt-4 grid grid-cols-2 gap-4 w-full max-w-xs">
@@ -404,6 +408,7 @@ export default function ManageUsers() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Add User Modal */}
@@ -465,7 +470,7 @@ export default function ManageUsers() {
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>
                 <select
                   value={newUserForm.role}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' })}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
                 >
                   <option value="user">User (View Only)</option>
@@ -473,6 +478,7 @@ export default function ManageUsers() {
                   <option value="auditor">Auditor (Audit Only)</option>
                   <option value="spv">SPV (Level 1 Approval)</option>
                   <option value="direktur">Direktur (Level 2 Approval)</option>
+                  <option value="requester">Requester (Ambil Barang Office)</option>
                 </select>
               </div>
 

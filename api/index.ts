@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer as createHttpServer } from 'http';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -127,10 +128,12 @@ app.delete('/api/admin/delete-user/:userId', checkAdmin, async (req, res) => {
   res.json({ message: 'User deleted successfully' });
 });
 
-// Middleware to check if user is authenticated (any role)
-const checkAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+// Middleware to check the caller is 'spv' or 'direktur' — the only roles allowed to
+// trigger a final approval (SPV finalizes SPK, Direktur finalizes Disposal), which is
+// the only legitimate trigger for this route.
+const checkFinalApprover = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (!supabaseAdmin) {
-    return res.status(500).json({ error: 'Supabase Admin not initialized' });
+    return res.status(500).json({ error: 'Supabase Admin not initialized. Check environment variables.' });
   }
 
   const authHeader = req.headers.authorization;
@@ -139,21 +142,34 @@ const checkAuth = async (req: express.Request, res: express.Response, next: expr
   }
 
   const token = authHeader.replace('Bearer ', '');
+
   try {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
     if (authError || !user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
-    // Attach user to request for further use if needed
-    (req as any).user = user;
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || (profile?.role !== 'spv' && profile?.role !== 'direktur')) {
+      return res.status(403).json({ error: 'Unauthorized: SPV or Direktur only' });
+    }
+
     next();
   } catch (err) {
     res.status(500).json({ error: 'Internal server error during auth check' });
   }
 };
 
-// API Route to delete an item bypassing RLS (used for disposal approval)
-app.delete('/api/inventory/delete-item/:itemId', checkAuth, async (req, res) => {
+// API Route to delete an item bypassing RLS (used for disposal/SPK final approval).
+// Restricted to 'spv'/'direktur' since those are the only roles that can trigger a
+// final approval in the UI — any authenticated user was previously able to call this directly.
+app.delete('/api/inventory/delete-item/:itemId', checkFinalApprover, async (req, res) => {
   const { itemId } = req.params;
   
   if (!itemId || itemId === 'undefined') {
@@ -173,28 +189,33 @@ app.delete('/api/inventory/delete-item/:itemId', checkAuth, async (req, res) => 
   res.json({ message: 'Item deleted successfully', data });
 });
 
-// Vite middleware for development
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  const { createServer: createViteServer } = await import('vite');
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  });
-  app.use(vite.middlewares);
-} else if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
-  const distPath = path.join(process.cwd(), 'dist');
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
-
 // Export the app for Vercel
 export default app;
 
 // Start the server if not running on Vercel
 if (!process.env.VERCEL) {
-  app.listen(port, '0.0.0.0', () => {
+  // Create the HTTP server explicitly (instead of app.listen()) so its instance
+  // can be handed to Vite's HMR websocket below — otherwise, in middlewareMode,
+  // Vite spins up its own detached HMR websocket server that the browser can't
+  // reach, causing "WebSocket connection to ws://localhost:24678 failed".
+  const httpServer = createHttpServer(app);
+
+  if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true, hmr: { server: httpServer } },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  httpServer.listen(port, '0.0.0.0', () => {
     console.log(`Server running at http://0.0.0.0:${port}`);
   });
 }

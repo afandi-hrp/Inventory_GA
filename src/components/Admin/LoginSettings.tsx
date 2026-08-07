@@ -64,14 +64,17 @@ export default function LoginSettings() {
       const fileName = `login-bg-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `settings/${fileName}`;
 
+      // app-assets bucket is intentionally public — the login page
+      // renders this before the user is authenticated, so it can't
+      // rely on a signed URL.
       const { error: uploadError } = await supabase.storage
-        .from('item-photos')
+        .from('app-assets')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('item-photos')
+        .from('app-assets')
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, login_bg_url: publicUrl }));

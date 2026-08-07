@@ -206,26 +206,27 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             />
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex items-center space-x-2">
-              <Calendar size={18} className="text-gray-400" />
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            <div className="flex items-center gap-2">
+              <Calendar size={18} className="text-gray-400 shrink-0" />
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1 min-w-0">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-0"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-0"
+                />
+              </div>
             </div>
             <button
               onClick={handleClearSearch}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 backdrop-blur-md rounded-lg transition-all whitespace-nowrap shadow-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 backdrop-blur-md rounded-lg transition-all whitespace-nowrap shadow-sm w-full sm:w-auto"
             >
               <XCircle size={18} />
               <span>Reset</span>
@@ -457,8 +458,8 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
               <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -469,7 +470,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
-                      <th key={key} className="pb-3 px-2">{key}</th>
+                      <th key={key} className="pb-3 px-2 whitespace-nowrap">{key}</th>
                     ))}
                   </tr>
                 </thead>
@@ -477,14 +478,14 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
                   {exportData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       {Object.values(row).map((val: any, i) => (
-                        <td key={i} className="py-2 px-2 text-gray-600">{val}</td>
+                        <td key={i} className="py-2 px-2 text-gray-600 whitespace-nowrap">{val}</td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"

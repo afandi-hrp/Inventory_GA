@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { Loader2, ClipboardList, Package, User as UserIcon, Calendar, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Search, Filter, XCircle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import SignedImage from '../UI/SignedImage';
+import { getSignedUrls } from '../../lib/signedStorage';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -67,8 +69,9 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const openLightbox = (images: string[], index: number) => {
-    setLightboxImages(images);
+  const openLightbox = async (images: string[], index: number) => {
+    const signedMap = await getSignedUrls('item-photos', images);
+    setLightboxImages(images.map((url) => signedMap[url] || url));
     setCurrentImageIndex(index);
     setIsLightboxOpen(true);
   };
@@ -246,12 +249,12 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
         return (
           <div className="flex flex-wrap gap-1 mt-1">
             {value.map((url: string, index: number) => (
-              <img 
-                key={index} 
-                src={url} 
-                alt={`Foto ${index + 1}`} 
-                className="w-10 h-10 object-cover rounded border border-gray-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all" 
-                referrerPolicy="no-referrer" 
+              <SignedImage
+                key={index}
+                bucket="item-photos"
+                path={url}
+                alt={`Foto ${index + 1}`}
+                className="w-10 h-10 object-cover rounded border border-gray-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                 onClick={(e) => {
                   e.stopPropagation();
                   openLightbox(value, index);
@@ -380,26 +383,27 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             />
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex items-center space-x-2">
-              <Calendar size={18} className="text-gray-400" />
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            <div className="flex items-center gap-2">
+              <Calendar size={18} className="text-gray-400 shrink-0" />
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1 min-w-0">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-0"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-0"
+                />
+              </div>
             </div>
             <button
               onClick={handleClearSearch}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 backdrop-blur-md rounded-lg transition-all whitespace-nowrap shadow-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 backdrop-blur-md rounded-lg transition-all whitespace-nowrap shadow-sm w-full sm:w-auto"
             >
               <XCircle size={18} />
               <span>Reset</span>
@@ -671,8 +675,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
               <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -683,7 +687,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
-                      <th key={key} className="pb-3 px-2">{key}</th>
+                      <th key={key} className="pb-3 px-2 whitespace-nowrap">{key}</th>
                     ))}
                   </tr>
                 </thead>
@@ -698,7 +702,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
@@ -723,44 +727,44 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
           className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={closeLightbox}
         >
-          <button 
+          <button
             onClick={closeLightbox}
-            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 p-1.5 sm:p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-20"
           >
-            <X size={24} />
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
 
-          <div 
-            className="relative w-full max-w-5xl max-h-[90vh] flex items-center justify-center p-4"
+          <div
+            className="relative w-full max-w-5xl max-h-[90dvh] flex items-center justify-center p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             {lightboxImages.length > 1 && (
-              <button 
+              <button
                 onClick={prevImage}
-                className="absolute left-4 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
+                className="absolute left-1 sm:left-4 p-1.5 sm:p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
               >
-                <ChevronLeft size={32} />
+                <ChevronLeft size={20} className="sm:w-8 sm:h-8" />
               </button>
             )}
 
-            <img 
-              src={lightboxImages[currentImageIndex]} 
-              alt={`Foto ${currentImageIndex + 1}`} 
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            <img
+              src={lightboxImages[currentImageIndex]}
+              alt={`Foto ${currentImageIndex + 1}`}
+              className="max-w-full max-h-[80dvh] sm:max-h-[85dvh] object-contain rounded-lg shadow-2xl"
               referrerPolicy="no-referrer"
             />
 
             {lightboxImages.length > 1 && (
-              <button 
+              <button
                 onClick={nextImage}
-                className="absolute right-4 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
+                className="absolute right-1 sm:right-4 p-1.5 sm:p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
               >
-                <ChevronRight size={32} />
+                <ChevronRight size={20} className="sm:w-8 sm:h-8" />
               </button>
             )}
 
             {lightboxImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 rounded-full text-white text-sm font-medium backdrop-blur-md">
+              <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 sm:py-2 bg-black/50 rounded-full text-white text-xs sm:text-sm font-medium backdrop-blur-md whitespace-nowrap">
                 {currentImageIndex + 1} / {lightboxImages.length}
               </div>
             )}

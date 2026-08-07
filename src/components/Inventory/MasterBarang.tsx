@@ -1,24 +1,63 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, Search, Filter, Edit2, ChevronLeft, ChevronRight, 
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Plus, Search, Filter, Edit2, ChevronLeft, ChevronRight,
   Package, Image as ImageIcon, Upload, Download, X, Loader2, AlertCircle,
   FileSpreadsheet, CheckSquare, Square, MoreHorizontal,
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
-  LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning
+  LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning,
+  UserCheck, ShoppingCart, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText
 } from 'lucide-react';
-import { Item } from '../../types';
+import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useToast } from '../UI/Toast';
 import { DisposalApprovalModal } from './DisposalApprovalModal';
+import { SPKApprovalModal } from './SPKApprovalModal';
+import SignedImage from '../UI/SignedImage';
+import { getSignedUrl, getSignedUrls } from '../../lib/signedStorage';
 import * as XLSX from 'xlsx';
+import * as XLSXStyle from 'xlsx-js-style';
+import { jsPDF } from 'jspdf';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const FLAG_COLOR_STYLES: Record<string, string> = {
+  teal: 'bg-teal-50 text-teal-700 border-teal-200',
+  sky: 'bg-sky-50 text-sky-700 border-sky-200',
+  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  purple: 'bg-purple-50 text-purple-700 border-purple-200',
+  rose: 'bg-rose-50 text-rose-700 border-rose-200',
+  amber: 'bg-amber-50 text-amber-700 border-amber-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  orange: 'bg-orange-50 text-orange-700 border-orange-200',
+};
+
+const FLAG_COLOR_SWATCH: Record<string, string> = {
+  teal: 'bg-teal-500',
+  sky: 'bg-sky-500',
+  indigo: 'bg-indigo-500',
+  purple: 'bg-purple-500',
+  rose: 'bg-rose-500',
+  amber: 'bg-amber-500',
+  emerald: 'bg-emerald-500',
+  orange: 'bg-orange-500',
+};
+
+const FLAG_ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  tag: Tag,
+  warning: AlertTriangle,
+  star: Star,
+  check: CheckCircle2,
+  flag: FlagIcon,
+  zap: Zap,
+  info: Info,
+  shield: ShieldAlert,
+};
 
 interface MasterBarangProps {
   setHistorySearch?: (search: string) => void;
@@ -33,7 +72,23 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterLokasi, setFilterLokasi] = useState('');
-  const [page, setPage] = useState(1);
+  // Halaman pagination disimpan di URL (?page=10), bukan cuma state lokal —
+  // supaya kalau ada remount/refresh tak terduga (mis. setelah simpan/edit
+  // barang), user tidak "terlempar" balik ke halaman 1.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = parseInt(searchParams.get('page') || '1', 10) || 1;
+  const setPage = (value: number | ((prev: number) => number)) => {
+    const nextPage = typeof value === 'function' ? value(page) : value;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (nextPage <= 1) {
+        next.delete('page');
+      } else {
+        next.set('page', String(nextPage));
+      }
+      return next;
+    }, { replace: true });
+  };
   const [totalCount, setTotalCount] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -52,6 +107,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [isApprovalListModalOpen, setIsApprovalListModalOpen] = useState(false);
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
+  const [isSPKModalOpen, setIsSPKModalOpen] = useState(false);
+  const [isSPKApprovalListModalOpen, setIsSPKApprovalListModalOpen] = useState(false);
+  const [spkData, setSpkData] = useState({ keterangan: '' });
+  const [isSubmittingSPK, setIsSubmittingSPK] = useState(false);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
   const [selectedItemForTake, setSelectedItemForTake] = useState<Item | null>(null);
   const [selectedItemForStockOut, setSelectedItemForStockOut] = useState<Item | null>(null);
@@ -69,6 +128,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   // Export state
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [exportData, setExportData] = useState<any[]>([]);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -77,6 +137,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     jumlah_barang: 0,
     kode_lokasi: '',
     kategori_id: '',
+    kepemilikan_id: '',
+    sifat_barang: 'PRIVATE' as 'PRIVATE' | 'OFFICE',
     deskripsi: '',
     kelengkapan_garansi: false,
     kelengkapan_sertifikat: false,
@@ -85,8 +147,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     dokumen_garansi_url: '' as string | null,
     dokumen_sertifikat_url: '' as string | null,
     dokumen_manual_url: '' as string | null,
-    note_audit: '',
+    note_audit: '' as '' | 'ADA' | 'TIDAK ADA',
+    tanggal_audit: '' as string,
     foto_urls: [] as string[],
+    flags: [] as string[],
   });
 
   const [docGaransiFile, setDocGaransiFile] = useState<File | null>(null);
@@ -104,12 +168,26 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   });
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [kepemilikanList, setKepemilikanList] = useState<any[]>([]);
   const [filterKategori, setFilterKategori] = useState('');
+  const [filterKepemilikan, setFilterKepemilikan] = useState('');
+  const [filterSifat, setFilterSifat] = useState<'' | 'PRIVATE' | 'OFFICE'>('');
+  const [flagInput, setFlagInput] = useState('');
+  const [flagCatalog, setFlagCatalog] = useState<FlagDef[]>([]);
+  const [filterFlag, setFilterFlag] = useState('');
+  const [newFlagColorKey, setNewFlagColorKey] = useState('teal');
+  const [newFlagIconKey, setNewFlagIconKey] = useState('tag');
+  const [savingNewFlag, setSavingNewFlag] = useState(false);
+  const [activeFilterPanel, setActiveFilterPanel] = useState<'' | 'kategori' | 'lokasi' | 'kepemilikan'>('');
   const [filterPemusnahan, setFilterPemusnahan] = useState(false);
+  const [filterOffice, setFilterOffice] = useState(false);
+  const canUseSPKCart = ['admin', 'spv', 'direktur'].includes(profile?.role || '');
 
   const [bulkEditData, setBulkEditData] = useState({
     kode_lokasi: '',
     kategori_id: '',
+    kepemilikan_id: '',
+    sifat_barang: '' as '' | 'PRIVATE' | 'OFFICE',
     jumlah_barang: -1, // -1 means no change
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -118,15 +196,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
-  // Stats States
-  const [categoryStats, setCategoryStats] = useState<{
-    id: string, 
-    name: string, 
-    count: number, 
-    stock: number, 
-    locations: {name: string, kode: string, count: number, stock: number}[]
-  }[]>([]);
-  const [selectedTopCategory, setSelectedTopCategory] = useState<string | null>(null);
+  // Dimension Stats (kartu master Kepemilikan/Kategori/Lokasi yang saling cross-filter)
+  const [dimensionStats, setDimensionStats] = useState<{ id: string, name: string, count: number, stock: number }[]>([]);
+  const [loadingDimensionStats, setLoadingDimensionStats] = useState(false);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const topScrollbarRef = useRef<HTMLDivElement>(null);
@@ -166,12 +238,74 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   }, [search]);
 
   useEffect(() => {
-    if (profile) {
-      console.log('Current User Profile:', profile);
-    }
     fetchItems();
     fetchCategories();
-  }, [page, debouncedSearch, filterLokasi, filterKategori, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
+    fetchKepemilikan();
+    fetchFlagCatalog();
+  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterFlag, filterPemusnahan, filterOffice, itemsPerPage, profile, sortColumn, sortOrder]);
+
+  async function fetchFlagCatalog() {
+    try {
+      const { data, error } = await supabase.from('item_flag_defs').select('*').order('nama_flag');
+      if (error) throw error;
+      setFlagCatalog(data || []);
+    } catch (err) {
+      console.error('Error fetching flag catalog:', err);
+    }
+  }
+
+  function getFlagStyle(name: string) {
+    const def = flagCatalog.find((f) => f.nama_flag.toLowerCase() === name.toLowerCase());
+    const colorKey = def?.color && FLAG_COLOR_STYLES[def.color] ? def.color : 'teal';
+    const iconKey = def?.icon && FLAG_ICON_MAP[def.icon] ? def.icon : 'tag';
+    return { classes: FLAG_COLOR_STYLES[colorKey], Icon: FLAG_ICON_MAP[iconKey] };
+  }
+
+  async function handleDeleteFlagDef(id: string, name: string) {
+    if (!window.confirm(`Hapus flag "${name}" dari daftar referensi? Barang yang sudah punya flag ini tidak akan otomatis kehilangan flag-nya, cuma definisi warna/ikonnya saja yang dihapus.`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase.from('item_flag_defs').delete().eq('id', id);
+      if (error) throw error;
+      setFlagCatalog((prev) => prev.filter((f) => f.id !== id));
+      showToast('Flag dihapus dari daftar referensi', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus flag', 'error');
+    }
+  }
+
+  async function handleSaveNewFlag() {
+    const newFlagName = flagInput.trim();
+    if (!newFlagName) return;
+    setSavingNewFlag(true);
+    try {
+      const { data, error } = await supabase
+        .from('item_flag_defs')
+        .insert([{ nama_flag: newFlagName, color: newFlagColorKey, icon: newFlagIconKey }])
+        .select()
+        .single();
+      if (error) {
+        if (error.code === '23505') {
+          // Unique violation: another user just created the same flag concurrently — reuse it.
+          await fetchFlagCatalog();
+          setFormData((prev) => ({ ...prev, flags: [...prev.flags, newFlagName] }));
+        } else {
+          throw error;
+        }
+      } else if (data) {
+        setFlagCatalog((prev) => [...prev, data]);
+        setFormData((prev) => ({ ...prev, flags: [...prev.flags, data.nama_flag] }));
+      }
+      setFlagInput('');
+      setNewFlagColorKey('teal');
+      setNewFlagIconKey('tag');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal membuat flag baru', 'error');
+    } finally {
+      setSavingNewFlag(false);
+    }
+  }
 
   async function fetchCategories() {
     try {
@@ -188,89 +322,107 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }
   }
 
+  async function fetchKepemilikan() {
+    try {
+      const { data, error } = await supabase
+        .from('master_kepemilikan')
+        .select('*')
+        .order('nama_pemilik');
+      if (error) throw error;
+      if (data) {
+        setKepemilikanList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching kepemilikan:', err);
+    }
+  }
+
   async function fetchStatsAndLocations() {
     try {
-      const [locRes, itemsRes, catRes] = await Promise.all([
-        supabase.from('master_lokasi').select('*').order('nama_lokasi'),
-        supabase.from('items').select('kategori_id, kode_lokasi, jumlah_barang, master_lokasi(nama_lokasi)'),
-        supabase.from('categories').select('*')
-      ]);
-      
-      if (locRes.error) throw locRes.error;
-      if (itemsRes.error) throw itemsRes.error;
-      if (catRes.error) throw catRes.error;
-      
-      const allCats = catRes.data || [];
-      const catMapById = new Map(allCats.map(c => [c.id, c]));
-      
-      if (locRes.data) {
-        setAvailableLocations(locRes.data);
-      }
-
-      if (itemsRes.data) {
-        const catMap: Record<string, {
-          id: string, 
-          name: string, 
-          count: number, 
-          stock: number, 
-          locs: Record<string, {kode: string, name: string, count: number, stock: number}>
-        }> = {};
-
-        itemsRes.data.forEach(item => {
-          const itemCatId = item.kategori_id;
-          let topCatId = 'unassigned';
-          let topCatName = 'Tanpa Kategori';
-
-          if (itemCatId) {
-            const cat = catMapById.get(itemCatId);
-            if (cat) {
-              if (cat.parent_id) {
-                // Roll up to parent
-                const parentCat = catMapById.get(cat.parent_id);
-                if (parentCat) {
-                  topCatId = parentCat.id;
-                  topCatName = parentCat.nama_kategori;
-                } else {
-                  topCatId = cat.id;
-                  topCatName = cat.nama_kategori;
-                }
-              } else {
-                topCatId = cat.id;
-                topCatName = cat.nama_kategori;
-              }
-            }
-          }
-
-          const locKode = item.kode_lokasi || 'unassigned';
-          const locName = (item as any).master_lokasi?.nama_lokasi || locKode || 'Tanpa Lokasi';
-          
-          if (!catMap[topCatId]) {
-            catMap[topCatId] = { id: topCatId, name: topCatName, count: 0, stock: 0, locs: {} };
-          }
-          catMap[topCatId].count += 1;
-          catMap[topCatId].stock += (item.jumlah_barang || 0);
-
-          if (!catMap[topCatId].locs[locKode]) {
-            catMap[topCatId].locs[locKode] = { kode: locKode, name: locName, count: 0, stock: 0 };
-          }
-          catMap[topCatId].locs[locKode].count += 1;
-          catMap[topCatId].locs[locKode].stock += (item.jumlah_barang || 0);
-        });
-        
-        const catArray = Object.values(catMap).map(cat => ({
-          id: cat.id,
-          name: cat.name,
-          count: cat.count,
-          stock: cat.stock,
-          locations: Object.values(cat.locs).sort((a,b) => b.count - a.count)
-        })).sort((a, b) => b.count - a.count);
-        
-        setCategoryStats(catArray);
+      const { data, error } = await supabase.from('master_lokasi').select('*').order('nama_lokasi');
+      if (error) throw error;
+      if (data) {
+        setAvailableLocations(data);
       }
     } catch (err) {
       console.error('Error fetching locations:', err);
     }
   }
+
+  async function fetchDimensionStats(dimension: 'kategori' | 'lokasi' | 'kepemilikan') {
+    setLoadingDimensionStats(true);
+    try {
+      let query = supabase.from('items').select('kategori_id, kode_lokasi, kepemilikan_id, jumlah_barang');
+
+      // Terapkan filter dari 2 dimensi lain yang sedang aktif (bukan dimensi yang lagi dibuka)
+      if (dimension !== 'kategori' && filterKategori) {
+        const subCats = categories.filter(c => c.parent_id === filterKategori).map(c => c.id);
+        query = subCats.length > 0
+          ? query.in('kategori_id', [filterKategori, ...subCats])
+          : query.eq('kategori_id', filterKategori);
+      }
+      if (dimension !== 'lokasi' && filterLokasi) {
+        query = query.eq('kode_lokasi', filterLokasi);
+      }
+      if (dimension !== 'kepemilikan' && filterKepemilikan) {
+        query = query.eq('kepemilikan_id', filterKepemilikan);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const map: Record<string, { id: string, name: string, count: number, stock: number }> = {};
+
+      (data || []).forEach((item: any) => {
+        let key = 'unassigned';
+        let name = 'Tanpa Data';
+
+        if (dimension === 'kategori') {
+          const cat = categories.find(c => c.id === item.kategori_id);
+          if (cat) {
+            const top = cat.parent_id ? categories.find(c => c.id === cat.parent_id) : cat;
+            key = top?.id || cat.id;
+            name = top?.nama_kategori || cat.nama_kategori;
+          } else {
+            name = 'Tanpa Kategori';
+          }
+        } else if (dimension === 'lokasi') {
+          const loc = availableLocations.find(l => l.kode_lokasi === item.kode_lokasi);
+          if (loc) {
+            key = loc.kode_lokasi;
+            name = loc.nama_lokasi;
+          } else {
+            name = 'Tanpa Lokasi';
+          }
+        } else {
+          const owner = kepemilikanList.find(k => k.id === item.kepemilikan_id);
+          if (owner) {
+            key = owner.id;
+            name = owner.nama_pemilik;
+          } else {
+            name = 'Tanpa Kepemilikan';
+          }
+        }
+
+        if (!map[key]) map[key] = { id: key, name, count: 0, stock: 0 };
+        map[key].count += 1;
+        map[key].stock += (item.jumlah_barang || 0);
+      });
+
+      setDimensionStats(Object.values(map).sort((a, b) => b.count - a.count));
+    } catch (err) {
+      console.error('Error fetching dimension stats:', err);
+      setDimensionStats([]);
+    } finally {
+      setLoadingDimensionStats(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeFilterPanel) {
+      fetchDimensionStats(activeFilterPanel);
+    }
+  }, [activeFilterPanel, filterKategori, filterLokasi, filterKepemilikan, categories, availableLocations, kepemilikanList]);
 
   async function fetchItems() {
     setLoading(true);
@@ -284,6 +436,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           ),
           categories (
             nama_kategori
+          ),
+          master_kepemilikan (
+            nama_pemilik
           )
         `, { count: 'exact' });
 
@@ -306,6 +461,22 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       if (filterPemusnahan) {
         query = query.in('kondisi_barang', ['RUSAK', 'CUKUP BAIK']);
+      }
+
+      if (filterKepemilikan) {
+        query = query.eq('kepemilikan_id', filterKepemilikan);
+      }
+
+      if (filterSifat) {
+        query = query.eq('sifat_barang', filterSifat);
+      }
+
+      if (filterOffice) {
+        query = query.eq('sifat_barang', 'OFFICE');
+      }
+
+      if (filterFlag) {
+        query = query.contains('flags', [filterFlag]);
       }
 
       const from = (page - 1) * itemsPerPage;
@@ -343,8 +514,20 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     setIsDetailModalOpen(true);
   };
 
-  const handleOpenCarousel = (images: string[], index: number) => {
-    setCarouselImages(images);
+  const handleOpenDocument = async (e: React.MouseEvent, docUrl: string | null | undefined) => {
+    e.preventDefault();
+    if (!docUrl) return;
+    const signedUrl = await getSignedUrl('item-documents', docUrl);
+    if (signedUrl) {
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      showToast('Gagal membuka dokumen', 'error');
+    }
+  };
+
+  const handleOpenCarousel = async (images: string[], index: number) => {
+    const signedMap = await getSignedUrls('item-photos', images);
+    setCarouselImages(images.map((url) => signedMap[url] || url));
     setCurrentCarouselIndex(index);
   };
 
@@ -373,7 +556,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         diajukan_oleh: diajukan_oleh,
         user_id: userId,
         jumlah: selectedItems.length,
-        status: 'PENDING_L1',
+        status: 'PENDING_AUDITOR',
         keterangan: disposalData.keterangan || null,
         alasan: disposalData.keterangan || '-',
         metode_pemusnahan: disposalData.metode_pemusnahan || null
@@ -404,13 +587,65 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       setDisposalData({ keterangan: '' });
       setSelectedItems([]);
       setFilterPemusnahan(false);
-      // We don't deduct stock here, because it waits for L2 approval.
+      // We don't deduct stock here, because it waits for final (Direktur) approval.
       fetchItems();
     } catch (err: any) {
       console.error(err);
       showToast('Gagal mengajukan pemusnahan: ' + err.message, 'error');
     } finally {
       setIsSubmittingDisposal(false);
+    }
+  };
+
+  const submitSPKRequest = async () => {
+    if (selectedItems.length === 0) return;
+    setIsSubmittingSPK(true);
+    try {
+      const userRes = await supabase.auth.getUser();
+      const userId = userRes.data.user?.id;
+      let diajukan_oleh = profile?.full_name || 'Unknown';
+
+      const reqRes = await supabase.from('spk_requests').insert({
+        nomor_spk: `SPK-${Date.now()}`,
+        diajukan_oleh: diajukan_oleh,
+        user_id: userId,
+        jumlah: selectedItems.length,
+        status: 'PENDING_ADMIN',
+        keterangan: spkData.keterangan || null,
+      }).select('id').single();
+
+      if (reqRes.error) throw reqRes.error;
+
+      const requestId = reqRes.data.id;
+
+      const selectedItemDocs = items.filter(i => selectedItems.includes(i.id));
+      const insertItems = selectedItemDocs.map(item => ({
+        request_id: requestId,
+        item_id: item.id,
+        kode_barang: item.kode_barang,
+        nama_barang: item.nama_barang,
+        jumlah_barang: item.jumlah_barang,
+        kode_lokasi: item.kode_lokasi,
+        kepemilikan_id: item.kepemilikan_id,
+        foto_urls: item.foto_urls || [],
+        status_item: 'PENDING'
+      }));
+
+      const itemRes = await supabase.from('spk_request_items').insert(insertItems);
+      if (itemRes.error) throw itemRes.error;
+
+      showToast('Pengajuan SPK berhasil dibuat!', 'success');
+      setIsSPKModalOpen(false);
+      setSpkData({ keterangan: '' });
+      setSelectedItems([]);
+      setFilterOffice(false);
+      // Stok tidak dikurangi di sini, menunggu approval Level 2.
+      fetchItems();
+    } catch (err: any) {
+      console.error(err);
+      showToast('Gagal mengajukan SPK: ' + err.message, 'error');
+    } finally {
+      setIsSubmittingSPK(false);
     }
   };
 
@@ -567,6 +802,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         jumlah_barang: item.jumlah_barang,
         kode_lokasi: item.kode_lokasi || '',
         kategori_id: item.kategori_id || '',
+        kepemilikan_id: item.kepemilikan_id || '',
+        sifat_barang: item.sifat_barang || 'PRIVATE',
         deskripsi: item.deskripsi || '',
         kelengkapan_garansi: item.kelengkapan_garansi || false,
         kelengkapan_sertifikat: item.kelengkapan_sertifikat || false,
@@ -576,7 +813,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         dokumen_sertifikat_url: item.dokumen_sertifikat_url || null,
         dokumen_manual_url: item.dokumen_manual_url || null,
         note_audit: item.note_audit || '',
+        tanggal_audit: item.tanggal_audit || '',
         foto_urls: item.foto_urls || [],
+        flags: item.flags || [],
       });
       setPreviewUrls(item.foto_urls || []);
       setDocGaransiFile(null);
@@ -591,6 +830,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         jumlah_barang: 0,
         kode_lokasi: '',
         kategori_id: '',
+        kepemilikan_id: '',
+        sifat_barang: 'PRIVATE',
         deskripsi: '',
         kelengkapan_garansi: false,
         kelengkapan_sertifikat: false,
@@ -600,7 +841,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         dokumen_sertifikat_url: null,
         dokumen_manual_url: null,
         note_audit: '',
+        tanggal_audit: '',
         foto_urls: [],
+        flags: [],
       });
       setPreviewUrls([]);
       setDocGaransiFile(null);
@@ -608,6 +851,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       setDocManualFile(null);
     }
     setSelectedFiles([]);
+    setFlagInput('');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -697,17 +941,24 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         return;
       }
 
-      // Prepare data for export
+      // Prepare data for export — disinkronkan dengan urutan kolom di tabel Master Barang
       const dataToExport = items.map(item => ({
+        'Jumlah Foto': (item.foto_urls || []).length,
         'Kode Barang': item.kode_barang,
         'Nama Barang': item.nama_barang,
-        'Jumlah': item.jumlah_barang,
-        'Lokasi': (item as any).master_lokasi?.nama_lokasi || '-',
         'Deskripsi': item.deskripsi || '-',
+        'Lokasi': (item as any).master_lokasi?.nama_lokasi || 'Unassigned',
+        'Kategori': (item as any).categories?.nama_kategori || 'Tanpa Kategori',
+        'Kepemilikan': (item as any).master_kepemilikan?.nama_pemilik || '-',
+        'Flags': (item.flags && item.flags.length > 0) ? item.flags.join(', ') : '-',
+        'Status Barang': item.sifat_barang || 'PRIVATE',
         'Kondisi Barang': item.kondisi_barang || '-',
         'Kelengkapan Garansi': item.kelengkapan_garansi ? 'Ya' : 'Tidak',
         'Kelengkapan Sertifikat': item.kelengkapan_sertifikat ? 'Ya' : 'Tidak',
         'Kelengkapan Manual Book': item.kelengkapan_manual ? 'Ya' : 'Tidak',
+        'Stok': item.jumlah_barang,
+        'Hasil Audit': item.note_audit || '-',
+        'Tanggal Audit': item.tanggal_audit ? new Date(item.tanggal_audit).toLocaleDateString('id-ID') : '-',
         'Tanggal Dibuat': new Date(item.created_at).toLocaleDateString('id-ID'),
       }));
 
@@ -720,16 +971,41 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
   const handleConfirmExport = () => {
     try {
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      
+      if (exportData.length === 0) return;
+      const headers = Object.keys(exportData[0]);
+
+      // Create worksheet (pakai xlsx-js-style supaya bisa styling header)
+      const ws = XLSXStyle.utils.json_to_sheet(exportData);
+
+      // Style header: background gelap + teks putih tebal, rata tengah
+      const headerStyle = {
+        fill: { fgColor: { rgb: '3D2C44' } },
+        font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 11 },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      };
+      headers.forEach((_, colIdx) => {
+        const cellRef = XLSXStyle.utils.encode_cell({ r: 0, c: colIdx });
+        if (ws[cellRef]) ws[cellRef].s = headerStyle;
+      });
+      ws['!rows'] = [{ hpx: 22 }];
+
+      // Lebar kolom menyesuaikan konten terpanjang tiap kolom (header vs data)
+      ws['!cols'] = headers.map((header) => {
+        const maxDataLen = exportData.reduce((max, row) => {
+          const val = String((row as any)[header] ?? '');
+          return Math.max(max, val.length);
+        }, 0);
+        const width = Math.max(header.length, maxDataLen) + 3;
+        return { wch: Math.min(Math.max(width, 10), 45) };
+      });
+
       // Create workbook
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Master Barang');
+      const wb = XLSXStyle.utils.book_new();
+      XLSXStyle.utils.book_append_sheet(wb, ws, 'Master Barang');
 
       // Save file
-      XLSX.writeFile(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
-      
+      XLSXStyle.writeFile(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
+
       setIsExportPreviewOpen(false);
       showToast('Data berhasil diexport ke Excel', 'success');
     } catch (err: any) {
@@ -737,36 +1013,174 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }
   };
 
-  const handleExport = () => {
+  const getBase64ImageFromUrl = async (imageUrl: string) => {
     try {
-      if (items.length === 0) {
-        showToast('Tidak ada data untuk diexport', 'info');
-        return;
+      const signedUrl = await getSignedUrl('item-photos', imageUrl);
+      if (!signedUrl) return null;
+      const response = await fetch(signedUrl);
+      const blob = await response.blob();
+      return new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (items.length === 0) {
+      showToast('Tidak ada data untuk diexport', 'info');
+      return;
+    }
+    setIsExportingPDF(true);
+    showToast('Sedang menyiapkan PDF...', 'info');
+
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 14;
+      const marginBottom = 18;
+      const cardPadding = 4;
+      const cardGap = 4;
+      const photoSize = 24;
+      const photoGap = 3;
+      const lineH = 5.4;
+      const textBlockHeight = lineH * 6; // nama + 4 baris detail + flags
+
+      const cardInnerWidth = pageWidth - marginX * 2 - cardPadding * 2;
+      const photosPerRow = Math.max(1, Math.floor((cardInnerWidth + photoGap) / (photoSize + photoGap)));
+
+      let currentY = 20;
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Katalog Master Barang', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 7;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120);
+      doc.text(
+        `Diekspor: ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}  •  Total ${items.length} barang`,
+        pageWidth / 2,
+        currentY,
+        { align: 'center' }
+      );
+      doc.setTextColor(0);
+      currentY += 10;
+
+      const checkPageBreak = (neededHeight: number) => {
+        if (currentY + neededHeight > pageHeight - marginBottom) {
+          doc.addPage();
+          currentY = 20;
+          return true;
+        }
+        return false;
+      };
+
+      for (const item of items) {
+        const photoUrls = item.foto_urls || [];
+        const photoRowCount = photoUrls.length > 0 ? Math.ceil(photoUrls.length / photosPerRow) : 1;
+        const photoBlockHeight = photoRowCount * photoSize + (photoRowCount - 1) * photoGap;
+        const cardHeight = cardPadding * 2 + textBlockHeight + 4 + photoBlockHeight;
+
+        checkPageBreak(cardHeight);
+
+        const cardTop = currentY;
+
+        // Card border
+        doc.setDrawColor(220);
+        doc.roundedRect(marginX, cardTop, pageWidth - marginX * 2, cardHeight, 2, 2, 'S');
+
+        // Detail teks (bagian atas kartu)
+        const textX = marginX + cardPadding;
+        const maxTextWidth = cardInnerWidth;
+        let textY = cardTop + cardPadding + 4;
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        const nameLines = doc.splitTextToSize(item.nama_barang, maxTextWidth);
+        const displayName = nameLines.length > 1 ? `${nameLines[0].replace(/\s+\S*$/, '')}...` : nameLines[0];
+        doc.text(displayName, textX, textY);
+        textY += lineH + 1;
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(90);
+
+        const kategori = (item as any).categories?.nama_kategori || 'Tanpa Kategori';
+        const lokasi = (item as any).master_lokasi?.nama_lokasi || '-';
+        const kepemilikan = (item as any).master_kepemilikan?.nama_pemilik || '-';
+        const status = item.sifat_barang || 'PRIVATE';
+        const kondisi = item.kondisi_barang || '-';
+        const flagsStr = item.flags && item.flags.length > 0 ? item.flags.join(', ') : '-';
+
+        doc.text(`Kode: ${item.kode_barang}`, textX, textY);
+        textY += lineH;
+        doc.text(`Kategori: ${kategori}   |   Lokasi: ${lokasi}`, textX, textY);
+        textY += lineH;
+        doc.text(`Kepemilikan: ${kepemilikan}   |   Status: ${status}`, textX, textY);
+        textY += lineH;
+        doc.text(`Kondisi: ${kondisi}   |   Stok: ${item.jumlah_barang} unit`, textX, textY);
+        textY += lineH;
+        doc.text(`Flags: ${flagsStr}`, textX, textY, { maxWidth: maxTextWidth });
+        doc.setTextColor(0);
+
+        // Grid foto (semua foto, bukan cuma satu) di bawah info teks
+        const photoBlockTop = cardTop + cardPadding + textBlockHeight + 4;
+        if (photoUrls.length > 0) {
+          for (let i = 0; i < photoUrls.length; i++) {
+            const row = Math.floor(i / photosPerRow);
+            const col = i % photosPerRow;
+            const px = textX + col * (photoSize + photoGap);
+            const py = photoBlockTop + row * (photoSize + photoGap);
+
+            const base64Img = await getBase64ImageFromUrl(photoUrls[i]);
+            if (base64Img) {
+              try {
+                doc.addImage(base64Img, 'JPEG', px, py, photoSize, photoSize);
+              } catch (e) {
+                doc.setDrawColor(230);
+                doc.setFillColor(245, 245, 245);
+                doc.roundedRect(px, py, photoSize, photoSize, 2, 2, 'FD');
+              }
+            } else {
+              doc.setDrawColor(230);
+              doc.setFillColor(245, 245, 245);
+              doc.roundedRect(px, py, photoSize, photoSize, 2, 2, 'FD');
+            }
+          }
+        } else {
+          doc.setDrawColor(230);
+          doc.setFillColor(245, 245, 245);
+          doc.roundedRect(textX, photoBlockTop, photoSize, photoSize, 2, 2, 'FD');
+          doc.setFontSize(7);
+          doc.setTextColor(160);
+          doc.text('Tidak ada foto', textX + photoSize / 2, photoBlockTop + photoSize / 2, { align: 'center' });
+          doc.setTextColor(0);
+        }
+
+        currentY = cardTop + cardHeight + cardGap;
       }
 
-      // Prepare data for export
-      const exportData = items.map(item => ({
-        'Kode Barang': item.kode_barang,
-        'Nama Barang': item.nama_barang,
-        'Jumlah': item.jumlah_barang,
-        'Lokasi': (item as any).master_lokasi?.nama_lokasi || '-',
-        'Deskripsi': item.deskripsi || '-',
-        'Tanggal Dibuat': new Date(item.created_at).toLocaleDateString('id-ID'),
-      }));
+      const pageCount = doc.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Halaman ${p} dari ${pageCount}`, pageWidth - marginX, pageHeight - 8, { align: 'right' });
+        doc.setTextColor(0);
+      }
 
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      
-      // Create workbook
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Master Barang');
-
-      // Save file
-      XLSX.writeFile(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
-      
-      showToast('Data berhasil diexport ke Excel', 'success');
+      doc.save(`Katalog_Master_Barang_${new Date().toISOString().split('T')[0]}.pdf`);
+      showToast('PDF berhasil dibuat', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal mengeksport data', 'error');
+      showToast(err.message || 'Gagal membuat PDF', 'error');
+    } finally {
+      setIsExportingPDF(false);
     }
   };
 
@@ -779,6 +1193,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       const updatePayload: any = {};
       if (bulkEditData.kode_lokasi) updatePayload.kode_lokasi = bulkEditData.kode_lokasi;
       if (bulkEditData.kategori_id) updatePayload.kategori_id = bulkEditData.kategori_id;
+      if (bulkEditData.kepemilikan_id) updatePayload.kepemilikan_id = bulkEditData.kepemilikan_id;
+      if (bulkEditData.sifat_barang) updatePayload.sifat_barang = bulkEditData.sifat_barang;
       if (bulkEditData.jumlah_barang !== -1) updatePayload.jumlah_barang = bulkEditData.jumlah_barang;
 
       if (Object.keys(updatePayload).length === 0) {
@@ -794,6 +1210,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       if (error) throw error;
       showToast(`${selectedItems.length} barang berhasil diperbarui`, 'success');
       setIsBulkEditOpen(false);
+      setBulkEditData({ kode_lokasi: '', kategori_id: '', kepemilikan_id: '', sifat_barang: '', jumlah_barang: -1 });
       fetchItems();
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui barang secara massal', 'error');
@@ -993,6 +1410,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       let payload: any = {
         ...formData,
         kategori_id: formData.kategori_id || null,
+        kepemilikan_id: formData.kepemilikan_id || null,
         kode_lokasi: formData.kode_lokasi || null,
         kondisi_barang: formData.kondisi_barang || null,
         dokumen_garansi_url: finalDocGaransiUrl,
@@ -1003,27 +1421,32 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       };
 
       if (profile?.role === 'auditor') {
-        // Auditor can only update note_audit
+        // Auditor can only update the audit result (note_audit) & tanggal_audit
         payload = {
-          note_audit: formData.note_audit,
+          note_audit: formData.note_audit || null,
+          tanggal_audit: formData.tanggal_audit || null,
           updated_at: new Date().toISOString(),
         };
       }
 
       if (editingItem) {
-        const isChanged = profile?.role === 'auditor' 
-          ? formData.note_audit !== (editingItem.note_audit || '')
+        const isChanged = profile?.role === 'auditor'
+          ? (formData.note_audit !== (editingItem.note_audit || '') ||
+             formData.tanggal_audit !== (editingItem.tanggal_audit || ''))
           : (formData.kode_barang !== editingItem.kode_barang ||
             formData.nama_barang !== editingItem.nama_barang ||
             formData.jumlah_barang !== editingItem.jumlah_barang ||
             formData.kode_lokasi !== (editingItem.kode_lokasi || '') ||
             formData.kategori_id !== (editingItem.kategori_id || '') ||
+            formData.kepemilikan_id !== (editingItem.kepemilikan_id || '') ||
+            formData.sifat_barang !== (editingItem.sifat_barang || 'PRIVATE') ||
             formData.deskripsi !== (editingItem.deskripsi || '') ||
             formData.kelengkapan_garansi !== (editingItem.kelengkapan_garansi || false) ||
             formData.kelengkapan_sertifikat !== (editingItem.kelengkapan_sertifikat || false) ||
             formData.kelengkapan_manual !== (editingItem.kelengkapan_manual || false) ||
             formData.kondisi_barang !== (editingItem.kondisi_barang || '') ||
             formData.note_audit !== (editingItem.note_audit || '') ||
+            JSON.stringify(formData.flags) !== JSON.stringify(editingItem.flags || []) ||
             selectedFiles.length > 0 ||
             docGaransiFile !== null ||
             docSertifikatFile !== null ||
@@ -1055,6 +1478,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       setIsModalOpen(false);
       fetchItems();
+      fetchFlagCatalog();
     } catch (err: any) {
       setFormError(err.message || 'An error occurred');
     } finally {
@@ -1153,10 +1577,18 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               </label>
               <button
                 onClick={handlePrepareExport}
-                className="flex items-center justify-center space-x-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
+                className="flex items-center justify-center space-x-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
               >
-                <Download size={20} />
+                <FileSpreadsheet size={20} />
                 <span>Export Excel</span>
+              </button>
+              <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="flex items-center justify-center space-x-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
+              >
+                {isExportingPDF ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
+                <span>Export PDF</span>
               </button>
               <button
                 onClick={() => handleOpenModal()}
@@ -1172,18 +1604,18 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       {/* Bulk Actions Bar */}
       {selectedItems.length > 0 && profile?.role === 'admin' && !filterPemusnahan && (
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center space-x-3">
+        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-wrap items-center justify-between gap-y-2 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-blue-700 font-medium">{selectedItems.length} barang terpilih</span>
-            <div className="h-4 w-px bg-blue-200"></div>
-            <button 
+            <div className="hidden sm:block h-4 w-px bg-blue-200"></div>
+            <button
               onClick={() => setIsBulkEditOpen(true)}
               className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center"
             >
               <Edit2 size={16} className="mr-1" /> Edit Massal
             </button>
-            <div className="h-4 w-px bg-blue-200"></div>
-            <button 
+            <div className="hidden sm:block h-4 w-px bg-blue-200"></div>
+            <button
               onClick={() => {
                 setStockOutData({ alasan: '' });
                 setIsBulkStockOutModalOpen(true);
@@ -1199,117 +1631,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         </div>
       )}
 
-      {/* Category Stats */}
-      {categoryStats.length > 0 && (
-        <div className="flex flex-col space-y-4">
-          <div className="max-h-[160px] overflow-y-auto pr-2 scrollbar-hide">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-in fade-in duration-500">
-              {categoryStats.map((stat, idx) => {
-                const isSelected = selectedTopCategory === stat.id;
-                return (
-                  <div 
-                    key={idx} 
-                    className={`bg-white/40 backdrop-blur-xl p-4 rounded-3xl shadow-lg border flex items-center space-x-3 transition-all cursor-pointer group ${isSelected ? 'border-orange-500 shadow-orange-500/20 ring-2 ring-orange-500/20' : 'border-white/60 hover:border-orange-300 hover:shadow-xl hover:-translate-y-1'}`}
-                    onClick={() => setSelectedTopCategory(isSelected ? null : stat.id)}
-                  >
-                    <div className={`p-2.5 rounded-2xl shrink-0 border shadow-inner group-hover:scale-110 transition-transform ${isSelected ? 'bg-orange-100 text-orange-600 border-orange-200' : 'bg-white/50 text-orange-600 border-white/50'}`}>
-                      <Package size={20} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className={`text-sm font-semibold truncate ${isSelected ? 'text-orange-900' : 'text-gray-900'}`} title={stat.name}>{stat.name}</h4>
-                      <p className="text-xs text-gray-600 truncate font-medium">{stat.count} Jenis • {stat.stock} Total Stok</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          
-          {selectedTopCategory && (
-            <div className="animate-in slide-in-from-top-4 fade-in duration-300 space-y-4">
-              
-              {/* Sub-Kategori Cards */}
-              {categories.filter(c => c.parent_id === selectedTopCategory).length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <Package className="text-orange-500" size={18} />
-                    <h3 className="text-sm font-semibold text-gray-800">Sub-Kategori {categoryStats.find(c => c.id === selectedTopCategory)?.name}</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {/* Option to select the "Semua" parent category */}
-                    <div 
-                      className="bg-white hover:bg-orange-50 border border-gray-200 hover:border-orange-300 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center space-x-3 group"
-                      onClick={() => {
-                        setFilterKategori(selectedTopCategory === 'unassigned' ? '' : selectedTopCategory);
-                        setFilterLokasi('');
-                        setSelectedTopCategory(null);
-                      }}
-                    >
-                      <div className="p-1.5 bg-gray-50 group-hover:bg-orange-100 rounded-lg text-gray-400 group-hover:text-orange-600 transition-colors">
-                        <Package size={16} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-800">Semua {categoryStats.find(c => c.id === selectedTopCategory)?.name}</h4>
-                      </div>
-                    </div>
-                    {categories.filter(c => c.parent_id === selectedTopCategory).map((subCat) => (
-                      <div 
-                        key={subCat.id}
-                        className="bg-white hover:bg-orange-50 border border-gray-200 hover:border-orange-300 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center space-x-3 group"
-                        onClick={() => {
-                          setFilterKategori(subCat.id);
-                          setFilterLokasi('');
-                          setSelectedTopCategory(null);
-                        }}
-                      >
-                        <div className="p-1.5 bg-gray-50 group-hover:bg-orange-100 rounded-lg text-gray-400 group-hover:text-orange-600 transition-colors">
-                          <Package size={16} />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-gray-800">{subCat.nama_kategori}</h4>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Lokasi Cards */}
-              <div>
-                <div className="flex items-center space-x-2 mb-3">
-                  <MapPin className="text-blue-600" size={18} />
-                  <h3 className="text-sm font-semibold text-gray-800">Pilih Lokasi untuk Kategori {categoryStats.find(c => c.id === selectedTopCategory)?.name}</h3>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {categoryStats.find(c => c.id === selectedTopCategory)?.locations.map((loc, idx) => (
-                    <div 
-                      key={idx}
-                      className="bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center space-x-3 group"
-                      onClick={() => {
-                        setFilterKategori(selectedTopCategory === 'unassigned' ? '' : selectedTopCategory);
-                        setFilterLokasi(loc.kode === 'unassigned' ? '' : loc.kode);
-                        setSelectedTopCategory(null); // menciut / hide
-                      }}
-                    >
-                      <div className="p-1.5 bg-gray-50 group-hover:bg-blue-100 rounded-lg text-gray-400 group-hover:text-blue-600 transition-colors">
-                        <MapPin size={16} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-800">{loc.name}</h4>
-                        <p className="text-[10px] text-gray-500">{loc.count} Jenis • {loc.stock} Stok</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col md:flex-row gap-4">
-        <div className="md:flex-[2] relative group">
+      {/* Panel Kontrol: Stats + Filter + Aksi, digabung jadi satu kartu biar tidak numpuk */}
+      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 space-y-4">
+      {/* Row 1: Search + Sifat + Reset */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
@@ -1319,7 +1645,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           />
           {search && (
-            <button 
+            <button
               onClick={() => setSearch('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
@@ -1327,93 +1653,197 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             </button>
           )}
         </div>
-        <div className="md:flex-1 flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-2 min-w-[200px]">
-          <div className="relative flex-1 w-full flex items-center space-x-2">
-            <Filter className="text-gray-400" size={18} />
-            <div className="relative flex-1">
-              <select
-                value={filterKategori}
-                onChange={(e) => {
-                  setFilterKategori(e.target.value);
-                  setFilterLokasi('');
-                }}
-                className="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none bg-white font-medium"
-              >
-                <option value="">Semua Kategori</option>
-                {categories.filter(c => !c.parent_id).map((cat) => (
-                  <optgroup key={cat.id} label={cat.nama_kategori}>
-                    <option value={cat.id}>{cat.nama_kategori} (Utama)</option>
-                    {categories.filter(sub => sub.parent_id === cat.id).map(sub => (
-                      <option key={sub.id} value={sub.id}>-- {sub.nama_kategori}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              {filterKategori && (
-                <button 
-                  onClick={() => { setFilterKategori(''); setFilterLokasi(''); }}
-                  className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={16} />
-                </button>
-              )}
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <ChevronRight size={16} className="rotate-90" />
-              </div>
-            </div>
-          </div>
-          
-          {filterKategori && !filterLokasi && (
-            <div className="relative flex-1 w-full animate-in fade-in zoom-in duration-300">
-              <select
-                value={filterLokasi}
-                onChange={(e) => setFilterLokasi(e.target.value)}
-                className="w-full pl-3 pr-10 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50 text-blue-800 text-sm appearance-none font-medium text-center"
-              >
-                <option value="">-- Pilih Lokasi Kategori --</option>
-                {availableLocations.filter(loc => !loc.parent_kode_lokasi).map((loc) => (
-                  <optgroup key={loc.kode_lokasi} label={loc.nama_lokasi}>
-                    <option value={loc.kode_lokasi}>{loc.nama_lokasi} (Utama)</option>
-                    {availableLocations.filter(sub => sub.parent_kode_lokasi === loc.kode_lokasi).map(sub => (
-                      <option key={sub.kode_lokasi} value={sub.kode_lokasi}>-- {sub.nama_lokasi}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          {filterLokasi && (
-            <div className="flex items-center px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg border border-blue-200 animate-in fade-in slide-in-from-left-4 max-w-[200px] shrink-0">
-              <MapPin size={14} className="mr-1.5 shrink-0 text-blue-600" />
-              <span className="text-sm font-semibold truncate">
-                {availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi || 'Lokasi Terpilih'}
-              </span>
-              <button onClick={() => setFilterLokasi('')} className="ml-2 text-blue-400 hover:text-blue-800 shrink-0">
-                <X size={16} />
-              </button>
-            </div>
-          )}
+
+        <div className="md:w-44 shrink-0">
+          <select
+            value={filterSifat}
+            onChange={(e) => { setFilterSifat(e.target.value as '' | 'PRIVATE' | 'OFFICE'); setPage(1); }}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none bg-white font-medium"
+          >
+            <option value="">Semua Status</option>
+            <option value="OFFICE">OFFICE</option>
+            <option value="PRIVATE">PRIVATE</option>
+          </select>
         </div>
-        
+
+        <div className="md:w-44 shrink-0">
+          <select
+            value={filterFlag}
+            onChange={(e) => { setFilterFlag(e.target.value); setPage(1); }}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm appearance-none bg-white font-medium"
+          >
+            <option value="">Semua Flag</option>
+            {flagCatalog.map((flag) => (
+              <option key={flag.id} value={flag.nama_flag}>{flag.nama_flag}</option>
+            ))}
+          </select>
+        </div>
+
         <button
           onClick={() => {
             setSearch('');
             setFilterLokasi('');
             setFilterKategori('');
+            setFilterKepemilikan('');
+            setFilterSifat('');
+            setFilterFlag('');
             setFilterPemusnahan(false);
+            setFilterOffice(false);
+            setActiveFilterPanel('');
             setPage(1);
           }}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 backdrop-blur-md rounded-lg transition-all text-sm font-medium whitespace-nowrap shadow-sm"
+          className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 backdrop-blur-md rounded-lg transition-all text-sm font-medium whitespace-nowrap shadow-sm shrink-0"
         >
           <XCircle size={16} />
           <span>Reset Pencarian</span>
         </button>
       </div>
 
+      {/* Row 2: 3 Kartu Master Filter (Kategori/Lokasi/Kepemilikan) - saling cross-filter */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-gray-100">
+        {/* Kategori */}
+        <button
+          onClick={() => setActiveFilterPanel(activeFilterPanel === 'kategori' ? '' : 'kategori')}
+          className={cn(
+            "flex items-center space-x-3 p-3 rounded-2xl border text-left transition-all",
+            filterKategori || activeFilterPanel === 'kategori'
+              ? "bg-orange-50 border-orange-300 shadow-sm"
+              : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
+          )}
+        >
+          <div className={cn("p-2 rounded-xl shrink-0", filterKategori || activeFilterPanel === 'kategori' ? "bg-orange-100 text-orange-600" : "bg-gray-50 text-gray-400")}>
+            <Package size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kategori</h4>
+            <p className={cn("text-sm font-semibold truncate", filterKategori || activeFilterPanel === 'kategori' ? "text-orange-800" : "text-gray-700")}>
+              {filterKategori ? (categories.find(c => c.id === filterKategori)?.nama_kategori || 'Terpilih') : 'Semua Kategori'}
+            </p>
+          </div>
+          {filterKategori ? (
+            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKategori(''); setActiveFilterPanel(''); }} className="text-gray-400 hover:text-red-600 shrink-0" />
+          ) : (
+            <ChevronDown size={16} className={cn("text-gray-400 shrink-0 transition-transform", activeFilterPanel === 'kategori' && "rotate-180")} />
+          )}
+        </button>
+
+        {/* Lokasi */}
+        <button
+          onClick={() => setActiveFilterPanel(activeFilterPanel === 'lokasi' ? '' : 'lokasi')}
+          className={cn(
+            "flex items-center space-x-3 p-3 rounded-2xl border text-left transition-all",
+            filterLokasi || activeFilterPanel === 'lokasi'
+              ? "bg-blue-50 border-blue-300 shadow-sm"
+              : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
+          )}
+        >
+          <div className={cn("p-2 rounded-xl shrink-0", filterLokasi || activeFilterPanel === 'lokasi' ? "bg-blue-100 text-blue-600" : "bg-gray-50 text-gray-400")}>
+            <MapPin size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Lokasi</h4>
+            <p className={cn("text-sm font-semibold truncate", filterLokasi || activeFilterPanel === 'lokasi' ? "text-blue-800" : "text-gray-700")}>
+              {filterLokasi ? (availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi || 'Terpilih') : 'Semua Lokasi'}
+            </p>
+          </div>
+          {filterLokasi ? (
+            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterLokasi(''); setActiveFilterPanel(''); }} className="text-gray-400 hover:text-red-600 shrink-0" />
+          ) : (
+            <ChevronDown size={16} className={cn("text-gray-400 shrink-0 transition-transform", activeFilterPanel === 'lokasi' && "rotate-180")} />
+          )}
+        </button>
+
+        {/* Kepemilikan */}
+        <button
+          onClick={() => setActiveFilterPanel(activeFilterPanel === 'kepemilikan' ? '' : 'kepemilikan')}
+          className={cn(
+            "flex items-center space-x-3 p-3 rounded-2xl border text-left transition-all",
+            filterKepemilikan || activeFilterPanel === 'kepemilikan'
+              ? "bg-emerald-50 border-emerald-300 shadow-sm"
+              : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
+          )}
+        >
+          <div className={cn("p-2 rounded-xl shrink-0", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "bg-emerald-100 text-emerald-600" : "bg-gray-50 text-gray-400")}>
+            <UserCheck size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kepemilikan</h4>
+            <p className={cn("text-sm font-semibold truncate", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "text-emerald-800" : "text-gray-700")}>
+              {filterKepemilikan ? (kepemilikanList.find(k => k.id === filterKepemilikan)?.nama_pemilik || 'Terpilih') : 'Semua Kepemilikan'}
+            </p>
+          </div>
+          {filterKepemilikan ? (
+            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKepemilikan(''); setActiveFilterPanel(''); }} className="text-gray-400 hover:text-red-600 shrink-0" />
+          ) : (
+            <ChevronDown size={16} className={cn("text-gray-400 shrink-0 transition-transform", activeFilterPanel === 'kepemilikan' && "rotate-180")} />
+          )}
+        </button>
+      </div>
+
+      {/* Row 3: Grid kartu nilai untuk dimensi yang sedang dibuka (hitungannya otomatis mengikuti 2 filter lain yang aktif) */}
+      {activeFilterPanel && (
+        <div className={cn(
+          "p-4 rounded-2xl border animate-in fade-in slide-in-from-top-2 duration-200",
+          activeFilterPanel === 'kategori' && "bg-orange-50/50 border-orange-100",
+          activeFilterPanel === 'lokasi' && "bg-blue-50/50 border-blue-100",
+          activeFilterPanel === 'kepemilikan' && "bg-emerald-50/50 border-emerald-100"
+        )}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-800">
+              Pilih {activeFilterPanel === 'kategori' ? 'Kategori' : activeFilterPanel === 'lokasi' ? 'Lokasi' : 'Kepemilikan'}
+            </h3>
+            <button onClick={() => setActiveFilterPanel('')} className="text-gray-400 hover:text-gray-600">
+              <X size={16} />
+            </button>
+          </div>
+
+          {loadingDimensionStats ? (
+            <div className="py-6 text-center">
+              <Loader2 className="animate-spin mx-auto text-gray-400" size={24} />
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              <div
+                onClick={() => {
+                  if (activeFilterPanel === 'kategori') setFilterKategori('');
+                  if (activeFilterPanel === 'lokasi') setFilterLokasi('');
+                  if (activeFilterPanel === 'kepemilikan') setFilterKepemilikan('');
+                  setPage(1);
+                  setActiveFilterPanel('');
+                }}
+                className="bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all"
+              >
+                <h4 className="text-xs font-bold text-gray-600">Semua</h4>
+              </div>
+              {dimensionStats.length === 0 ? (
+                <p className="text-xs text-gray-400 italic py-2">Tidak ada data</p>
+              ) : (
+                dimensionStats.map((stat) => (
+                  <div
+                    key={stat.id}
+                    onClick={() => {
+                      const val = stat.id === 'unassigned' ? '' : stat.id;
+                      if (activeFilterPanel === 'kategori') setFilterKategori(val);
+                      if (activeFilterPanel === 'lokasi') setFilterLokasi(val);
+                      if (activeFilterPanel === 'kepemilikan') setFilterKepemilikan(val);
+                      setPage(1);
+                      setActiveFilterPanel('');
+                    }}
+                    className="bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                  >
+                    <h4 className="text-xs font-bold text-gray-800">{stat.name}</h4>
+                    <p className="text-[10px] text-gray-500">{stat.count} Jenis • {stat.stock} Stok</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Pemusnahan Filter Toggle & Actions */}
-      <div className="flex flex-col md:flex-row items-center justify-between bg-white/40 backdrop-blur-sm p-3 rounded-2xl border border-white/60 shadow-sm gap-4">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col md:flex-row items-center justify-between pt-4 border-t border-gray-100 gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           {profile?.role !== 'auditor' && (
             <button
               onClick={() => {
@@ -1432,7 +1862,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             </button>
           )}
 
-          {['admin', 'spv', 'direktur'].includes(profile?.role || '') && (
+          {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
             <button
               onClick={() => setIsApprovalListModalOpen(true)}
               className="flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
@@ -1441,8 +1871,36 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <span>Persetujuan Pemusnahan</span>
             </button>
           )}
+
+          {canUseSPKCart && (
+            <button
+              onClick={() => {
+                setFilterOffice(!filterOffice);
+                setPage(1);
+              }}
+              className={cn(
+                "flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm",
+                filterOffice
+                  ? "bg-sky-500 text-white border-sky-600 shadow-sky-500/20"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              <ShoppingCart size={18} />
+              <span>Lihat Barang Office</span>
+            </button>
+          )}
+
+          {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
+            <button
+              onClick={() => setIsSPKApprovalListModalOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+            >
+              <ClipboardList size={18} />
+              <span>Persetujuan SPK</span>
+            </button>
+          )}
         </div>
-        
+
         {selectedItems.length > 0 && filterPemusnahan && (
           <div className="flex items-center animate-in slide-in-from-right-4 fade-in">
             <button
@@ -1456,6 +1914,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             </button>
           </div>
         )}
+
+        {selectedItems.length > 0 && filterOffice && canUseSPKCart && (
+          <div className="flex items-center animate-in slide-in-from-right-4 fade-in">
+            <button
+              onClick={() => {
+                setIsSPKModalOpen(true);
+              }}
+              className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl shadow-lg shadow-sky-500/30 transition-all font-semibold"
+            >
+              <ShoppingCart size={18} />
+              <span>Ajukan SPK ({selectedItems.length} Barang)</span>
+            </button>
+          </div>
+        )}
+      </div>
       </div>
 
       {/* Top Scrollbar */}
@@ -1524,6 +1997,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </div>
                 </th>
                 <th className="px-6 py-4">Kategori</th>
+                <th className="px-6 py-4">Kepemilikan</th>
+                <th className="px-6 py-4">Flags</th>
+                <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Kondisi</th>
                 <th className="px-6 py-4">Kelengkapan Dokumen</th>
                 <th 
@@ -1539,21 +2015,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-4">Catatan Audit</th>
+                <th className="px-6 py-4">Hasil Audit</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="px-6 py-12 text-center">
+                  <td colSpan={15} className="px-6 py-12 text-center">
                     <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
                     <p className="text-gray-500">Memuat data...</p>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-6 py-12 text-center">
+                  <td colSpan={15} className="px-6 py-12 text-center">
                     <Package className="mx-auto text-gray-300 mb-2" size={48} />
                     <p className="text-gray-500">Tidak ada barang ditemukan</p>
                   </td>
@@ -1574,12 +2050,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         {item.foto_urls && item.foto_urls.length > 0 ? (
                           <>
                             {item.foto_urls.slice(0, 3).map((url, idx) => (
-                              <img 
+                              <SignedImage
                                 key={idx}
-                                src={url} 
-                                alt={`${item.nama_barang} ${idx + 1}`} 
-                                className="w-20 h-20 shrink-0 rounded-xl object-cover border-2 border-white shadow-md cursor-zoom-in hover:z-10 transition-transform hover:scale-110" 
-                                referrerPolicy="no-referrer"
+                                bucket="item-photos"
+                                path={url}
+                                alt={`${item.nama_barang} ${idx + 1}`}
+                                className="w-20 h-20 shrink-0 rounded-xl object-cover border-2 border-white shadow-md cursor-zoom-in hover:z-10 transition-transform hover:scale-110"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenCarousel(item.foto_urls, idx);
@@ -1601,7 +2077,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </td>
                     <td className="px-6 py-4 font-mono text-xs text-gray-600">{item.kode_barang}</td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{item.nama_barang}</div>
+                      <div className="text-sm font-medium text-gray-900 truncate max-w-[220px]" title={item.nama_barang}>{item.nama_barang}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-xs text-gray-500 truncate max-w-[200px]">{item.deskripsi || '-'}</div>
@@ -1614,6 +2090,41 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
                         {(item as any).categories?.nama_kategori || 'Tanpa Kategori'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs text-gray-600">
+                        {(item as any).master_kepemilikan?.nama_pemilik || '-'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.flags && item.flags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[160px]">
+                          {item.flags.slice(0, 2).map((flag) => {
+                            const { classes, Icon } = getFlagStyle(flag);
+                            return (
+                              <span key={flag} className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border", classes)}>
+                                <Icon size={9} className="shrink-0" />
+                                {flag}
+                              </span>
+                            );
+                          })}
+                          {item.flags.length > 2 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-500 border border-gray-200">
+                              +{item.flags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                        item.sifat_barang === 'OFFICE' ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-purple-50 text-purple-700 border-purple-200"
+                      )}>
+                        {item.sifat_barang || 'PRIVATE'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -1652,7 +2163,23 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-xs text-gray-500 truncate max-w-[150px]">{item.note_audit || '-'}</div>
+                      {item.note_audit ? (
+                        <div>
+                          <span className={cn(
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                            item.note_audit === 'ADA' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
+                          )}>
+                            {item.note_audit}
+                          </span>
+                          {item.tanggal_audit && (
+                            <div className="text-[10px] text-gray-400 mt-1">
+                              {new Date(item.tanggal_audit).toLocaleDateString('id-ID')}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="grid grid-cols-2 gap-1 w-max ml-auto">
@@ -1812,6 +2339,20 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 {/* Left Column: Details */}
                 <div className="space-y-4">
                   <div>
+                    <label className="block text-sm font-medium text-amber-700 mb-1">Kepemilikan</label>
+                    <select
+                      disabled={profile?.role === 'auditor'}
+                      value={formData.kepemilikan_id}
+                      onChange={(e) => setFormData({ ...formData, kepemilikan_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm bg-amber-50 font-medium text-amber-900 disabled:opacity-60 disabled:bg-gray-50"
+                    >
+                      <option value="">Tanpa Kepemilikan</option>
+                      {kepemilikanList.map((k) => (
+                        <option key={k.id} value={k.id}>{k.nama_pemilik}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Kode Barang</label>
                     <input
                       type="text"
@@ -1886,6 +2427,213 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         </optgroup>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status Barang</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.sifat_barang === 'OFFICE' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input
+                          type="radio"
+                          name="sifat_barang"
+                          value="OFFICE"
+                          disabled={profile?.role === 'auditor'}
+                          checked={formData.sifat_barang === 'OFFICE'}
+                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' })}
+                          className="sr-only"
+                        />
+                        <span className="text-sm font-medium">OFFICE</span>
+                      </label>
+                      <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.sifat_barang === 'PRIVATE' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input
+                          type="radio"
+                          name="sifat_barang"
+                          value="PRIVATE"
+                          disabled={profile?.role === 'auditor'}
+                          checked={formData.sifat_barang === 'PRIVATE'}
+                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' })}
+                          className="sr-only"
+                        />
+                        <span className="text-sm font-medium">PRIVATE</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                      <Tag size={14} className="text-teal-600" /> Flag
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.flags.map((flag) => {
+                        const { classes, Icon } = getFlagStyle(flag);
+                        return (
+                          <span
+                            key={flag}
+                            className={cn("inline-flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-medium", classes)}
+                          >
+                            <Icon size={11} className="shrink-0" />
+                            {flag}
+                            {profile?.role !== 'auditor' && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, flags: formData.flags.filter((f) => f !== flag) })}
+                                className="opacity-60 hover:opacity-100"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <input
+                      type="text"
+                      disabled={profile?.role === 'auditor'}
+                      value={flagInput}
+                      onChange={(e) => setFlagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          const value = flagInput.trim();
+                          if (!value || formData.flags.some((f) => f.toLowerCase() === value.toLowerCase())) {
+                            setFlagInput('');
+                            return;
+                          }
+                          const existingDef = flagCatalog.find((f) => f.nama_flag.toLowerCase() === value.toLowerCase());
+                          if (existingDef) {
+                            setFormData({ ...formData, flags: [...formData.flags, existingDef.nama_flag] });
+                            setFlagInput('');
+                          } else {
+                            // Flag baru — panel warna/ikon sudah tampil live saat mengetik,
+                            // Enter di sini langsung konfirmasi & simpan pakai warna/ikon terpilih.
+                            handleSaveNewFlag();
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-teal-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm bg-teal-50/30 disabled:opacity-60 disabled:bg-gray-50"
+                      placeholder="Ketik nama flag..."
+                    />
+
+                    {(() => {
+                      const trimmedLower = flagInput.trim().toLowerCase();
+                      const suggestions = flagCatalog.filter((f) =>
+                        !formData.flags.some((sel) => sel.toLowerCase() === f.nama_flag.toLowerCase()) &&
+                        (trimmedLower === '' || f.nama_flag.toLowerCase().includes(trimmedLower))
+                      );
+                      if (suggestions.length === 0) return null;
+                      return (
+                        <div className="mt-2">
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Flag Tersedia (klik untuk pakai)</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {suggestions.map((f) => {
+                              const { classes, Icon } = getFlagStyle(f.nama_flag);
+                              return (
+                                <span key={f.id} className={cn("inline-flex items-center gap-1 pl-2.5 pr-1 py-1 border rounded-full text-xs font-medium", classes)}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData((prev) => ({ ...prev, flags: [...prev.flags, f.nama_flag] }));
+                                      setFlagInput('');
+                                    }}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Icon size={11} className="shrink-0" />
+                                    {f.nama_flag}
+                                  </button>
+                                  {profile?.role !== 'auditor' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteFlagDef(f.id, f.nama_flag)}
+                                      className="opacity-50 hover:opacity-100 hover:text-red-600 transition-opacity"
+                                      title="Hapus flag ini dari daftar referensi"
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {(() => {
+                      const trimmedFlagInput = flagInput.trim();
+                      const alreadyAdded = trimmedFlagInput !== '' && formData.flags.some((f) => f.toLowerCase() === trimmedFlagInput.toLowerCase());
+                      const matchedCatalogFlag = trimmedFlagInput !== '' ? flagCatalog.find((f) => f.nama_flag.toLowerCase() === trimmedFlagInput.toLowerCase()) : undefined;
+                      const showNewFlagPicker = trimmedFlagInput !== '' && !alreadyAdded && !matchedCatalogFlag;
+                      if (!showNewFlagPicker) return null;
+                      return (
+                      <div className="mt-2 p-3 border border-teal-200 bg-teal-50/40 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-gray-600">
+                            Buat flag baru: <span className="font-bold text-gray-900">"{trimmedFlagInput}"</span>
+                          </p>
+                          <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-medium", FLAG_COLOR_STYLES[newFlagColorKey])}>
+                            {React.createElement(FLAG_ICON_MAP[newFlagIconKey], { size: 11, className: "shrink-0" })}
+                            {trimmedFlagInput}
+                          </span>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Warna</p>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.keys(FLAG_COLOR_SWATCH).map((key) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setNewFlagColorKey(key)}
+                                className={cn(
+                                  "w-7 h-7 rounded-full transition-all",
+                                  FLAG_COLOR_SWATCH[key],
+                                  newFlagColorKey === key ? "ring-2 ring-offset-1 ring-gray-800" : "hover:scale-110"
+                                )}
+                                title={key}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ikon</p>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(FLAG_ICON_MAP).map(([key, IconComp]) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setNewFlagIconKey(key)}
+                                className={cn(
+                                  "w-8 h-8 rounded-lg border flex items-center justify-center transition-colors",
+                                  newFlagIconKey === key ? "border-gray-800 bg-white" : "border-gray-200 bg-white/60 hover:bg-white"
+                                )}
+                                title={key}
+                              >
+                                <IconComp size={15} className="text-gray-700" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => { setFlagInput(''); setNewFlagColorKey('teal'); setNewFlagIconKey('tag'); }}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white rounded-lg transition-colors"
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveNewFlag}
+                            disabled={savingNewFlag}
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            {savingNewFlag && <Loader2 size={12} className="animate-spin" />}
+                            Simpan Flag
+                          </button>
+                        </div>
+                      </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Kondisi Barang</label>
@@ -2030,18 +2778,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       placeholder="Keterangan tambahan..."
                     />
                   </div>
-                  {profile?.role === 'auditor' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Audit</label>
-                      <textarea
-                        rows={3}
-                        value={formData.note_audit}
-                        onChange={(e) => setFormData({ ...formData, note_audit: e.target.value })}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-blue-50/30"
-                        placeholder="Masukkan catatan audit..."
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* Right Column: Photo Upload */}
@@ -2053,7 +2789,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   <div className="grid grid-cols-3 gap-2">
                     {previewUrls.map((url, idx) => (
                       <div key={idx} className="relative aspect-square group">
-                        <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover rounded-lg border border-gray-200" referrerPolicy="no-referrer" />
+                        {idx < formData.foto_urls.length ? (
+                          <SignedImage bucket="item-photos" path={url} alt={`Preview ${idx}`} className="w-full h-full object-cover rounded-lg border border-gray-200" />
+                        ) : (
+                          // Local blob: preview of a file not yet uploaded — render directly, not a storage path
+                          <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover rounded-lg border border-gray-200" />
+                        )}
                         {profile?.role !== 'auditor' && (
                           <button
                             type="button"
@@ -2114,6 +2855,57 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   />
                 </div>
               </div>
+
+              {profile?.role === 'auditor' && (
+                <div className="p-4 border-2 border-blue-200 bg-blue-50/40 rounded-2xl">
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-blue-800 mb-3">
+                    <ClipboardList size={16} />
+                    Hasil Audit
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors bg-white ${formData.note_audit === 'ADA' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <input
+                        type="radio"
+                        name="note_audit"
+                        value="ADA"
+                        checked={formData.note_audit === 'ADA'}
+                        onChange={(e) => setFormData({ ...formData, note_audit: e.target.value as 'ADA' | 'TIDAK ADA' })}
+                        className="sr-only"
+                      />
+                      <span className="text-sm font-medium">ADA</span>
+                    </label>
+                    <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors bg-white ${formData.note_audit === 'TIDAK ADA' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <input
+                        type="radio"
+                        name="note_audit"
+                        value="TIDAK ADA"
+                        checked={formData.note_audit === 'TIDAK ADA'}
+                        onChange={(e) => setFormData({ ...formData, note_audit: e.target.value as 'ADA' | 'TIDAK ADA' })}
+                        className="sr-only"
+                      />
+                      <span className="text-sm font-medium">TIDAK ADA</span>
+                    </label>
+                  </div>
+
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!formData.tanggal_audit}
+                      onChange={(e) => setFormData({ ...formData, tanggal_audit: e.target.checked ? new Date().toISOString().split('T')[0] : '' })}
+                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                    />
+                    <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                      <Calendar size={14} className="text-gray-400" />
+                      Audit Hari Ini
+                    </span>
+                  </label>
+                  {formData.tanggal_audit && (
+                    <p className="text-xs text-gray-500 mt-1 ml-6">
+                      Tanggal audit: {new Date(formData.tanggal_audit).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-100">
                 <button
@@ -2182,6 +2974,31 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       ))}
                     </optgroup>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Kepemilikan</label>
+                <select
+                  value={bulkEditData.kepemilikan_id}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, kepemilikan_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                >
+                  <option value="">Pilih Kepemilikan Baru...</option>
+                  {kepemilikanList.map((k) => (
+                    <option key={k.id} value={k.id}>{k.nama_pemilik}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Status Barang</label>
+                <select
+                  value={bulkEditData.sifat_barang}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, sifat_barang: e.target.value as '' | 'PRIVATE' | 'OFFICE' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                >
+                  <option value="">Jangan Ubah Status</option>
+                  <option value="OFFICE">OFFICE</option>
+                  <option value="PRIVATE">PRIVATE</option>
                 </select>
               </div>
               <div>
@@ -2295,14 +3112,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="relative w-full h-[70vh] flex items-center justify-center group">
               {carouselImages.length > 1 && (
                 <>
-                  <button 
-                    className="absolute left-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                  <button
+                    className="absolute left-2 md:left-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     onClick={() => setCurrentCarouselIndex((prev) => (prev === 0 ? carouselImages.length - 1 : prev - 1))}
                   >
                     <ChevronLeft size={32} />
                   </button>
-                  <button 
-                    className="absolute right-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                  <button
+                    className="absolute right-2 md:right-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     onClick={() => setCurrentCarouselIndex((prev) => (prev === carouselImages.length - 1 ? 0 : prev + 1))}
                   >
                     <ChevronRight size={32} />
@@ -2379,11 +3196,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   >
                     {selectedItemForDetail.foto_urls && selectedItemForDetail.foto_urls.length > 0 ? (
                       <>
-                        <img 
-                          src={selectedItemForDetail.foto_urls[0]} 
+                        <SignedImage
+                          bucket="item-photos"
+                          path={selectedItemForDetail.foto_urls[0]}
                           alt={selectedItemForDetail.nama_barang}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                           <Search className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={32} />
@@ -2405,7 +3222,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           className="aspect-square rounded-lg bg-gray-100 overflow-hidden border border-gray-100 cursor-zoom-in hover:ring-2 hover:ring-blue-500 transition-all"
                           onClick={() => handleOpenCarousel(selectedItemForDetail.foto_urls, idx + 1)}
                         >
-                          <img src={url} alt={`Preview ${idx + 2}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <SignedImage bucket="item-photos" path={url} alt={`Preview ${idx + 2}`} className="w-full h-full object-cover" />
                         </div>
                       ))}
                     </div>
@@ -2440,7 +3257,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
                   <div>
                     <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Lokasi & Kategori & Stok</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-orange-50 text-orange-600 rounded-lg">
                           <Package size={18} />
@@ -2470,6 +3287,23 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       </div>
                     </div>
                   </div>
+
+                  {selectedItemForDetail.flags && selectedItemForDetail.flags.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Flags</h4>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedItemForDetail.flags.map((flag) => {
+                          const { classes, Icon } = getFlagStyle(flag);
+                          return (
+                            <span key={flag} className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border", classes)}>
+                              <Icon size={11} className="shrink-0" />
+                              {flag}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Kondisi Barang</h4>
@@ -2507,7 +3341,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                              Garansi: Ada
                            </span>
                            {selectedItemForDetail.dokumen_garansi_url && (
-                             <a href={selectedItemForDetail.dokumen_garansi_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline px-1">
+                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_garansi_url)} className="text-[10px] text-blue-600 hover:underline px-1">
                                ⬇ Download Garansi
                              </a>
                            )}
@@ -2524,7 +3358,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                              Sertifikat: Ada
                            </span>
                            {selectedItemForDetail.dokumen_sertifikat_url && (
-                             <a href={selectedItemForDetail.dokumen_sertifikat_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline px-1">
+                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_sertifikat_url)} className="text-[10px] text-blue-600 hover:underline px-1">
                                ⬇ Download Sertifikat
                              </a>
                            )}
@@ -2541,7 +3375,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                              Manual Book: Ada
                            </span>
                            {selectedItemForDetail.dokumen_manual_url && (
-                             <a href={selectedItemForDetail.dokumen_manual_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline px-1">
+                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_manual_url)} className="text-[10px] text-blue-600 hover:underline px-1">
                                ⬇ Download Manual
                              </a>
                            )}
@@ -2556,11 +3390,20 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
                   {selectedItemForDetail.note_audit && (
                     <div>
-                      <h4 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-1">Catatan Audit</h4>
-                      <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100">
-                        <p className="text-sm text-blue-800 leading-relaxed">
+                      <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Hasil Audit</h4>
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border",
+                          selectedItemForDetail.note_audit === 'ADA' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
+                        )}>
                           {selectedItemForDetail.note_audit}
-                        </p>
+                        </span>
+                        {selectedItemForDetail.tanggal_audit && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Calendar size={12} />
+                            {new Date(selectedItemForDetail.tanggal_audit).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2728,7 +3571,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Foto</p>
                         <div className="flex -space-x-2">
                           {selectedItemForStockOut.foto_urls.slice(0, 4).map((url, idx) => (
-                            <img key={idx} src={url} className="w-8 h-8 rounded-full border-2 border-white object-cover" alt="Preview" referrerPolicy="no-referrer" />
+                            <SignedImage key={idx} bucket="item-photos" path={url} className="w-8 h-8 rounded-full border-2 border-white object-cover" alt="Preview" />
                           ))}
                         </div>
                       </div>
@@ -2868,6 +3711,74 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
               >
                 {isSubmittingDisposal ? <Loader2 className="animate-spin" size={18} /> : <CheckSquare size={18} />}
+                <span>Ajukan Sekarang</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SPK Request Modal */}
+      {isSPKModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-sky-50/50 shrink-0">
+              <div className="flex items-center space-x-2 text-sky-700">
+                <ShoppingCart size={20} />
+                <h3 className="text-lg font-bold">Ajukan SPK Pengambilan Barang</h3>
+              </div>
+              <button
+                onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                disabled={isSubmittingSPK}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
+              <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 flex items-start space-x-3">
+                <AlertTriangle className="text-sky-600 mt-0.5" size={20} />
+                <div>
+                  <p className="text-sm font-bold text-sky-800">Pengajuan SPK</p>
+                  <p className="text-xs text-sky-700 mt-1">
+                    Anda akan mengajukan pengambilan <strong>{selectedItems.length} barang Office</strong>.
+                    Barang ini tidak langsung keluar, melainkan menunggu persetujuan (Level 1 dan Level 2).
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-gray-700">Keterangan / Keperluan <span className="text-red-500">*</span></label>
+                <textarea
+                  required
+                  rows={4}
+                  value={spkData.keterangan}
+                  onChange={(e) => setSpkData({ ...spkData, keterangan: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm bg-white"
+                  placeholder="Tuliskan keperluan pengambilan barang-barang ini..."
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+              <button
+                onClick={() => setIsSPKModalOpen(false)}
+                disabled={isSubmittingSPK}
+                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={submitSPKRequest}
+                disabled={isSubmittingSPK || !spkData.keterangan.trim()}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
+              >
+                {isSubmittingSPK ? <Loader2 className="animate-spin" size={18} /> : <CheckSquare size={18} />}
                 <span>Ajukan Sekarang</span>
               </button>
             </div>
@@ -3017,6 +3928,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         isOpen={isApprovalListModalOpen}
         onClose={() => {
           setIsApprovalListModalOpen(false);
+          fetchItems();
+        }}
+        profile={profile}
+      />
+      <SPKApprovalModal
+        isOpen={isSPKApprovalListModalOpen}
+        onClose={() => {
+          setIsSPKApprovalListModalOpen(false);
           fetchItems();
         }}
         profile={profile}

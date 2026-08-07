@@ -272,8 +272,8 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
 
         {/* Pagination Controls */}
         <div className="px-6 py-4 border-t border-gray-200/50 bg-gray-50/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <div className="text-sm text-gray-500 text-center">
               Menampilkan <span className="font-medium text-gray-900">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium text-gray-900">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium text-gray-900">{totalCount}</span> lokasi
             </div>
             <div className="flex items-center space-x-2">

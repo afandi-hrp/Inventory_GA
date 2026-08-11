@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
@@ -54,44 +54,6 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
-
-  // Auto logout after 10 minutes of inactivity
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const resetTimer = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    // 10 minutes = 10 * 60 * 1000 = 600000 ms
-    timeoutRef.current = setTimeout(() => {
-      handleLogout();
-    }, 600000);
-  }, []);
-
-  useEffect(() => {
-    // Initialize timer
-    resetTimer();
-
-    // Events to track user activity
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-
-    const handleActivity = () => {
-      resetTimer();
-    };
-
-    events.forEach((event) => {
-      window.addEventListener(event, handleActivity);
-    });
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      events.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
-    };
-  }, [resetTimer]);
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E] flex">
@@ -195,14 +157,14 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
 
             <button
               onClick={handleLogout}
-              title={!isExpanded ? "Logout" : undefined}
+              title={!isExpanded ? "Sign Out" : undefined}
               className={cn(
                 "w-full flex items-center px-3.5 py-2.5 text-white/50 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 group",
                 !isExpanded ? "justify-center" : "space-x-3"
               )}
             >
               <LogOut size={18} className="shrink-0 group-hover:scale-110 transition-transform" />
-              {isExpanded && <span className="font-medium text-sm whitespace-nowrap">Logout</span>}
+              {isExpanded && <span className="font-medium text-sm whitespace-nowrap">Sign Out</span>}
             </button>
           </div>
         </div>

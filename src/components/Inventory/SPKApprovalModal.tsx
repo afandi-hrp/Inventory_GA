@@ -6,6 +6,7 @@ import { X, Loader2, CheckSquare, XCircle, ShoppingCart, Search, User, Calendar,
 import { cn } from '../../lib/utils';
 import SignedImage from '../UI/SignedImage';
 import { getSignedUrl } from '../../lib/signedStorage';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { jsPDF } from 'jspdf';
 
 interface SPKApprovalModalProps {
@@ -26,6 +27,12 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
   const [search, setSearch] = useState('');
   const [rejectItemModal, setRejectItemModal] = useState<{ isOpen: boolean, itemId: string, reason: string }>({ isOpen: false, itemId: '', reason: '' });
   const [rejectFullModal, setRejectFullModal] = useState<{ isOpen: boolean, reason: string }>({ isOpen: false, reason: '' });
+
+  // TEMPORARY DIAGNOSTIC: dimatikan sementara untuk memastikan apakah hook ini
+  // penyebab modal/tombol hilang sendiri. Aktifkan lagi setelah dikonfirmasi.
+  // useModalBackButton(isOpen, onClose);
+  // useModalBackButton(rejectItemModal.isOpen, () => setRejectItemModal({ isOpen: false, itemId: '', reason: '' }));
+  // useModalBackButton(rejectFullModal.isOpen, () => setRejectFullModal({ isOpen: false, reason: '' }));
 
   const parseRejectionReason = (reasonStr: string | null) => {
     if (!reasonStr) return { alasan: '-', rejectedBy: 'Sistem', role: '' };
@@ -108,12 +115,16 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
         role: profile?.role || 'Unknown'
       });
 
-      const { error } = await supabase
+      const { data: updateResult, error } = await supabase
         .from('spk_request_items')
         .update({ status_item: 'REJECTED', alasan_rejection: rejectionData })
-        .eq('id', itemId);
+        .eq('id', itemId)
+        .select('id');
 
       if (error) throw error;
+      if (!updateResult || updateResult.length === 0) {
+        throw new Error('Update gagal: kemungkinan Anda tidak memiliki izin (RLS) untuk mengubah item ini.');
+      }
 
       const updatedItems = requestItems.map(item => item.id === itemId ? { ...item, status_item: 'REJECTED' as const, alasan_rejection: rejectionData } : item);
       setRequestItems(updatedItems);
@@ -150,12 +161,16 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
         updateData.tanggal_approved_l1 = new Date().toISOString();
       }
 
-      const { error } = await supabase
+      const { data: updateResult, error } = await supabase
         .from('spk_requests')
         .update(updateData)
-        .eq('id', selectedRequest.id);
+        .eq('id', selectedRequest.id)
+        .select('id');
 
       if (error) throw error;
+      if (!updateResult || updateResult.length === 0) {
+        throw new Error('Update gagal: kemungkinan Anda tidak memiliki izin (RLS) untuk mengubah status ini.');
+      }
 
       if (stage === 'SPV') {
         // Final approval: pindahkan item yang disetujui ke stock_keluar_history, hapus dari items.
@@ -242,12 +257,16 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
         role: profile?.role || 'Unknown'
       });
 
-      const { error: reqError } = await supabase
+      const { data: reqUpdateResult, error: reqError } = await supabase
         .from('spk_requests')
         .update({ status: 'REJECTED' })
-        .eq('id', selectedRequest.id);
+        .eq('id', selectedRequest.id)
+        .select('id');
 
       if (reqError) throw reqError;
+      if (!reqUpdateResult || reqUpdateResult.length === 0) {
+        throw new Error('Update gagal: kemungkinan Anda tidak memiliki izin (RLS) untuk menolak pengajuan ini.');
+      }
 
       const pendingItems = requestItems.filter(i => i.status_item !== 'REJECTED');
       if (pendingItems.length > 0) {
@@ -366,7 +385,8 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
 
-        const kategoriName = (item as any).items?.categories?.nama_kategori || 'Tanpa Kategori';
+        const kategoriName = item.nama_kategori || (item as any).items?.categories?.nama_kategori || 'Tanpa Kategori';
+        const lokasiName = item.nama_lokasi || (item as any).items?.master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi';
 
         doc.text('Kode Barang', 14, currentY);
         doc.text(`: ${item.kode_barang}`, 65, currentY);
@@ -374,6 +394,10 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
 
         doc.text('Kategori Barang', 14, currentY);
         doc.text(`: ${kategoriName}`, 65, currentY);
+        currentY += lineSpacing;
+
+        doc.text('Lokasi Barang', 14, currentY);
+        doc.text(`: ${lokasiName}`, 65, currentY);
         currentY += lineSpacing;
 
         doc.text('Nama Barang', 14, currentY);
@@ -440,20 +464,21 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
 
         currentY += 20;
 
+        doc.setFontSize(9);
         doc.text('Yang mengajukan', 14, currentY);
-        doc.text('Diketahui Oleh,', 85, currentY);
-        doc.text('Disetujui Oleh,', 150, currentY);
+        doc.text('Diketahui Admin,', 62, currentY);
+        doc.text('Diketahui Auditor,', 108, currentY);
+        doc.text('Disetujui SPV,', 155, currentY);
+        doc.setFontSize(11);
 
         currentY += 25;
 
-        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY);
-        doc.text(`(${selectedRequest.diketahui_admin_oleh || '.............'}) (${selectedRequest.diketahui_auditor_oleh || '.............'})`, 85, currentY);
-        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 150, currentY);
-
-        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY);
-        doc.text(`(${selectedRequest.diketahui_admin_oleh || '..................'})`, 62, currentY);
-        doc.text(`(${selectedRequest.diketahui_auditor_oleh || '..................'})`, 108, currentY);
-        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 155, currentY);
+        doc.setFontSize(8);
+        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY, { maxWidth: 44 });
+        doc.text(`(${selectedRequest.diketahui_admin_oleh || '..................'})`, 62, currentY, { maxWidth: 44 });
+        doc.text(`(${selectedRequest.diketahui_auditor_oleh || '..................'})`, 108, currentY, { maxWidth: 44 });
+        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 155, currentY, { maxWidth: 40 });
+        doc.setFontSize(11);
       }
 
       doc.save(`SPK_${selectedRequest.nomor_spk}.pdf`);
@@ -496,9 +521,9 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
           </button>
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col bg-gray-50/30">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-gray-50/30">
           {!isDetailView ? (
-            <div className="p-6 h-full flex flex-col">
+            <div className="p-6 h-full min-h-0 flex flex-col">
               <div className="flex justify-between items-center mb-6">
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -588,7 +613,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
               </div>
             </div>
           ) : selectedRequest ? (
-            <div className="flex flex-col h-full bg-white">
+            <div className="flex flex-col h-full min-h-0 bg-white">
               <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-gray-50/50">
                 <div>
                   <button
@@ -635,7 +660,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 bg-white">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-white">
                 <h5 className="font-bold text-gray-900 mb-4 flex items-center">
                   <Package className="mr-2 text-sky-500" size={18} />
                   Daftar Barang ({requestItems.length})
@@ -712,7 +737,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                 )}
               </div>
 
-              <div className="p-6 border-t border-gray-100 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="shrink-0 p-6 border-t border-gray-100 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm text-gray-600">
                   {selectedRequest.status === 'PENDING_ADMIN' && 'Perlu ditandai diketahui oleh Admin.'}
                   {selectedRequest.status === 'PENDING_AUDITOR' && 'Perlu ditandai diketahui oleh Auditor.'}

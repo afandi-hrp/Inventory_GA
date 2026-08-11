@@ -23,8 +23,8 @@ export default function App() {
   const [historySearch, setHistorySearch] = useState('');
   const isRequester = profile?.role === 'requester';
   
-  // Set idle timeout ke 1 jam (3600000 ms) saat user sudah login
-  useIdleTimeout(!!user, 3600000);
+  // Auto logout setelah 30 menit tidak ada aktivitas (1800000 ms)
+  useIdleTimeout(!!user, 1800000);
 
   if (loading) {
     return (

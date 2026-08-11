@@ -8,7 +8,7 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
  * Buckets are now private, so we resolve that same string down to a
  * storage path and mint a short-lived signed URL from it on read.
  */
-function extractPath(bucket: string, urlOrPath: string): string {
+export function extractPath(bucket: string, urlOrPath: string): string {
   const publicMarker = `/storage/v1/object/public/${bucket}/`;
   const publicIdx = urlOrPath.indexOf(publicMarker);
   if (publicIdx !== -1) return urlOrPath.slice(publicIdx + publicMarker.length);

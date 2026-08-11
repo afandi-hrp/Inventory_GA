@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { useToast } from '../UI/Toast';
 import SignedImage from '../UI/SignedImage';
 import { getSignedUrls } from '../../lib/signedStorage';
@@ -70,6 +71,12 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(isDetailModalOpen, () => setIsDetailModalOpen(false));
+  useModalBackButton(isRestoreModalOpen, () => setIsRestoreModalOpen(false));
+  useModalBackButton(isExportPreviewOpen, () => setIsExportPreviewOpen(false));
+  useModalBackButton(isLightboxOpen, () => setIsLightboxOpen(false));
 
   const handleNextImage = () => {
     setCurrentImageIndex((prev) => (prev === lightboxImages.length - 1 ? 0 : prev + 1));

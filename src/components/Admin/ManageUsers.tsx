@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { useToast } from '../UI/Toast';
 import { 
   User as UserIcon, Mail, Shield, Key, Camera, 
@@ -25,6 +26,8 @@ export default function ManageUsers() {
   
   // Add User Modal State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(isAddUserModalOpen, () => setIsAddUserModalOpen(false));
   const [newUserForm, setNewUserForm] = useState({
     email: '',
     password: '',

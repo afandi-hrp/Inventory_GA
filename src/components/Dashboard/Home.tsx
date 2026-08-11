@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import {
   Package, MapPin, Users, TrendingUp, Clock, Layers, ArrowDownRight, ArrowUpRight, BarChart2,
   ShoppingCart, ClipboardList, ArrowRight, X, Hash, Info, Calendar, Image as ImageIcon, UserCheck,
@@ -47,6 +48,8 @@ export default function DashboardHome() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedKepemilikan, setSelectedKepemilikan] = useState<string | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(!!selectedItemForDetail, () => setSelectedItemForDetail(null));
   const [chartData, setChartData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [kepemilikanData, setKepemilikanData] = useState<any[]>([]);

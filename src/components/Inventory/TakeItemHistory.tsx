@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { Loader2, History, Package, User as UserIcon, Calendar, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Search, Filter, XCircle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { clsx, type ClassValue } from 'clsx';
@@ -68,6 +69,10 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
   // Export state
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [exportData, setExportData] = useState<any[]>([]);
+
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(isDetailModalOpen, () => setIsDetailModalOpen(false));
+  useModalBackButton(isExportPreviewOpen, () => setIsExportPreviewOpen(false));
 
   const fetchHistory = async () => {
     setLoading(true);

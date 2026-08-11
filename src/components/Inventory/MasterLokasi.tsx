@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, Edit2, Trash2, X, Loader2, MapPin, Hash, ChevronLeft, ChevronRight, History
@@ -36,6 +37,9 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
     nama_lokasi: '',
     parent_kode_lokasi: '',
   });
+
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(isModalOpen, () => setIsModalOpen(false));
 
   useEffect(() => {
     fetchLocations();

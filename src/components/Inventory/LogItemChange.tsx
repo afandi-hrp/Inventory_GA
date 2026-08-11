@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { Loader2, ClipboardList, Package, User as UserIcon, Calendar, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Search, Filter, XCircle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import SignedImage from '../UI/SignedImage';
@@ -68,6 +69,11 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(isDetailModalOpen, () => setIsDetailModalOpen(false));
+  useModalBackButton(isExportPreviewOpen, () => setIsExportPreviewOpen(false));
+  useModalBackButton(isLightboxOpen, () => setIsLightboxOpen(false));
 
   const openLightbox = async (images: string[], index: number) => {
     const signedMap = await getSignedUrls('item-photos', images);

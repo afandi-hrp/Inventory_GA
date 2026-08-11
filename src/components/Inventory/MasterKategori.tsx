@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { Plus, Edit2, Trash2, Search, X, Loader2, AlertCircle } from 'lucide-react';
 import { Category } from '../../types';
 import { useToast } from '../UI/Toast';
@@ -19,7 +20,11 @@ export default function MasterKategori() {
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  
+
+  // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
+  useModalBackButton(isModalOpen, () => setIsModalOpen(false));
+  useModalBackButton(isDeleteModalOpen, () => setIsDeleteModalOpen(false));
+
   const isAdmin = profile?.role === 'admin';
 
   const [formData, setFormData] = useState({

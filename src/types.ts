@@ -149,6 +149,8 @@ export interface SPKRequestItem {
   jumlah_barang: number;
   kode_lokasi: string | null;
   kepemilikan_id: string | null;
+  nama_kategori?: string | null;
+  nama_lokasi?: string | null;
   foto_urls: string[];
   status_item: 'PENDING' | 'APPROVED' | 'REJECTED';
   alasan_rejection: string | null;

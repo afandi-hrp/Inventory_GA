@@ -8,7 +8,7 @@ import {
   FileSpreadsheet, CheckSquare, Square, MoreHorizontal,
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
   LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning,
-  UserCheck, ShoppingCart, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText
+  UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText
 } from 'lucide-react';
 import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -17,7 +17,9 @@ import { useToast } from '../UI/Toast';
 import { DisposalApprovalModal } from './DisposalApprovalModal';
 import { SPKApprovalModal } from './SPKApprovalModal';
 import SignedImage from '../UI/SignedImage';
-import { getSignedUrl, getSignedUrls } from '../../lib/signedStorage';
+import { getSignedUrl, getSignedUrls, extractPath } from '../../lib/signedStorage';
+import { generateDailyDocNumber } from '../../lib/utils';
+import { useModalBackButton } from '../../hooks/useModalBackButton';
 import * as XLSX from 'xlsx';
 import * as XLSXStyle from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
@@ -107,10 +109,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [isApprovalListModalOpen, setIsApprovalListModalOpen] = useState(false);
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
-  const [isSPKModalOpen, setIsSPKModalOpen] = useState(false);
   const [isSPKApprovalListModalOpen, setIsSPKApprovalListModalOpen] = useState(false);
-  const [spkData, setSpkData] = useState({ keterangan: '' });
-  const [isSubmittingSPK, setIsSubmittingSPK] = useState(false);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
   const [selectedItemForTake, setSelectedItemForTake] = useState<Item | null>(null);
   const [selectedItemForStockOut, setSelectedItemForStockOut] = useState<Item | null>(null);
@@ -180,8 +179,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [savingNewFlag, setSavingNewFlag] = useState(false);
   const [activeFilterPanel, setActiveFilterPanel] = useState<'' | 'kategori' | 'lokasi' | 'kepemilikan'>('');
   const [filterPemusnahan, setFilterPemusnahan] = useState(false);
-  const [filterOffice, setFilterOffice] = useState(false);
-  const canUseSPKCart = ['admin', 'spv', 'direktur'].includes(profile?.role || '');
 
   const [bulkEditData, setBulkEditData] = useState({
     kode_lokasi: '',
@@ -192,6 +189,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [removedPhotoUrls, setRemovedPhotoUrls] = useState<string[]>([]);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +201,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const topScrollbarRef = useRef<HTMLDivElement>(null);
   const [tableContentWidth, setTableContentWidth] = useState(0);
+
+  // TEMPORARY DIAGNOSTIC: dimatikan sementara untuk memastikan apakah hook ini
+  // penyebab modal/tombol hilang sendiri. Aktifkan lagi setelah dikonfirmasi.
+  // useModalBackButton(isModalOpen, () => setIsModalOpen(false));
+  // useModalBackButton(isDetailModalOpen, () => setIsDetailModalOpen(false));
+  // useModalBackButton(isTakeItemModalOpen, () => setIsTakeItemModalOpen(false));
+  // useModalBackButton(isStockOutModalOpen, () => setIsStockOutModalOpen(false));
+  // useModalBackButton(isBulkStockOutModalOpen, () => setIsBulkStockOutModalOpen(false));
+  // useModalBackButton(isDisposalModalOpen, () => setIsDisposalModalOpen(false));
+  // useModalBackButton(isBulkEditOpen, () => setIsBulkEditOpen(false));
+  // useModalBackButton(isImportPreviewOpen, () => setIsImportPreviewOpen(false));
+  // useModalBackButton(isExportPreviewOpen, () => setIsExportPreviewOpen(false));
+  // useModalBackButton(carouselImages.length > 0, () => setCarouselImages([]));
 
   useEffect(() => {
     if (!tableContainerRef.current) return;
@@ -242,7 +253,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     fetchCategories();
     fetchKepemilikan();
     fetchFlagCatalog();
-  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterFlag, filterPemusnahan, filterOffice, itemsPerPage, profile, sortColumn, sortOrder]);
+  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterFlag, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
 
   async function fetchFlagCatalog() {
     try {
@@ -471,10 +482,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.eq('sifat_barang', filterSifat);
       }
 
-      if (filterOffice) {
-        query = query.eq('sifat_barang', 'OFFICE');
-      }
-
       if (filterFlag) {
         query = query.contains('flags', [filterFlag]);
       }
@@ -550,9 +557,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       const userRes = await supabase.auth.getUser();
       const userId = userRes.data.user?.id;
       let diajukan_oleh = profile?.full_name || 'Unknown';
+      const nomorPengajuan = await generateDailyDocNumber('disposal_requests', 'nomor_pengajuan', 'PM');
 
       const reqRes = await supabase.from('disposal_requests').insert({
-        nomor_pengajuan: `PM-${Date.now()}`,
+        nomor_pengajuan: nomorPengajuan,
         diajukan_oleh: diajukan_oleh,
         user_id: userId,
         jumlah: selectedItems.length,
@@ -594,58 +602,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       showToast('Gagal mengajukan pemusnahan: ' + err.message, 'error');
     } finally {
       setIsSubmittingDisposal(false);
-    }
-  };
-
-  const submitSPKRequest = async () => {
-    if (selectedItems.length === 0) return;
-    setIsSubmittingSPK(true);
-    try {
-      const userRes = await supabase.auth.getUser();
-      const userId = userRes.data.user?.id;
-      let diajukan_oleh = profile?.full_name || 'Unknown';
-
-      const reqRes = await supabase.from('spk_requests').insert({
-        nomor_spk: `SPK-${Date.now()}`,
-        diajukan_oleh: diajukan_oleh,
-        user_id: userId,
-        jumlah: selectedItems.length,
-        status: 'PENDING_ADMIN',
-        keterangan: spkData.keterangan || null,
-      }).select('id').single();
-
-      if (reqRes.error) throw reqRes.error;
-
-      const requestId = reqRes.data.id;
-
-      const selectedItemDocs = items.filter(i => selectedItems.includes(i.id));
-      const insertItems = selectedItemDocs.map(item => ({
-        request_id: requestId,
-        item_id: item.id,
-        kode_barang: item.kode_barang,
-        nama_barang: item.nama_barang,
-        jumlah_barang: item.jumlah_barang,
-        kode_lokasi: item.kode_lokasi,
-        kepemilikan_id: item.kepemilikan_id,
-        foto_urls: item.foto_urls || [],
-        status_item: 'PENDING'
-      }));
-
-      const itemRes = await supabase.from('spk_request_items').insert(insertItems);
-      if (itemRes.error) throw itemRes.error;
-
-      showToast('Pengajuan SPK berhasil dibuat!', 'success');
-      setIsSPKModalOpen(false);
-      setSpkData({ keterangan: '' });
-      setSelectedItems([]);
-      setFilterOffice(false);
-      // Stok tidak dikurangi di sini, menunggu approval Level 2.
-      fetchItems();
-    } catch (err: any) {
-      console.error(err);
-      showToast('Gagal mengajukan SPK: ' + err.message, 'error');
-    } finally {
-      setIsSubmittingSPK(false);
     }
   };
 
@@ -818,6 +774,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         flags: item.flags || [],
       });
       setPreviewUrls(item.foto_urls || []);
+      setRemovedPhotoUrls([]);
       setDocGaransiFile(null);
       setDocSertifikatFile(null);
       setDocManualFile(null);
@@ -846,6 +803,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         flags: [],
       });
       setPreviewUrls([]);
+      setRemovedPhotoUrls([]);
       setDocGaransiFile(null);
       setDocSertifikatFile(null);
       setDocManualFile(null);
@@ -1326,6 +1284,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
   const removePhoto = (index: number, isExisting: boolean) => {
     if (isExisting) {
+      const removedUrl = formData.foto_urls[index];
+      if (removedUrl) setRemovedPhotoUrls(prev => [...prev, removedUrl]);
       setFormData(prev => ({
         ...prev,
         foto_urls: prev.foto_urls.filter((_, i) => i !== index)
@@ -1407,12 +1367,18 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         setUploadingPhoto(false);
       }
 
+      if (profile?.role !== 'auditor' && finalFotoUrls.length === 0) {
+        throw new Error('Minimal 1 foto barang wajib diupload');
+      }
+
       let payload: any = {
         ...formData,
         kategori_id: formData.kategori_id || null,
         kepemilikan_id: formData.kepemilikan_id || null,
         kode_lokasi: formData.kode_lokasi || null,
         kondisi_barang: formData.kondisi_barang || null,
+        note_audit: formData.note_audit || null,
+        tanggal_audit: formData.tanggal_audit || null,
         dokumen_garansi_url: finalDocGaransiUrl,
         dokumen_sertifikat_url: finalDocSertifikatUrl,
         dokumen_manual_url: finalDocManualUrl,
@@ -1467,6 +1433,18 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           .update(payload)
           .eq('id', editingItem.id);
         if (error) throw error;
+
+        // Barang tersimpan — sekarang hapus juga file foto yang dicabut dari
+        // storage, supaya tidak jadi file yatim yang menumpuk selamanya.
+        if (removedPhotoUrls.length > 0) {
+          try {
+            const pathsToRemove = removedPhotoUrls.map((url) => extractPath('item-photos', url));
+            await supabase.storage.from('item-photos').remove(pathsToRemove);
+          } catch (storageErr) {
+            console.error('Gagal menghapus file foto lama dari storage:', storageErr);
+          }
+        }
+
         showToast('Barang berhasil diperbarui', 'success');
       } else {
         const { error } = await supabase
@@ -1688,7 +1666,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             setFilterSifat('');
             setFilterFlag('');
             setFilterPemusnahan(false);
-            setFilterOffice(false);
             setActiveFilterPanel('');
             setPage(1);
           }}
@@ -1842,8 +1819,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       )}
 
       {/* Pemusnahan Filter Toggle & Actions */}
-      <div className="flex flex-col md:flex-row items-center justify-between pt-4 border-t border-gray-100 gap-4">
-        <div className="flex flex-wrap items-center justify-center gap-3">
+      <div className="pt-4 border-t border-gray-100 space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
           {profile?.role !== 'auditor' && (
             <button
               onClick={() => {
@@ -1851,9 +1828,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 setPage(1);
               }}
               className={cn(
-                "flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm",
-                filterPemusnahan 
-                  ? "bg-red-500 text-white border-red-600 shadow-red-500/20" 
+                "flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm",
+                filterPemusnahan
+                  ? "bg-red-500 text-white border-red-600 shadow-red-500/20"
                   : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
               )}
             >
@@ -1865,35 +1842,17 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
             <button
               onClick={() => setIsApprovalListModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
             >
               <ClipboardList size={18} />
               <span>Persetujuan Pemusnahan</span>
             </button>
           )}
 
-          {canUseSPKCart && (
-            <button
-              onClick={() => {
-                setFilterOffice(!filterOffice);
-                setPage(1);
-              }}
-              className={cn(
-                "flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm",
-                filterOffice
-                  ? "bg-sky-500 text-white border-sky-600 shadow-sky-500/20"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-              )}
-            >
-              <ShoppingCart size={18} />
-              <span>Lihat Barang Office</span>
-            </button>
-          )}
-
           {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
             <button
               onClick={() => setIsSPKApprovalListModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
             >
               <ClipboardList size={18} />
               <span>Persetujuan SPK</span>
@@ -1901,30 +1860,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           )}
         </div>
 
+        {/* Aksi utama (Ajukan Pemusnahan) dipisah ke baris sendiri supaya tidak
+            berebut tempat dengan tombol toggle di atas, sekaligus menegaskan ini
+            aksi utama/CTA, bukan sekadar toggle. */}
         {selectedItems.length > 0 && filterPemusnahan && (
-          <div className="flex items-center animate-in slide-in-from-right-4 fade-in">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
             <button
               onClick={() => {
                 setIsDisposalModalOpen(true);
               }}
-              className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-xl shadow-lg shadow-red-500/30 transition-all font-semibold"
+              className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-xl shadow-md shadow-red-500/20 transition-all text-sm font-semibold"
             >
               <FileWarning size={18} />
               <span>Ajukan Pemusnahan ({selectedItems.length} Barang)</span>
-            </button>
-          </div>
-        )}
-
-        {selectedItems.length > 0 && filterOffice && canUseSPKCart && (
-          <div className="flex items-center animate-in slide-in-from-right-4 fade-in">
-            <button
-              onClick={() => {
-                setIsSPKModalOpen(true);
-              }}
-              className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl shadow-lg shadow-sky-500/30 transition-all font-semibold"
-            >
-              <ShoppingCart size={18} />
-              <span>Ajukan SPK ({selectedItems.length} Barang)</span>
             </button>
           </div>
         )}
@@ -2339,14 +2287,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 {/* Left Column: Details */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-amber-700 mb-1">Kepemilikan</label>
+                    <label className="block text-sm font-medium text-amber-700 mb-1">Kepemilikan <span className="text-red-500">*</span></label>
                     <select
+                      required
                       disabled={profile?.role === 'auditor'}
                       value={formData.kepemilikan_id}
                       onChange={(e) => setFormData({ ...formData, kepemilikan_id: e.target.value })}
                       className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm bg-amber-50 font-medium text-amber-900 disabled:opacity-60 disabled:bg-gray-50"
                     >
-                      <option value="">Tanpa Kepemilikan</option>
+                      <option value="" disabled>-- Pilih Kepemilikan --</option>
                       {kepemilikanList.map((k) => (
                         <option key={k.id} value={k.id}>{k.nama_pemilik}</option>
                       ))}
@@ -2429,7 +2378,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Status Barang</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status Barang <span className="text-red-500">*</span></label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.sifat_barang === 'OFFICE' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <input
@@ -2783,7 +2732,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 {/* Right Column: Photo Upload */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-gray-700">Foto Barang ({formData.foto_urls.length + selectedFiles.length}/10)</label>
+                    <label className="block text-sm font-medium text-gray-700">Foto Barang <span className="text-red-500">*</span> ({formData.foto_urls.length + selectedFiles.length}/10)</label>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2">
@@ -3711,74 +3660,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
               >
                 {isSubmittingDisposal ? <Loader2 className="animate-spin" size={18} /> : <CheckSquare size={18} />}
-                <span>Ajukan Sekarang</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SPK Request Modal */}
-      {isSPKModalOpen && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-sky-50/50 shrink-0">
-              <div className="flex items-center space-x-2 text-sky-700">
-                <ShoppingCart size={20} />
-                <h3 className="text-lg font-bold">Ajukan SPK Pengambilan Barang</h3>
-              </div>
-              <button
-                onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                disabled={isSubmittingSPK}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
-              <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 flex items-start space-x-3">
-                <AlertTriangle className="text-sky-600 mt-0.5" size={20} />
-                <div>
-                  <p className="text-sm font-bold text-sky-800">Pengajuan SPK</p>
-                  <p className="text-xs text-sky-700 mt-1">
-                    Anda akan mengajukan pengambilan <strong>{selectedItems.length} barang Office</strong>.
-                    Barang ini tidak langsung keluar, melainkan menunggu persetujuan (Level 1 dan Level 2).
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">Keterangan / Keperluan <span className="text-red-500">*</span></label>
-                <textarea
-                  required
-                  rows={4}
-                  value={spkData.keterangan}
-                  onChange={(e) => setSpkData({ ...spkData, keterangan: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm bg-white"
-                  placeholder="Tuliskan keperluan pengambilan barang-barang ini..."
-                />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
-              <button
-                onClick={() => setIsSPKModalOpen(false)}
-                disabled={isSubmittingSPK}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={submitSPKRequest}
-                disabled={isSubmittingSPK || !spkData.keterangan.trim()}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
-              >
-                {isSubmittingSPK ? <Loader2 className="animate-spin" size={18} /> : <CheckSquare size={18} />}
                 <span>Ajukan Sekarang</span>
               </button>
             </div>

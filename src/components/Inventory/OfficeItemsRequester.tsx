@@ -21,6 +21,10 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Daftar lokasi tujuan pengambilan barang SPK — tambahkan di sini kalau ada
+// lokasi baru.
+const LOKASI_TUJUAN_OPTIONS = ['Belawan'];
+
 const FLAG_COLOR_STYLES: Record<string, string> = {
   teal: 'bg-teal-50 text-teal-700 border-teal-200',
   sky: 'bg-sky-50 text-sky-700 border-sky-200',
@@ -56,7 +60,6 @@ export default function OfficeItemsRequester() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterKategori, setFilterKategori] = useState('');
   const [filterLokasi, setFilterLokasi] = useState('');
-  const [filterFlag, setFilterFlag] = useState('');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10;
@@ -64,12 +67,12 @@ export default function OfficeItemsRequester() {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
-  const [availableFlags, setAvailableFlags] = useState<string[]>([]);
   const [flagCatalog, setFlagCatalog] = useState<FlagDef[]>([]);
 
   // SPK submit modal
   const [isSPKModalOpen, setIsSPKModalOpen] = useState(false);
   const [spkKeterangan, setSpkKeterangan] = useState('');
+  const [spkLokasiTujuan, setSpkLokasiTujuan] = useState('');
   const [isSubmittingSPK, setIsSubmittingSPK] = useState(false);
 
   // History tab state
@@ -106,7 +109,7 @@ export default function OfficeItemsRequester() {
     } else {
       fetchMyRequests();
     }
-  }, [tab, page, debouncedSearch, filterKategori, filterLokasi, filterFlag]);
+  }, [tab, page, debouncedSearch, filterKategori, filterLokasi]);
 
   async function fetchFilterOptions() {
     // Opsi filter diturunkan dari barang Office yang benar-benar ada saja
@@ -116,12 +119,11 @@ export default function OfficeItemsRequester() {
       const { data, error } = await supabase
         .from('items')
         .select('kategori_id, kode_lokasi, flags, categories(nama_kategori), master_lokasi(nama_lokasi)')
-        .eq('sifat_barang', 'OFFICE');
+        .eq('sifat_barang', 'REUSABLE');
       if (error) throw error;
 
       const catMap = new Map<string, string>();
       const locMap = new Map<string, string>();
-      const flagSet = new Set<string>();
 
       (data || []).forEach((item: any) => {
         if (item.kategori_id && item.categories?.nama_kategori) {
@@ -130,7 +132,6 @@ export default function OfficeItemsRequester() {
         if (item.kode_lokasi && item.master_lokasi?.nama_lokasi) {
           locMap.set(item.kode_lokasi, item.master_lokasi.nama_lokasi);
         }
-        (item.flags || []).forEach((f: string) => flagSet.add(f));
       });
 
       setCategories(
@@ -141,7 +142,6 @@ export default function OfficeItemsRequester() {
         Array.from(locMap, ([kode_lokasi, nama_lokasi]) => ({ kode_lokasi, nama_lokasi }))
           .sort((a, b) => a.nama_lokasi.localeCompare(b.nama_lokasi))
       );
-      setAvailableFlags(Array.from(flagSet).sort((a, b) => a.localeCompare(b)));
     } catch (err) {
       console.error('Error fetching filter options:', err);
     }
@@ -170,7 +170,7 @@ export default function OfficeItemsRequester() {
       let query = supabase
         .from('items')
         .select('*, master_lokasi(nama_lokasi), categories(nama_kategori), master_kepemilikan(nama_pemilik)', { count: 'exact' })
-        .eq('sifat_barang', 'OFFICE');
+        .eq('sifat_barang', 'REUSABLE');
 
       if (debouncedSearch) {
         query = query.or(`nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%,deskripsi.ilike.%${debouncedSearch}%`);
@@ -180,9 +180,6 @@ export default function OfficeItemsRequester() {
       }
       if (filterLokasi) {
         query = query.eq('kode_lokasi', filterLokasi);
-      }
-      if (filterFlag) {
-        query = query.contains('flags', [filterFlag]);
       }
 
       const from = (page - 1) * itemsPerPage;
@@ -366,6 +363,10 @@ export default function OfficeItemsRequester() {
         doc.text(`: ${item.nama_barang}`, 65, currentY);
         currentY += lineSpacing;
 
+        doc.text('Lokasi Tujuan', 14, currentY);
+        doc.text(`: ${selectedRequest.lokasi_tujuan || '-'}`, 65, currentY, { maxWidth: 130 });
+        currentY += lineSpacing;
+
         doc.text('Alasan Penggunaan', 14, currentY);
         doc.text(`: ${selectedRequest.keterangan || '-'}`, 65, currentY, { maxWidth: 130 });
         currentY += lineSpacing * 2;
@@ -460,7 +461,7 @@ export default function OfficeItemsRequester() {
   };
 
   const submitSPK = async () => {
-    if (selectedItems.length === 0 || !spkKeterangan.trim()) return;
+    if (selectedItems.length === 0 || !spkKeterangan.trim() || !spkLokasiTujuan.trim()) return;
     setIsSubmittingSPK(true);
     try {
       const nomorSpk = await generateDailyDocNumber('spk_requests', 'nomor_spk', 'SPK');
@@ -471,6 +472,7 @@ export default function OfficeItemsRequester() {
         jumlah: selectedItems.length,
         status: 'PENDING_ADMIN',
         keterangan: spkKeterangan,
+        lokasi_tujuan: spkLokasiTujuan,
       }).select('id').single();
 
       if (reqRes.error) throw reqRes.error;
@@ -497,6 +499,7 @@ export default function OfficeItemsRequester() {
       showToast('Pengajuan SPK berhasil dibuat!', 'success');
       setIsSPKModalOpen(false);
       setSpkKeterangan('');
+      setSpkLokasiTujuan('');
       setSelectedItems([]);
       fetchItems();
     } catch (err: any) {
@@ -599,18 +602,6 @@ export default function OfficeItemsRequester() {
                 <option value="">Semua Lokasi</option>
                 {locations.map((loc) => (
                   <option key={loc.kode_lokasi} value={loc.kode_lokasi}>{loc.nama_lokasi}</option>
-                ))}
-              </select>
-            </div>
-            <div className="md:w-52 shrink-0">
-              <select
-                value={filterFlag}
-                onChange={(e) => { setFilterFlag(e.target.value); setPage(1); }}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm bg-white font-medium"
-              >
-                <option value="">Semua Flag</option>
-                {availableFlags.map((flag) => (
-                  <option key={flag} value={flag}>{flag}</option>
                 ))}
               </select>
             </div>
@@ -775,7 +766,8 @@ export default function OfficeItemsRequester() {
                   <th className="px-6 py-4">Tanggal</th>
                   <th className="px-6 py-4">Jumlah</th>
                   <th className="px-6 py-4">Kategori</th>
-                  <th className="px-6 py-4">Lokasi</th>
+                  <th className="px-6 py-4">Lokasi Asal</th>
+                  <th className="px-6 py-4">Lokasi Tujuan</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Detail</th>
                 </tr>
@@ -783,14 +775,14 @@ export default function OfficeItemsRequester() {
               <tbody className="divide-y divide-gray-50">
                 {loadingHistory ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <Loader2 className="animate-spin mx-auto text-sky-600 mb-2" size={32} />
                       <p className="text-gray-500">Memuat riwayat...</p>
                     </td>
                   </tr>
                 ) : myRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <ClipboardList className="mx-auto text-gray-300 mb-2" size={48} />
                       <p className="text-gray-500">Belum ada pengajuan SPK.</p>
                     </td>
@@ -806,6 +798,7 @@ export default function OfficeItemsRequester() {
                       <td className="px-6 py-4 text-sm text-gray-900 font-medium">{req.jumlah || '-'} barang</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{summarizeRequestField(req, 'nama_kategori')}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{summarizeRequestField(req, 'nama_lokasi')}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{req.lokasi_tujuan || '-'}</td>
                       <td className="px-6 py-4">{statusBadge(req.status)}</td>
                       <td className="px-6 py-4 text-right">
                         <button className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded-lg text-sm font-medium transition-colors border border-sky-100">
@@ -853,6 +846,20 @@ export default function OfficeItemsRequester() {
                 </p>
               </div>
               <div className="space-y-2">
+                <label className="block text-sm font-bold text-gray-700">Lokasi Tujuan <span className="text-red-500">*</span></label>
+                <select
+                  required
+                  value={spkLokasiTujuan}
+                  onChange={(e) => setSpkLokasiTujuan(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm bg-white"
+                >
+                  <option value="">Pilih lokasi tujuan...</option>
+                  {LOKASI_TUJUAN_OPTIONS.map((lokasi) => (
+                    <option key={lokasi} value={lokasi}>{lokasi}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
                 <label className="block text-sm font-bold text-gray-700">Keterangan / Keperluan <span className="text-red-500">*</span></label>
                 <textarea
                   required
@@ -874,7 +881,7 @@ export default function OfficeItemsRequester() {
               </button>
               <button
                 onClick={submitSPK}
-                disabled={isSubmittingSPK || !spkKeterangan.trim()}
+                disabled={isSubmittingSPK || !spkKeterangan.trim() || !spkLokasiTujuan.trim()}
                 className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
               >
                 {isSubmittingSPK ? <Loader2 className="animate-spin" size={18} /> : <CheckSquare size={18} />}
@@ -967,6 +974,12 @@ export default function OfficeItemsRequester() {
                   {isDownloadingPDF ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
                   <span>Download Surat Jalan SPK</span>
                 </button>
+              )}
+              {selectedRequest.lokasi_tujuan && (
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Lokasi Tujuan</p>
+                  <p className="text-sm text-gray-700">{selectedRequest.lokasi_tujuan}</p>
+                </div>
               )}
               {selectedRequest.keterangan && (
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">

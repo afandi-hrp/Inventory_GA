@@ -210,10 +210,25 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 7. TRIGGER FOR ITEM AUDIT LOGS
+-- changed_by resolves to an explicit session override (set via set_config by
+-- SECURITY DEFINER RPCs that act on behalf of a user, e.g. delete_item_as)
+-- first, falling back to auth.uid() for normal client-side requests. This is
+-- needed because requests made with the service-role key have no JWT/session,
+-- so auth.uid() alone would resolve to NULL and lose attribution.
 CREATE OR REPLACE FUNCTION public.log_item_changes()
 RETURNS TRIGGER AS $$
+DECLARE
+  actor UUID := COALESCE(nullif(current_setting('audit.changed_by', true), '')::uuid, auth.uid());
 BEGIN
-  IF (TG_OP = 'UPDATE') THEN
+  IF (TG_OP = 'INSERT') THEN
+    INSERT INTO public.item_audit_logs (item_id, action, new_values, changed_by)
+    VALUES (
+      NEW.id,
+      'CREATE',
+      to_jsonb(NEW),
+      actor
+    );
+  ELSIF (TG_OP = 'UPDATE') THEN
     -- Skip logging if only note_audit and updated_at were changed
     IF (to_jsonb(OLD) - 'note_audit' - 'updated_at') = (to_jsonb(NEW) - 'note_audit' - 'updated_at') THEN
       RETURN NULL;
@@ -225,7 +240,7 @@ BEGIN
       'UPDATE',
       to_jsonb(OLD),
       to_jsonb(NEW),
-      COALESCE(auth.uid(), NULL)
+      actor
     );
   ELSIF (TG_OP = 'DELETE') THEN
     INSERT INTO public.item_audit_logs (item_id, action, old_values, changed_by)
@@ -233,10 +248,22 @@ BEGIN
       NULL,
       'DELETE',
       to_jsonb(OLD),
-      COALESCE(auth.uid(), NULL)
+      actor
     );
   END IF;
   RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC used by backend endpoints that must delete an item using the
+-- service-role client (which has no JWT/session for auth.uid() to resolve)
+-- while still recording who actually performed the action. Sets a
+-- transaction-local override that log_item_changes() picks up above.
+CREATE OR REPLACE FUNCTION public.delete_item_as(p_item_id UUID, p_actor_id UUID)
+RETURNS SETOF items AS $$
+BEGIN
+  PERFORM set_config('audit.changed_by', p_actor_id::text, true);
+  RETURN QUERY DELETE FROM public.items WHERE id = p_item_id RETURNING *;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -248,7 +275,7 @@ CREATE TRIGGER on_auth_user_created
 
 DROP TRIGGER IF EXISTS on_item_changed ON items;
 CREATE TRIGGER on_item_changed
-  AFTER UPDATE OR DELETE ON items
+  AFTER INSERT OR UPDATE OR DELETE ON items
   FOR EACH ROW EXECUTE PROCEDURE public.log_item_changes();
 
 -- Stock Keluar History Table

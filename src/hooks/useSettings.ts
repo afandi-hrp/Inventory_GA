@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 import { AppSettings } from '../types';
 
 const DEFAULT_SETTINGS: AppSettings = {
-  login_title: 'Stock GA',
-  login_footer: '© 2024 Inventory System. All rights reserved.',
+  login_title: 'Asset & Inventory',
+  login_footer: '© 2025 Asset & Inventory. All rights reserved.',
   login_bg_url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=2000',
 };
 

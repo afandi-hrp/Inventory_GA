@@ -6,7 +6,7 @@ import { useModalBackButton } from '../../hooks/useModalBackButton';
 import {
   Package, MapPin, Users, TrendingUp, Clock, Layers, ArrowDownRight, ArrowUpRight, BarChart2,
   ShoppingCart, ClipboardList, ArrowRight, X, Hash, Info, Calendar, Image as ImageIcon, UserCheck,
-  Sunrise, Sun, Sunset, Moon
+  Sunrise, Sun, Sunset, Moon, AlertTriangle
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Item } from '../../types';
@@ -43,16 +43,20 @@ export default function DashboardHome() {
     totalStockOut: 0,
   });
   const [mySpkStats, setMySpkStats] = useState({ total: 0, pending: 0 });
+  const [pendingDisposalCount, setPendingDisposalCount] = useState(0);
+  const [pendingSPKCount, setPendingSPKCount] = useState(0);
   const [recentItems, setRecentItems] = useState<Item[]>([]);
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedKepemilikan, setSelectedKepemilikan] = useState<string | null>(null);
+  const [selectedLokasi, setSelectedLokasi] = useState<string | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
   // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
   useModalBackButton(!!selectedItemForDetail, () => setSelectedItemForDetail(null));
   const [chartData, setChartData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [kepemilikanData, setKepemilikanData] = useState<any[]>([]);
+  const [lokasiData, setLokasiData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -115,6 +119,18 @@ export default function DashboardHome() {
             value: ownerCount[key]
           })).sort((a,b) => b.value - a.value);
           setKepemilikanData(ownerDataChart);
+
+          // Lokasi distribution
+          const lokasiCount: Record<string, number> = {};
+          itemsRes.data.forEach(item => {
+            const lokasiName = (item as any).master_lokasi?.nama_lokasi || 'Tanpa Lokasi';
+            lokasiCount[lokasiName] = (lokasiCount[lokasiName] || 0) + 1;
+          });
+          const lokasiDataChart = Object.keys(lokasiCount).map(key => ({
+            name: key,
+            value: lokasiCount[key]
+          })).sort((a,b) => b.value - a.value);
+          setLokasiData(lokasiDataChart);
 
           // Chart data: Monthly stats (last 6 months)
           const months: any[] = [];
@@ -201,6 +217,49 @@ export default function DashboardHome() {
     fetchMySpkStats();
   }, [isRequester, user]);
 
+  useEffect(() => {
+    async function fetchPendingApprovalCounts() {
+      const role = profile?.role;
+      if (!role || isRequester) return;
+
+      // Setiap role cuma "punya" satu tahap yang bisa dia proses di masing-masing
+      // alur — hitung berapa pengajuan yang lagi nunggu tahap itu.
+      const disposalStageByRole: Record<string, string> = {
+        auditor: 'PENDING_AUDITOR',
+        spv: 'PENDING_SPV',
+        direktur: 'PENDING_DIREKTUR',
+      };
+      const spkStageByRole: Record<string, string> = {
+        admin: 'PENDING_ADMIN',
+        auditor: 'PENDING_AUDITOR',
+        spv: 'PENDING_SPV',
+      };
+
+      try {
+        const disposalStage = disposalStageByRole[role];
+        if (disposalStage) {
+          const { count } = await supabase
+            .from('disposal_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', disposalStage);
+          setPendingDisposalCount(count || 0);
+        }
+
+        const spkStage = spkStageByRole[role];
+        if (spkStage) {
+          const { count } = await supabase
+            .from('spk_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', spkStage);
+          setPendingSPKCount(count || 0);
+        }
+      } catch (err) {
+        console.error('Error fetching pending approval counts:', err);
+      }
+    }
+    fetchPendingApprovalCounts();
+  }, [isRequester, profile?.role]);
+
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#6366f1'];
   const greeting = getGreeting(new Date().getHours());
 
@@ -274,6 +333,22 @@ export default function DashboardHome() {
         </div>
       )}
 
+      {/* Notifikasi Persetujuan Tertunda */}
+      {!isRequester && (pendingDisposalCount > 0 || pendingSPKCount > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {pendingDisposalCount > 0 && (
+            <Link to="/barang" className="block">
+              <StatCard title="Menunggu Persetujuan Pemusnahan" value={pendingDisposalCount} subtitle="Perlu Tindakan" icon={<AlertTriangle className="text-amber-600" size={24} />} color="bg-amber-500/10 border border-amber-500/20" />
+            </Link>
+          )}
+          {pendingSPKCount > 0 && (
+            <Link to="/barang" className="block">
+              <StatCard title="Menunggu Persetujuan SPK" value={pendingSPKCount} subtitle="Perlu Tindakan" icon={<ClipboardList className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Explore Panels: Kategori & Kepemilikan */}
       <ExploreDimensionPanel
         title="Jelajahi Kategori"
@@ -298,6 +373,19 @@ export default function DashboardHome() {
         onSelect={setSelectedKepemilikan}
         items={allItems}
         getKey={(item) => (item as any).master_kepemilikan?.nama_pemilik || 'Tanpa Kepemilikan'}
+        onItemClick={setSelectedItemForDetail}
+      />
+
+      <ExploreDimensionPanel
+        title="Jelajahi Lokasi"
+        headerIcon={<MapPin className="mr-2 text-orange-600" size={20} />}
+        cardIcon={<MapPin size={24} />}
+        theme="orange"
+        data={lokasiData}
+        selected={selectedLokasi}
+        onSelect={setSelectedLokasi}
+        items={allItems}
+        getKey={(item) => (item as any).master_lokasi?.nama_lokasi || 'Tanpa Lokasi'}
         onItemClick={setSelectedItemForDetail}
       />
 
@@ -365,7 +453,11 @@ export default function DashboardHome() {
             </thead>
             <tbody className="divide-y divide-gray-100/50">
               {recentItems.map((item, index) => (
-                <tr key={item.id} className={`text-sm hover:bg-white/50 transition-colors ${index < 3 ? 'bg-blue-50/30' : ''}`}>
+                <tr
+                  key={item.id}
+                  onClick={() => setSelectedItemForDetail(item)}
+                  className={`text-sm hover:bg-white/50 transition-colors cursor-pointer ${index < 3 ? 'bg-blue-50/30' : ''}`}
+                >
                   <td className="py-3 px-4 font-medium text-gray-900">
                     <div className="flex items-center space-x-2">
                       {index < 3 && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]" title="Terbaru"></span>}
@@ -555,6 +647,12 @@ const EXPLORE_THEME = {
     iconActive: 'bg-emerald-100 text-emerald-600',
     titleActive: 'text-emerald-900',
     textAccent: 'text-emerald-600',
+  },
+  orange: {
+    cardActive: 'bg-orange-50 border-orange-300 shadow-md ring-2 ring-orange-500/20',
+    iconActive: 'bg-orange-100 text-orange-600',
+    titleActive: 'text-orange-900',
+    textAccent: 'text-orange-600',
   },
 } as const;
 

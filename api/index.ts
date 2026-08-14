@@ -160,6 +160,11 @@ const checkFinalApprover = async (req: express.Request, res: express.Response, n
       return res.status(403).json({ error: 'Unauthorized: SPV or Direktur only' });
     }
 
+    // Stash the caller's id so the route handler can attribute the delete to
+    // them in the audit log, even though it executes via the service-role
+    // client (which has no JWT/session for auth.uid() to resolve on its own).
+    (req as any).userId = user.id;
+
     next();
   } catch (err) {
     res.status(500).json({ error: 'Internal server error during auth check' });
@@ -171,12 +176,13 @@ const checkFinalApprover = async (req: express.Request, res: express.Response, n
 // final approval in the UI — any authenticated user was previously able to call this directly.
 app.delete('/api/inventory/delete-item/:itemId', checkFinalApprover, async (req, res) => {
   const { itemId } = req.params;
-  
+  const userId = (req as any).userId as string;
+
   if (!itemId || itemId === 'undefined') {
     return res.status(400).json({ error: 'Invalid item ID' });
   }
 
-  const { data, error } = await supabaseAdmin!.from('items').delete().eq('id', itemId).select('*');
+  const { data, error } = await supabaseAdmin!.rpc('delete_item_as', { p_item_id: itemId, p_actor_id: userId });
 
   if (error) {
     return res.status(400).json({ error: error.message });

@@ -99,6 +99,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
   };
 
   const [locations, setLocations] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<Record<string, string>>({});
+  const [kepemilikanMap, setKepemilikanMap] = useState<Record<string, string>>({});
 
   const fetchLocations = async () => {
     const { data } = await supabase.from('master_lokasi').select('kode_lokasi, nama_lokasi');
@@ -111,12 +113,32 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
     }
   };
 
+  const fetchCategoriesAndKepemilikan = async () => {
+    const [catRes, kepRes] = await Promise.all([
+      supabase.from('categories').select('id, nama_kategori'),
+      supabase.from('master_kepemilikan').select('id, nama_pemilik'),
+    ]);
+    if (catRes.data) {
+      const map: Record<string, string> = {};
+      catRes.data.forEach((c: any) => { map[c.id] = c.nama_kategori; });
+      setCategories(map);
+    }
+    if (kepRes.data) {
+      const map: Record<string, string> = {};
+      kepRes.data.forEach((k: any) => { map[k.id] = k.nama_pemilik; });
+      setKepemilikanMap(map);
+    }
+  };
+
   const fetchAuditLogs = async () => {
     setLoading(true);
     setError(null);
     try {
       if (Object.keys(locations).length === 0) {
         await fetchLocations();
+      }
+      if (Object.keys(categories).length === 0) {
+        await fetchCategoriesAndKepemilikan();
       }
       const from = (page - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
@@ -192,21 +214,33 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
   };
 
   const handlePrepareExport = () => {
+    const formatExportValue = (key: string, value: any) => {
+      if (value === undefined || value === null || value === '') return '-';
+      if (key === 'kode_lokasi') return locations[value] || value;
+      if (key === 'kategori_id') return categories[value] || value;
+      if (key === 'kepemilikan_id') return kepemilikanMap[value] || value;
+      if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '-';
+      if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
+      return String(value);
+    };
+
     const dataToExport = auditLogs.map(entry => {
-      const changes = [];
-      const relevantKeys = ['kode_barang', 'nama_barang', 'jumlah_barang', 'kode_lokasi', 'deskripsi'];
-      
-      relevantKeys.forEach(key => {
+      const changes: string[] = [];
+      const allKeys = Array.from(new Set([
+        ...(entry.old_values ? Object.keys(entry.old_values) : []),
+        ...(entry.new_values ? Object.keys(entry.new_values) : []),
+      ])).filter(key => !TECHNICAL_DIFF_KEYS.includes(key));
+      const orderedKeys = [
+        ...KNOWN_DIFF_KEY_ORDER.filter(key => allKeys.includes(key)),
+        ...allKeys.filter(key => !KNOWN_DIFF_KEY_ORDER.includes(key)),
+      ];
+
+      orderedKeys.forEach(key => {
         const oldValue = entry.old_values ? entry.old_values[key] : null;
         const newValue = entry.new_values ? entry.new_values[key] : null;
         if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-          let oldDisp = oldValue;
-          let newDisp = newValue;
-          if (key === 'kode_lokasi') {
-            oldDisp = locations[oldValue] || oldValue || '-';
-            newDisp = locations[newValue] || newValue || '-';
-          }
-          changes.push(`${key}: ${oldDisp} -> ${newDisp}`);
+          const label = DIFF_DISPLAY_NAMES[key] || key;
+          changes.push(`${label}: ${formatExportValue(key, oldValue)} -> ${formatExportValue(key, newValue)}`);
         }
       });
 
@@ -233,24 +267,59 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  const renderChanges = (oldValues: Record<string, any> | null, newValues: Record<string, any> | null) => {
-    const relevantKeys = [
-      'kode_barang', 'nama_barang', 'jumlah_barang', 'kode_lokasi', 'deskripsi', 'foto_urls'
-    ];
+  // Urutan tampil field yang dikenal — field yang gak ada di daftar ini (misal
+  // kolom baru di masa depan) tetap otomatis muncul di bagian bawah, dengan
+  // nama kolom mentahnya sebagai label, alih-alih hilang diam-diam.
+  const KNOWN_DIFF_KEY_ORDER = [
+    'kode_barang', 'nama_barang', 'jumlah_barang', 'kode_lokasi', 'kategori_id', 'kepemilikan_id',
+    'sifat_barang', 'kondisi_barang', 'deskripsi', 'foto_urls', 'flags',
+    'kelengkapan_garansi', 'dokumen_garansi_url',
+    'kelengkapan_sertifikat', 'dokumen_sertifikat_url',
+    'kelengkapan_manual', 'dokumen_manual_url',
+    'note_audit', 'tanggal_audit', 'keterangan_restore',
+  ];
 
-    const displayNames: Record<string, string> = {
-      'kode_barang': 'Kode Barang',
-      'nama_barang': 'Nama Barang',
-      'jumlah_barang': 'Jumlah Barang',
-      'kode_lokasi': 'Lokasi',
-      'deskripsi': 'Deskripsi',
-      'foto_urls': 'Foto',
-      'keterangan_restore': 'Keterangan Restore'
-    };
+  const DIFF_DISPLAY_NAMES: Record<string, string> = {
+    'kode_barang': 'Kode Barang',
+    'nama_barang': 'Nama Barang',
+    'jumlah_barang': 'Jumlah Barang',
+    'kode_lokasi': 'Lokasi',
+    'kategori_id': 'Kategori',
+    'kepemilikan_id': 'Kepemilikan',
+    'sifat_barang': 'Sifat Barang',
+    'kondisi_barang': 'Kondisi Barang',
+    'deskripsi': 'Deskripsi',
+    'foto_urls': 'Foto',
+    'flags': 'Flags',
+    'kelengkapan_garansi': 'Kelengkapan Garansi',
+    'dokumen_garansi_url': 'Dokumen Garansi',
+    'kelengkapan_sertifikat': 'Kelengkapan Sertifikat',
+    'dokumen_sertifikat_url': 'Dokumen Sertifikat',
+    'kelengkapan_manual': 'Kelengkapan Manual',
+    'dokumen_manual_url': 'Dokumen Manual',
+    'note_audit': 'Hasil Audit',
+    'tanggal_audit': 'Tanggal Audit',
+    'keterangan_restore': 'Keterangan Restore',
+  };
+
+  // Kolom teknis yang gak berarti buat ditampilkan sebagai "perubahan" ke user
+  // (updated_at selalu berubah tiap kali disimpan, id/created_at gak pernah berubah).
+  const TECHNICAL_DIFF_KEYS = ['id', 'created_at', 'updated_at'];
+
+  const renderChanges = (oldValues: Record<string, any> | null, newValues: Record<string, any> | null) => {
+    const allKeys = Array.from(new Set([
+      ...(oldValues ? Object.keys(oldValues) : []),
+      ...(newValues ? Object.keys(newValues) : []),
+    ])).filter(key => !TECHNICAL_DIFF_KEYS.includes(key));
+
+    const orderedKeys = [
+      ...KNOWN_DIFF_KEY_ORDER.filter(key => allKeys.includes(key)),
+      ...allKeys.filter(key => !KNOWN_DIFF_KEY_ORDER.includes(key)),
+    ];
 
     const formatValue = (key: string, value: any) => {
       if (value === undefined || value === null || value === '') return '-';
-      
+
       if (key === 'foto_urls' && Array.isArray(value) && value.length > 0) {
         return (
           <div className="flex flex-wrap gap-1 mt-1">
@@ -280,6 +349,30 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
         );
       }
 
+      if (key === 'kategori_id') {
+        return String(categories[value] || value);
+      }
+
+      if (key === 'kepemilikan_id') {
+        return String(kepemilikanMap[value] || value);
+      }
+
+      if (key === 'flags' && Array.isArray(value)) {
+        return value.length > 0 ? value.join(', ') : '-';
+      }
+
+      if (key === 'tanggal_audit') {
+        return new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+
+      if (key === 'kelengkapan_garansi' || key === 'kelengkapan_sertifikat' || key === 'kelengkapan_manual') {
+        return value === true ? 'Ya' : value === false ? 'Tidak' : '-';
+      }
+
+      if (key === 'dokumen_garansi_url' || key === 'dokumen_sertifikat_url' || key === 'dokumen_manual_url') {
+        return value ? 'Ada' : '-';
+      }
+
       if (key === 'nama_barang') {
         return <span className="font-mono text-xs">{String(value)}</span>;
       }
@@ -298,11 +391,11 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {relevantKeys.map(key => {
+            {orderedKeys.map(key => {
               const oldValue = oldValues ? oldValues[key] : null;
               const newValue = newValues ? newValues[key] : null;
               const isChanged = JSON.stringify(oldValue) !== JSON.stringify(newValue);
-              const displayName = displayNames[key] || key;
+              const displayName = DIFF_DISPLAY_NAMES[key] || key;
 
               return (
                 <tr key={key} className={cn(
@@ -338,12 +431,12 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
     const allKeys = Array.from(new Set([
       ...(oldValues ? Object.keys(oldValues) : []),
       ...(newValues ? Object.keys(newValues) : []),
-    ]));
+    ])).filter(key => !TECHNICAL_DIFF_KEYS.includes(key));
     let count = 0;
     for (const key of allKeys) {
       const oldValue = oldValues ? oldValues[key] : undefined;
       const newValue = newValues ? newValues[key] : undefined;
-      if (oldValue !== newValue) {
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
         count++;
       }
     }
@@ -496,7 +589,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={cn(
                       "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
-                      entry.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' : 
+                      entry.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' :
+                      entry.action === 'CREATE' ? 'bg-green-100 text-green-800' :
                       entry.action === 'DIKEMBALIKAN KE STOCK' ? 'bg-emerald-100 text-emerald-800' :
                       'bg-red-100 text-red-800'
                     )}>
@@ -644,7 +738,9 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                 <div className="flex items-center space-x-3">
                   <div className={cn(
                     "p-2 rounded-lg shadow-sm",
-                    selectedLogEntryForDetail.action === 'UPDATE' ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"
+                    selectedLogEntryForDetail.action === 'UPDATE' ? "bg-blue-50 text-blue-600" :
+                    selectedLogEntryForDetail.action === 'CREATE' ? "bg-green-50 text-green-600" :
+                    "bg-red-50 text-red-600"
                   )}>
                     <ClipboardList size={18} />
                   </div>
@@ -652,7 +748,9 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tipe Aksi</p>
                     <p className={cn(
                       "text-sm font-bold",
-                      selectedLogEntryForDetail.action === 'UPDATE' ? "text-blue-600" : "text-red-600"
+                      selectedLogEntryForDetail.action === 'UPDATE' ? "text-blue-600" :
+                      selectedLogEntryForDetail.action === 'CREATE' ? "text-green-600" :
+                      "text-red-600"
                     )}>{selectedLogEntryForDetail.action}</p>
                   </div>
                 </div>

@@ -28,8 +28,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
   const [rejectItemModal, setRejectItemModal] = useState<{ isOpen: boolean, itemId: string, reason: string }>({ isOpen: false, itemId: '', reason: '' });
   const [rejectFullModal, setRejectFullModal] = useState<{ isOpen: boolean, reason: string }>({ isOpen: false, reason: '' });
 
-  // TEMPORARY DIAGNOSTIC: dimatikan sementara untuk memastikan apakah hook ini
-  // penyebab modal/tombol hilang sendiri. Aktifkan lagi setelah dikonfirmasi.
+  // DIMATIKAN SEMENTARA: lihat catatan di MasterBarang.tsx
   // useModalBackButton(isOpen, onClose);
   // useModalBackButton(rejectItemModal.isOpen, () => setRejectItemModal({ isOpen: false, itemId: '', reason: '' }));
   // useModalBackButton(rejectFullModal.isOpen, () => setRejectFullModal({ isOpen: false, reason: '' }));
@@ -404,6 +403,10 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
         doc.text(`: ${item.nama_barang}`, 65, currentY);
         currentY += lineSpacing;
 
+        doc.text('Lokasi Tujuan', 14, currentY);
+        doc.text(`: ${selectedRequest.lokasi_tujuan || '-'}`, 65, currentY, { maxWidth: 130 });
+        currentY += lineSpacing;
+
         doc.text('Alasan Penggunaan', 14, currentY);
         doc.text(`: ${selectedRequest.keterangan || '-'}`, 65, currentY, { maxWidth: 130 });
         currentY += lineSpacing * 2;
@@ -628,6 +631,10 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                     <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-gray-400" /> Tanggal: {new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
                   </div>
                   <div className="mt-4 p-3 bg-white border rounded-xl shadow-sm">
+                    <span className="text-xs font-semibold text-gray-400 uppercase">Lokasi Tujuan</span>
+                    <p className="text-sm font-medium text-gray-800 mt-1">{selectedRequest.lokasi_tujuan || 'Tidak ada lokasi tujuan'}</p>
+                  </div>
+                  <div className="mt-3 p-3 bg-white border rounded-xl shadow-sm">
                     <span className="text-xs font-semibold text-gray-400 uppercase">Keterangan</span>
                     <p className="text-sm font-medium text-gray-800 mt-1">{selectedRequest.keterangan || 'Tidak ada keterangan'}</p>
                   </div>

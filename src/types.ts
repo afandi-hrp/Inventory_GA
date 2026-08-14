@@ -39,7 +39,7 @@ export interface Item {
   kode_lokasi: string | null;
   kategori_id: string | null;
   kepemilikan_id?: string | null;
-  sifat_barang?: 'PRIVATE' | 'OFFICE' | null;
+  sifat_barang?: 'PRIVATE' | 'OFFICE' | 'REUSABLE' | null;
   foto_urls: string[];
   deskripsi: string | null;
   kelengkapan_garansi?: boolean;
@@ -126,6 +126,7 @@ export interface SPKRequest {
   user_id?: string;
   jumlah?: number;
   keterangan?: string | null;
+  lokasi_tujuan?: string | null;
   status: 'PENDING_ADMIN' | 'PENDING_AUDITOR' | 'PENDING_SPV' | 'APPROVED' | 'REJECTED';
   tanggal_pengajuan: string;
   diketahui_admin_oleh?: string | null;

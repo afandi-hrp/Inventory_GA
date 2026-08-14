@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand palette (Asset & Inventory / ex-BeeSuite guideline) */
+  --color-brand-cream: #FFF5C5;
+  --color-brand-coral: #F58C77;
+  --color-brand-purple: #5A305A;
+  --color-brand-purple-light: #73507B;
+}
+
+body {
+  font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;

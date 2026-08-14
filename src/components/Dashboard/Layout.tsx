@@ -46,9 +46,6 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
     { id: 'log-item-change', label: 'Item Change Logs', icon: <ClipboardList size={20} /> },
     { id: 'stock-out-history', label: 'Stock Out History', icon: <Archive size={20} /> },
     { id: 'manage-users', label: 'Manage Users', icon: <Users size={20} /> },
-    ...(profile?.role === 'admin' ? [
-      { id: 'login-settings', label: 'Login Settings', icon: <Settings size={20} /> }
-    ] : []),
   ];
 
   const handleLogout = async () => {
@@ -56,10 +53,10 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E] flex">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-brand-cream to-brand-coral flex">
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -69,11 +66,11 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
       <div className="hidden lg:block w-20 shrink-0 m-4" />
 
       {/* Sidebar */}
-      <aside 
+      <aside
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-        "fixed z-50 bg-[#3D2C44]/95 backdrop-blur-xl text-white transition-all duration-300 transform",
+        "fixed z-50 bg-brand-purple/95 backdrop-blur-xl text-white transition-all duration-300 transform",
         isSidebarOpen ? "translate-x-0 inset-y-0 left-0" : "-translate-x-full inset-y-0 left-0 lg:translate-x-0",
         isExpanded ? "w-64" : "w-20",
         "lg:left-0 lg:top-0 lg:m-4 lg:rounded-3xl lg:h-[calc(100vh-2rem)] shadow-2xl flex flex-col overflow-hidden border border-white/10"
@@ -119,7 +116,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
                     {isActive && (
                       <motion.div
                         layoutId="active-sidebar-tab"
-                        className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl shadow-lg shadow-orange-500/25"
+                        className="absolute inset-0 bg-gradient-to-r from-brand-coral to-brand-purple-light rounded-xl shadow-lg shadow-brand-coral/25"
                         initial={false}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                       />
@@ -182,7 +179,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-8 pt-16 lg:pt-8">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-[1800px] mx-auto">
             {children}
           </div>
         </main>

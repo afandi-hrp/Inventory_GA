@@ -29,8 +29,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
   const [rejectItemModal, setRejectItemModal] = useState<{ isOpen: boolean, itemId: string, reason: string }>({ isOpen: false, itemId: '', reason: '' });
   const [rejectFullModal, setRejectFullModal] = useState<{ isOpen: boolean, reason: string }>({ isOpen: false, reason: '' });
 
-  // TEMPORARY DIAGNOSTIC: dimatikan sementara untuk memastikan apakah hook ini
-  // penyebab modal/tombol hilang sendiri. Aktifkan lagi setelah dikonfirmasi.
+  // DIMATIKAN SEMENTARA: lihat catatan di MasterBarang.tsx
   // useModalBackButton(isOpen, onClose);
   // useModalBackButton(rejectItemModal.isOpen, () => setRejectItemModal({ isOpen: false, itemId: '', reason: '' }));
   // useModalBackButton(rejectFullModal.isOpen, () => setRejectFullModal({ isOpen: false, reason: '' }));

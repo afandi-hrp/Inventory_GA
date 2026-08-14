@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -110,14 +111,23 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
   const [isSPKApprovalListModalOpen, setIsSPKApprovalListModalOpen] = useState(false);
+  const [pendingDisposalCount, setPendingDisposalCount] = useState(0);
+  const [pendingSPKCount, setPendingSPKCount] = useState(0);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
+  const [isItemHistoryModalOpen, setIsItemHistoryModalOpen] = useState(false);
+  const [itemHistoryLogs, setItemHistoryLogs] = useState<{ id: string; action: string; old_values: Record<string, any> | null; new_values: Record<string, any> | null; created_at: string; profiles: { full_name: string } | null }[]>([]);
+  const [loadingItemHistory, setLoadingItemHistory] = useState(false);
   const [selectedItemForTake, setSelectedItemForTake] = useState<Item | null>(null);
   const [selectedItemForStockOut, setSelectedItemForStockOut] = useState<Item | null>(null);
+  const [documentPreview, setDocumentPreview] = useState<{ url: string; name: string } | null>(null);
+  const [actionMenu, setActionMenu] = useState<{ itemId: string; top: number; left: number } | null>(null);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [auditHistory, setAuditHistory] = useState<{ id: string; note_audit: string; tanggal_audit: string | null; audited_by: string | null; created_at: string }[]>([]);
+  const [loadingAuditHistory, setLoadingAuditHistory] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -137,7 +147,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     kode_lokasi: '',
     kategori_id: '',
     kepemilikan_id: '',
-    sifat_barang: 'PRIVATE' as 'PRIVATE' | 'OFFICE',
+    sifat_barang: 'PRIVATE' as 'PRIVATE' | 'OFFICE' | 'REUSABLE',
     deskripsi: '',
     kelengkapan_garansi: false,
     kelengkapan_sertifikat: false,
@@ -170,7 +180,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [kepemilikanList, setKepemilikanList] = useState<any[]>([]);
   const [filterKategori, setFilterKategori] = useState('');
   const [filterKepemilikan, setFilterKepemilikan] = useState('');
-  const [filterSifat, setFilterSifat] = useState<'' | 'PRIVATE' | 'OFFICE'>('');
+  const [filterSifat, setFilterSifat] = useState<'' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'>('');
   const [flagInput, setFlagInput] = useState('');
   const [flagCatalog, setFlagCatalog] = useState<FlagDef[]>([]);
   const [filterFlag, setFilterFlag] = useState('');
@@ -179,12 +189,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [savingNewFlag, setSavingNewFlag] = useState(false);
   const [activeFilterPanel, setActiveFilterPanel] = useState<'' | 'kategori' | 'lokasi' | 'kepemilikan'>('');
   const [filterPemusnahan, setFilterPemusnahan] = useState(false);
+  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
 
   const [bulkEditData, setBulkEditData] = useState({
     kode_lokasi: '',
     kategori_id: '',
     kepemilikan_id: '',
-    sifat_barang: '' as '' | 'PRIVATE' | 'OFFICE',
+    sifat_barang: '' as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE',
     jumlah_barang: -1, // -1 means no change
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -202,8 +213,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const topScrollbarRef = useRef<HTMLDivElement>(null);
   const [tableContentWidth, setTableContentWidth] = useState(0);
 
-  // TEMPORARY DIAGNOSTIC: dimatikan sementara untuk memastikan apakah hook ini
-  // penyebab modal/tombol hilang sendiri. Aktifkan lagi setelah dikonfirmasi.
+  // DIMATIKAN SEMENTARA: 3 pendekatan berbeda untuk fitur "tombol Kembali
+  // menutup modal" sama-sama menyebabkan modal Edit Barang hilang sendiri.
+  // Nonaktifkan dulu supaya alur Edit Barang tetap berfungsi normal sampai
+  // akar masalahnya benar-benar ditemukan.
   // useModalBackButton(isModalOpen, () => setIsModalOpen(false));
   // useModalBackButton(isDetailModalOpen, () => setIsDetailModalOpen(false));
   // useModalBackButton(isTakeItemModalOpen, () => setIsTakeItemModalOpen(false));
@@ -254,6 +267,54 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     fetchKepemilikan();
     fetchFlagCatalog();
   }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterFlag, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
+
+  useEffect(() => {
+    fetchPendingApprovalCounts();
+  }, [profile?.role]);
+
+  async function fetchPendingApprovalCounts() {
+    const role = profile?.role;
+    if (!role) return;
+
+    // Setiap role cuma "punya" satu tahap yang bisa dia proses di masing-masing
+    // alur — hitung berapa pengajuan yang lagi nunggu tahap itu.
+    const disposalStageByRole: Record<string, string> = {
+      auditor: 'PENDING_AUDITOR',
+      spv: 'PENDING_SPV',
+      direktur: 'PENDING_DIREKTUR',
+    };
+    const spkStageByRole: Record<string, string> = {
+      admin: 'PENDING_ADMIN',
+      auditor: 'PENDING_AUDITOR',
+      spv: 'PENDING_SPV',
+    };
+
+    try {
+      const disposalStage = disposalStageByRole[role];
+      if (disposalStage) {
+        const { count } = await supabase
+          .from('disposal_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', disposalStage);
+        setPendingDisposalCount(count || 0);
+      } else {
+        setPendingDisposalCount(0);
+      }
+
+      const spkStage = spkStageByRole[role];
+      if (spkStage) {
+        const { count } = await supabase
+          .from('spk_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', spkStage);
+        setPendingSPKCount(count || 0);
+      } else {
+        setPendingSPKCount(0);
+      }
+    } catch (err) {
+      console.error('Error fetching pending approval counts:', err);
+    }
+  }
 
   async function fetchFlagCatalog() {
     try {
@@ -521,14 +582,34 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     setIsDetailModalOpen(true);
   };
 
-  const handleOpenDocument = async (e: React.MouseEvent, docUrl: string | null | undefined) => {
+  const handleOpenDocument = async (e: React.MouseEvent, docUrl: string | null | undefined, label: string = 'Dokumen') => {
     e.preventDefault();
     if (!docUrl) return;
     const signedUrl = await getSignedUrl('item-documents', docUrl);
     if (signedUrl) {
-      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+      const extMatch = docUrl.match(/\.[a-zA-Z0-9]+(\?|$)/);
+      const ext = extMatch ? extMatch[0].replace('?', '') : '';
+      setDocumentPreview({ url: signedUrl, name: `${label}${ext}` });
     } else {
       showToast('Gagal membuka dokumen', 'error');
+    }
+  };
+
+  const handleDownloadDocument = async () => {
+    if (!documentPreview) return;
+    try {
+      const response = await fetch(documentPreview.url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = documentPreview.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      showToast('Gagal mengunduh dokumen', 'error');
     }
   };
 
@@ -536,6 +617,88 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     const signedMap = await getSignedUrls('item-photos', images);
     setCarouselImages(images.map((url) => signedMap[url] || url));
     setCurrentCarouselIndex(index);
+  };
+
+  const handleOpenItemHistory = async (item: Item) => {
+    setIsItemHistoryModalOpen(true);
+    setLoadingItemHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('item_audit_logs')
+        .select('id, action, old_values, new_values, created_at, profiles(full_name)')
+        .eq('item_id', item.id)
+        .order('created_at', { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      setItemHistoryLogs((data as any) || []);
+    } catch (err) {
+      console.error('Error fetching item history:', err);
+      setItemHistoryLogs([]);
+    } finally {
+      setLoadingItemHistory(false);
+    }
+  };
+
+  // id/created_at/updated_at gak berarti buat ditampilkan sebagai "perubahan" ke
+  // user — updated_at khususnya selalu berubah tiap kali item disimpan.
+  const TECHNICAL_DIFF_KEYS = ['id', 'created_at', 'updated_at'];
+
+  const HISTORY_FIELD_LABELS: Record<string, string> = {
+    kode_barang: 'Kode Barang',
+    nama_barang: 'Nama Barang',
+    jumlah_barang: 'Jumlah Barang',
+    kode_lokasi: 'Lokasi',
+    kategori_id: 'Kategori',
+    kepemilikan_id: 'Kepemilikan',
+    sifat_barang: 'Sifat Barang',
+    kondisi_barang: 'Kondisi Barang',
+    deskripsi: 'Deskripsi',
+    foto_urls: 'Foto',
+    flags: 'Flags',
+    kelengkapan_garansi: 'Kelengkapan Garansi',
+    dokumen_garansi_url: 'Dokumen Garansi',
+    kelengkapan_sertifikat: 'Kelengkapan Sertifikat',
+    dokumen_sertifikat_url: 'Dokumen Sertifikat',
+    kelengkapan_manual: 'Kelengkapan Manual',
+    dokumen_manual_url: 'Dokumen Manual',
+    note_audit: 'Hasil Audit',
+    tanggal_audit: 'Tanggal Audit',
+    keterangan_restore: 'Keterangan Restore',
+  };
+  const HISTORY_FIELD_ORDER = Object.keys(HISTORY_FIELD_LABELS);
+
+  const formatHistoryValue = (key: string, value: any): string => {
+    if (value === undefined || value === null || value === '') return '-';
+    if (key === 'kode_lokasi') return availableLocations.find(l => l.kode_lokasi === value)?.nama_lokasi || value;
+    if (key === 'kategori_id') return categories.find(c => c.id === value)?.nama_kategori || value;
+    if (key === 'kepemilikan_id') return kepemilikanList.find(k => k.id === value)?.nama_pemilik || value;
+    if (key === 'foto_urls') return Array.isArray(value) ? `${value.length} foto` : '-';
+    if (key === 'flags' && Array.isArray(value)) return value.length > 0 ? value.join(', ') : '-';
+    if (key === 'tanggal_audit') return new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (key === 'kelengkapan_garansi' || key === 'kelengkapan_sertifikat' || key === 'kelengkapan_manual') {
+      return value === true ? 'Ya' : value === false ? 'Tidak' : '-';
+    }
+    if (key === 'dokumen_garansi_url' || key === 'dokumen_sertifikat_url' || key === 'dokumen_manual_url') {
+      return value ? 'Ada' : '-';
+    }
+    return String(value);
+  };
+
+  const getFieldChanges = (oldValues: Record<string, any> | null, newValues: Record<string, any> | null) => {
+    if (!oldValues || !newValues) return [];
+    const allKeys = Array.from(new Set([...Object.keys(oldValues), ...Object.keys(newValues)]))
+      .filter(key => !TECHNICAL_DIFF_KEYS.includes(key));
+    const orderedKeys = [
+      ...HISTORY_FIELD_ORDER.filter(key => allKeys.includes(key)),
+      ...allKeys.filter(key => !HISTORY_FIELD_ORDER.includes(key)),
+    ];
+    return orderedKeys
+      .filter(key => JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key]))
+      .map(key => ({
+        label: HISTORY_FIELD_LABELS[key] || key,
+        oldDisplay: formatHistoryValue(key, oldValues[key]),
+        newDisplay: formatHistoryValue(key, newValues[key]),
+      }));
   };
 
   const handleTakeItem = (item: Item) => {
@@ -740,6 +903,23 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }
   };
 
+  const fetchAuditHistory = async (itemId: string) => {
+    setLoadingAuditHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('item_audit_history')
+        .select('*')
+        .eq('item_id', itemId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setAuditHistory(data || []);
+    } catch (err) {
+      console.error('Error fetching audit history:', err);
+    } finally {
+      setLoadingAuditHistory(false);
+    }
+  };
+
   const handleOpenModal = async (item?: Item) => {
     if (profile?.role !== 'admin' && profile?.role !== 'auditor') {
       showToast('Akses Ditolak: Anda tidak memiliki izin untuk melakukan aksi ini', 'error');
@@ -778,6 +958,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       setDocGaransiFile(null);
       setDocSertifikatFile(null);
       setDocManualFile(null);
+      setAuditHistory([]);
+      if (profile?.role === 'auditor') {
+        fetchAuditHistory(item.id);
+      }
     } else {
       setEditingItem(null);
       const nextKode = await generateNextKodeBarang();
@@ -814,6 +998,37 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     setIsModalOpen(true);
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Kode Barang': 'BRG-00001',
+        'Nama Barang': 'Contoh Nama Barang',
+        'Jumlah': 10,
+        'Deskripsi': 'Deskripsi singkat barang',
+        'Lokasi': 'Gudang A',
+        'Kategori': 'Elektronik',
+        'Kepemilikan': 'Ibu Medelin',
+        'Status Barang': 'PRIVATE',
+        'Kondisi Barang': 'BAIK',
+      },
+    ];
+    const headers = Object.keys(templateData[0]);
+    const ws = XLSXStyle.utils.json_to_sheet(templateData);
+    const headerStyle = {
+      fill: { fgColor: { rgb: '3D2C44' } },
+      font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 11 },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    };
+    headers.forEach((_, colIdx) => {
+      const cellRef = XLSXStyle.utils.encode_cell({ r: 0, c: colIdx });
+      if (ws[cellRef]) ws[cellRef].s = headerStyle;
+    });
+    ws['!cols'] = headers.map((h) => ({ wch: Math.min(Math.max(h.length + 3, 14), 40) }));
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Template Import');
+    XLSXStyle.writeFile(wb, 'Template_Import_Master_Barang.xlsx');
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -828,13 +1043,27 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-        const previewData = data.map(row => ({
-          kode_barang: row['Kode Barang'] || row['kode_barang'] || `BRG-${Math.floor(10000 + Math.random() * 90000)}`,
-          nama_barang: row['Nama Barang'] || row['nama_barang'],
-          jumlah_barang: parseInt(row['Jumlah'] || row['jumlah_barang']) || 0,
-          deskripsi: row['Deskripsi'] || row['deskripsi'] || '',
-          nama_lokasi: row['Lokasi'] || row['lokasi'] || '', // Temporary store name
-        })).filter(item => item.nama_barang);
+        const validSifatBarang = ['OFFICE', 'PRIVATE', 'REUSABLE'];
+        const validKondisiBarang = ['BAIK', 'CUKUP BAIK', 'RUSAK'];
+
+        const previewData = data.map(row => {
+          const sifatRaw = String(row['Status Barang'] || row['sifat_barang'] || '').toUpperCase().trim();
+          const kondisiRaw = String(row['Kondisi Barang'] || row['kondisi_barang'] || '').toUpperCase().trim();
+          return {
+            // Dikosongkan kalau tidak diisi di Excel — nomornya dibuat berurutan
+            // oleh sistem (bukan acak) saat konfirmasi import, supaya tidak
+            // lompat-lompat.
+            kode_barang: row['Kode Barang'] || row['kode_barang'] || '',
+            nama_barang: row['Nama Barang'] || row['nama_barang'],
+            jumlah_barang: parseInt(row['Jumlah'] || row['jumlah_barang']) || 0,
+            deskripsi: row['Deskripsi'] || row['deskripsi'] || '',
+            nama_lokasi: row['Lokasi'] || row['lokasi'] || '', // Temporary store name
+            nama_kategori: row['Kategori'] || row['kategori'] || '', // Temporary store name
+            nama_kepemilikan: row['Kepemilikan'] || row['kepemilikan'] || '', // Temporary store name
+            sifat_barang: validSifatBarang.includes(sifatRaw) ? sifatRaw : 'PRIVATE',
+            kondisi_barang: validKondisiBarang.includes(kondisiRaw) ? kondisiRaw : '',
+          };
+        }).filter(item => item.nama_barang);
 
         if (previewData.length === 0) {
           showToast('Tidak ada data valid untuk diimport', 'error');
@@ -856,9 +1085,32 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const handleConfirmImport = async () => {
     setImportLoading(true);
     try {
+      // 0. Kode Barang otomatis (berurutan, bukan acak) untuk baris yang
+      // dikosongkan di Excel — dihitung sekali dari nomor tertinggi yang ada,
+      // lalu diberikan berurutan supaya tidak ada nomor yang lompat/bentrok
+      // antar baris dalam satu batch import ini.
+      const rowsNeedingAutoCode = importPreviewData.filter(item => !item.kode_barang).length;
+      let nextCodeNumber = 1;
+      if (rowsNeedingAutoCode > 0) {
+        const { data: existingCodes } = await supabase.from('items').select('kode_barang').ilike('kode_barang', 'BRG-%');
+        let maxNumber = 0;
+        (existingCodes || []).forEach((item: any) => {
+          const match = item.kode_barang.match(/^BRG-(\d+)$/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNumber) maxNumber = num;
+          }
+        });
+        nextCodeNumber = maxNumber + 1;
+      }
+      const previewDataWithCode = importPreviewData.map(item => ({
+        ...item,
+        kode_barang: item.kode_barang || `BRG-${nextCodeNumber++}`,
+      }));
+
       // 1. Handle locations
       const uniqueLocationNames = Array.from(new Set(importPreviewData.map(item => item.nama_lokasi).filter(Boolean))) as string[];
-      
+
       // Fetch existing locations
       const { data: existingLocs } = await supabase.from('master_lokasi').select('*');
       const locMap = new Map((existingLocs || []).map(l => [l.nama_lokasi.toLowerCase(), l.kode_lokasi]));
@@ -872,10 +1124,38 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         }
       }
 
-      // 2. Map items to use kode_lokasi
-      const itemsToInsert = importPreviewData.map(({ nama_lokasi, ...rest }) => ({
+      // 2. Handle categories
+      const uniqueCategoryNames = Array.from(new Set(importPreviewData.map(item => item.nama_kategori).filter(Boolean))) as string[];
+      const { data: existingCats } = await supabase.from('categories').select('id, nama_kategori');
+      const catMap = new Map((existingCats || []).map(c => [c.nama_kategori.toLowerCase(), c.id]));
+      for (const name of uniqueCategoryNames) {
+        if (!catMap.has(name.toLowerCase())) {
+          const { data: newCat, error: catError } = await supabase.from('categories').insert([{ nama_kategori: name }]).select('id').single();
+          if (!catError && newCat) catMap.set(name.toLowerCase(), newCat.id);
+        }
+      }
+
+      // 3. Handle kepemilikan
+      const uniqueKepemilikanNames = Array.from(new Set(importPreviewData.map(item => item.nama_kepemilikan).filter(Boolean))) as string[];
+      const { data: existingKep } = await supabase.from('master_kepemilikan').select('id, nama_pemilik');
+      const kepMap = new Map((existingKep || []).map(k => [k.nama_pemilik.toLowerCase(), k.id]));
+      for (const name of uniqueKepemilikanNames) {
+        if (!kepMap.has(name.toLowerCase())) {
+          const { data: newKep, error: kepError } = await supabase.from('master_kepemilikan').insert([{ nama_pemilik: name }]).select('id').single();
+          if (!kepError && newKep) kepMap.set(name.toLowerCase(), newKep.id);
+        }
+      }
+
+      // 4. Map items ke kode_lokasi/kategori_id/kepemilikan_id — foto_urls
+      // sengaja dikosongkan karena Excel tidak bisa membawa file foto;
+      // barang hasil import perlu dilengkapi fotonya lewat Edit Barang.
+      const itemsToInsert = previewDataWithCode.map(({ nama_lokasi, nama_kategori, nama_kepemilikan, kondisi_barang, ...rest }) => ({
         ...rest,
-        kode_lokasi: locMap.get(nama_lokasi.toLowerCase()) || null
+        kode_lokasi: nama_lokasi ? (locMap.get(nama_lokasi.toLowerCase()) || null) : null,
+        kategori_id: nama_kategori ? (catMap.get(nama_kategori.toLowerCase()) || null) : null,
+        kepemilikan_id: nama_kepemilikan ? (kepMap.get(nama_kepemilikan.toLowerCase()) || null) : null,
+        kondisi_barang: kondisi_barang || null,
+        foto_urls: [],
       }));
 
       const { error } = await supabase.from('items').insert(itemsToInsert);
@@ -1445,6 +1725,24 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           }
         }
 
+        // Catat hasil audit ini ke riwayat (bukan cuma menimpa nilai terakhir
+        // di kolom items.note_audit/tanggal_audit) supaya histori audit
+        // sebelumnya tetap tersimpan dan bisa ditampilkan.
+        if (formData.note_audit &&
+            (formData.note_audit !== (editingItem.note_audit || '') ||
+             formData.tanggal_audit !== (editingItem.tanggal_audit || ''))) {
+          try {
+            await supabase.from('item_audit_history').insert({
+              item_id: editingItem.id,
+              note_audit: formData.note_audit,
+              tanggal_audit: formData.tanggal_audit || null,
+              audited_by: profile?.full_name || null,
+            });
+          } catch (histErr) {
+            console.error('Gagal mencatat riwayat audit:', histErr);
+          }
+        }
+
         showToast('Barang berhasil diperbarui', 'success');
       } else {
         const { error } = await supabase
@@ -1548,26 +1846,53 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         <div className="flex flex-wrap items-center gap-3">
           {profile?.role === 'admin' && (
             <>
-              <label className="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium cursor-pointer">
-                {importLoading ? <Loader2 className="animate-spin" size={20} /> : <FileSpreadsheet size={20} />}
-                <span>Import Excel</span>
-                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
-              </label>
-              <button
-                onClick={handlePrepareExport}
-                className="flex items-center justify-center space-x-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
-              >
-                <FileSpreadsheet size={20} />
-                <span>Export Excel</span>
-              </button>
-              <button
-                onClick={handleExportPDF}
-                disabled={isExportingPDF}
-                className="flex items-center justify-center space-x-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
-              >
-                {isExportingPDF ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
-                <span>Export PDF</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
+                  className="flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
+                >
+                  <FileSpreadsheet size={20} />
+                  <span>Excel &amp; PDF</span>
+                  <ChevronDown size={16} className={cn("transition-transform", isFileMenuOpen && "rotate-180")} />
+                </button>
+                {isFileMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsFileMenuOpen(false)} />
+                    <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                      <button
+                        onClick={() => { handleDownloadTemplate(); setIsFileMenuOpen(false); }}
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Download size={16} className="text-gray-400" />
+                        <span>Download Template</span>
+                      </button>
+                      <label
+                        onClick={() => setIsFileMenuOpen(false)}
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
+                        <span>Import Excel</span>
+                        <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
+                      </label>
+                      <button
+                        onClick={() => { handlePrepareExport(); setIsFileMenuOpen(false); }}
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <FileSpreadsheet size={16} className="text-emerald-600" />
+                        <span>Export Excel</span>
+                      </button>
+                      <button
+                        onClick={() => { handleExportPDF(); setIsFileMenuOpen(false); }}
+                        disabled={isExportingPDF}
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        {isExportingPDF ? <Loader2 size={16} className="animate-spin text-red-500" /> : <FileText size={16} className="text-red-500" />}
+                        <span>Export PDF</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
               <button
                 onClick={() => handleOpenModal()}
                 className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
@@ -1635,12 +1960,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         <div className="md:w-44 shrink-0">
           <select
             value={filterSifat}
-            onChange={(e) => { setFilterSifat(e.target.value as '' | 'PRIVATE' | 'OFFICE'); setPage(1); }}
+            onChange={(e) => { setFilterSifat(e.target.value as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'); setPage(1); }}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none bg-white font-medium"
           >
             <option value="">Semua Status</option>
             <option value="OFFICE">OFFICE</option>
             <option value="PRIVATE">PRIVATE</option>
+            <option value="REUSABLE">REUSABLE</option>
           </select>
         </div>
 
@@ -1842,20 +2168,30 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
             <button
               onClick={() => setIsApprovalListModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+              className="relative flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
             >
               <ClipboardList size={18} />
               <span>Persetujuan Pemusnahan</span>
+              {pendingDisposalCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full border-2 border-white shadow-sm">
+                  {pendingDisposalCount > 99 ? '99+' : pendingDisposalCount}
+                </span>
+              )}
             </button>
           )}
 
           {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
             <button
               onClick={() => setIsSPKApprovalListModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+              className="relative flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
             >
               <ClipboardList size={18} />
               <span>Persetujuan SPK</span>
+              {pendingSPKCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full border-2 border-white shadow-sm">
+                  {pendingSPKCount > 99 ? '99+' : pendingSPKCount}
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -1898,14 +2234,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                <th className="px-6 py-4 w-10">
+                <th className="px-2 py-3 w-10">
                   <button onClick={toggleSelectAll} className="text-gray-400 hover:text-blue-600 transition-colors">
                     {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
                   </button>
                 </th>
-                <th className="px-6 py-4">Foto</th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
+                <th className="px-3 py-3">Foto</th>
+                <th
+                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
                   onClick={() => handleSort('kode_barang')}
                 >
                   <div className="flex items-center space-x-1">
@@ -1917,8 +2253,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
+                <th
+                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
                   onClick={() => handleSort('nama_barang')}
                 >
                   <div className="flex items-center space-x-1">
@@ -1930,9 +2266,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-4">Deskripsi</th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
+                <th className="px-3 py-3">Deskripsi</th>
+                <th
+                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
                   onClick={() => handleSort('kode_lokasi')}
                 >
                   <div className="flex items-center space-x-1">
@@ -1944,14 +2280,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-4">Kategori</th>
-                <th className="px-6 py-4">Kepemilikan</th>
-                <th className="px-6 py-4">Flags</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Kondisi</th>
-                <th className="px-6 py-4">Kelengkapan Dokumen</th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
+                <th className="px-3 py-3">Kategori</th>
+                <th className="px-3 py-3">Kepemilikan</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3">Kondisi</th>
+                <th className="px-3 py-3">Dokumen</th>
+                <th
+                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
                   onClick={() => handleSort('jumlah_barang')}
                 >
                   <div className="flex items-center space-x-1">
@@ -1963,21 +2298,20 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-4">Hasil Audit</th>
-                <th className="px-6 py-4 text-right">Aksi</th>
+                <th className="px-3 py-3 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={15} className="px-6 py-12 text-center">
+                  <td colSpan={13} className="px-6 py-12 text-center">
                     <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
                     <p className="text-gray-500">Memuat data...</p>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="px-6 py-12 text-center">
+                  <td colSpan={13} className="px-6 py-12 text-center">
                     <Package className="mx-auto text-gray-300 mb-2" size={48} />
                     <p className="text-gray-500">Tidak ada barang ditemukan</p>
                   </td>
@@ -1988,97 +2322,77 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     "hover:bg-gray-50 transition-colors group cursor-pointer",
                     selectedItems.includes(item.id) && "bg-blue-50/50"
                   )} onClick={() => handleShowDetail(item)}>
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => toggleSelectItem(item.id)} className="text-gray-400 hover:text-blue-600 transition-colors">
                         {selectedItems.includes(item.id) ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex -space-x-6 overflow-hidden py-2">
+                    <td className="px-3 py-3">
+                      <div className="flex -space-x-5 overflow-hidden py-1">
                         {item.foto_urls && item.foto_urls.length > 0 ? (
                           <>
-                            {item.foto_urls.slice(0, 3).map((url, idx) => (
+                            {item.foto_urls.slice(0, 2).map((url, idx) => (
                               <SignedImage
                                 key={idx}
                                 bucket="item-photos"
                                 path={url}
                                 alt={`${item.nama_barang} ${idx + 1}`}
-                                className="w-20 h-20 shrink-0 rounded-xl object-cover border-2 border-white shadow-md cursor-zoom-in hover:z-10 transition-transform hover:scale-110"
+                                className="w-16 h-16 shrink-0 rounded-lg object-cover border-2 border-white shadow-md cursor-zoom-in hover:z-10 transition-transform hover:scale-110"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenCarousel(item.foto_urls, idx);
                                 }}
                               />
                             ))}
-                            {item.foto_urls.length > 3 && (
-                              <div className="w-20 h-20 shrink-0 rounded-xl bg-gray-100 border-2 border-white flex items-center justify-center text-sm font-bold text-gray-500 shadow-md">
-                                +{item.foto_urls.length - 3}
+                            {item.foto_urls.length > 2 && (
+                              <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-bold text-gray-500 shadow-md">
+                                +{item.foto_urls.length - 2}
                               </div>
                             )}
                           </>
                         ) : (
-                          <div className="w-20 h-20 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-100 shadow-sm">
-                            <ImageIcon size={32} />
+                          <div className="w-16 h-16 shrink-0 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-200 shadow-sm" title="Belum ada foto">
+                            <AlertTriangle size={18} />
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-xs text-gray-600">{item.kode_barang}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 truncate max-w-[220px]" title={item.nama_barang}>{item.nama_barang}</div>
+                    <td className="px-3 py-3 font-mono text-xs text-gray-600">{item.kode_barang}</td>
+                    <td className="px-3 py-3">
+                      <div className="text-sm font-medium text-gray-900">{item.nama_barang}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-xs text-gray-500 truncate max-w-[200px]">{item.deskripsi || '-'}</div>
+                    <td className="px-3 py-3">
+                      <div className="text-xs text-gray-500">{item.deskripsi || '-'}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                    <td className="px-3 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                         {(item as any).master_lokasi?.nama_lokasi || 'Unassigned'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
+                    <td className="px-3 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
                         {(item as any).categories?.nama_kategori || 'Tanpa Kategori'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <span className="text-xs text-gray-600">
                         {(item as any).master_kepemilikan?.nama_pemilik || '-'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      {item.flags && item.flags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 max-w-[160px]">
-                          {item.flags.slice(0, 2).map((flag) => {
-                            const { classes, Icon } = getFlagStyle(flag);
-                            return (
-                              <span key={flag} className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border", classes)}>
-                                <Icon size={9} className="shrink-0" />
-                                {flag}
-                              </span>
-                            );
-                          })}
-                          {item.flags.length > 2 && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-500 border border-gray-200">
-                              +{item.flags.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-300">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <span className={cn(
-                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                        item.sifat_barang === 'OFFICE' ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-purple-50 text-purple-700 border-purple-200"
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
+                        item.sifat_barang === 'OFFICE' ? "bg-sky-50 text-sky-700 border-sky-200" :
+                        item.sifat_barang === 'REUSABLE' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                        "bg-purple-50 text-purple-700 border-purple-200"
                       )}>
                         {item.sifat_barang || 'PRIVATE'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       {item.kondisi_barang ? (
                         <span className={cn(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
                           item.kondisi_barang === 'BAIK' ? "bg-green-50 text-green-700 border-green-200" :
                           item.kondisi_barang === 'CUKUP BAIK' ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
                           item.kondisi_barang === 'RUSAK' ? "bg-red-50 text-red-700 border-red-200" : ""
@@ -2089,20 +2403,42 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         <span className="text-gray-400 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${item.kelengkapan_garansi ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                           Garansi
-                         </span>
-                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${item.kelengkapan_sertifikat ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                           Sertifikat
-                         </span>
-                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${item.kelengkapan_manual ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                           Manual Book
-                         </span>
-                      </div>
+                    <td className="px-3 py-3">
+                      {(item.dokumen_garansi_url || item.dokumen_sertifikat_url || item.dokumen_manual_url) ? (
+                        <div className="flex flex-col gap-1 items-start">
+                          {item.dokumen_garansi_url && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_garansi_url, `${item.kode_barang} - Garansi`); }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              <FileText size={10} />
+                              Garansi
+                            </button>
+                          )}
+                          {item.dokumen_sertifikat_url && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_sertifikat_url, `${item.kode_barang} - Sertifikat`); }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              <FileText size={10} />
+                              Sertifikat
+                            </button>
+                          )}
+                          {item.dokumen_manual_url && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_manual_url, `${item.kode_barang} - Manual Book`); }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              <FileText size={10} />
+                              Manual
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">-</span>
+                      )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <div className={cn(
                         "text-sm font-bold",
                         item.jumlah_barang <= 5 ? "text-red-600" : "text-gray-900"
@@ -2110,79 +2446,74 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         {item.jumlah_barang}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      {item.note_audit ? (
-                        <div>
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                            item.note_audit === 'ADA' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
-                          )}>
-                            {item.note_audit}
-                          </span>
-                          {item.tanggal_audit && (
-                            <div className="text-[10px] text-gray-400 mt-1">
-                              {new Date(item.tanggal_audit).toLocaleDateString('id-ID')}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-300">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="grid grid-cols-2 gap-1 w-max ml-auto">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (setHistorySearch) {
-                              setHistorySearch(item.kode_barang);
-                              navigate('/log-item-change');
-                            }
-                          }}
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center"
-                          title="Lihat Riwayat"
-                        >
-                          <History size={18} />
-                        </button>
-                        {profile?.role === 'admin' || profile?.role === 'auditor' ? (
-                          <>
-                            {profile?.role === 'admin' && (
+                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setActionMenu(actionMenu?.itemId === item.id ? null : {
+                            itemId: item.id,
+                            top: rect.bottom + 4,
+                            left: Math.max(8, rect.right - 192),
+                          });
+                        }}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+                      >
+                        <span>Aksi</span>
+                        <ChevronDown size={14} className={cn("transition-transform", actionMenu?.itemId === item.id && "rotate-180")} />
+                      </button>
+                      {actionMenu?.itemId === item.id && createPortal(
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setActionMenu(null)} />
+                          <div
+                            className="fixed w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                            style={{ top: actionMenu.top, left: actionMenu.left }}
+                          >
+                            <button
+                              onClick={() => {
+                                setActionMenu(null);
+                                if (setHistorySearch) {
+                                  setHistorySearch(item.kode_barang);
+                                  navigate('/log-item-change');
+                                }
+                              }}
+                              className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <History size={16} className="text-indigo-600 shrink-0" />
+                              <span>Lihat Riwayat</span>
+                            </button>
+                            {(profile?.role === 'admin' || profile?.role === 'auditor') && (
                               <>
+                                {profile?.role === 'admin' && (
+                                  <>
+                                    <button
+                                      onClick={() => { setActionMenu(null); handleStockOut(item); }}
+                                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                      <Archive size={16} className="text-red-600 shrink-0" />
+                                      <span>Keluarkan Barang</span>
+                                    </button>
+                                    <button
+                                      onClick={() => { setActionMenu(null); handleTakeItem(item); }}
+                                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                      <LogOut size={16} className="text-orange-600 shrink-0" />
+                                      <span>Ambil Barang</span>
+                                    </button>
+                                  </>
+                                )}
                                 <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStockOut(item);
-                                  }}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center"
-                                  title="Keluarkan Barang"
+                                  onClick={() => { setActionMenu(null); handleOpenModal(item); }}
+                                  className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
-                                  <Archive size={18} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTakeItem(item);
-                                  }}
-                                  className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors flex items-center justify-center"
-                                  title="Ambil Barang"
-                                >
-                                  <LogOut size={18} />
+                                  <Edit2 size={16} className="text-blue-600 shrink-0" />
+                                  <span>Edit</span>
                                 </button>
                               </>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenModal(item);
-                              }}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center"
-                              title="Edit"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
+                          </div>
+                        </>,
+                        document.body
+                      )}
                     </td>
                   </tr>
                 ))
@@ -2379,7 +2710,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Status Barang <span className="text-red-500">*</span></label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.sifat_barang === 'OFFICE' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <input
                           type="radio"
@@ -2387,7 +2718,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           value="OFFICE"
                           disabled={profile?.role === 'auditor'}
                           checked={formData.sifat_barang === 'OFFICE'}
-                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' })}
+                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' | 'REUSABLE' })}
                           className="sr-only"
                         />
                         <span className="text-sm font-medium">OFFICE</span>
@@ -2399,10 +2730,22 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           value="PRIVATE"
                           disabled={profile?.role === 'auditor'}
                           checked={formData.sifat_barang === 'PRIVATE'}
-                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' })}
+                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' | 'REUSABLE' })}
                           className="sr-only"
                         />
                         <span className="text-sm font-medium">PRIVATE</span>
+                      </label>
+                      <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.sifat_barang === 'REUSABLE' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input
+                          type="radio"
+                          name="sifat_barang"
+                          value="REUSABLE"
+                          disabled={profile?.role === 'auditor'}
+                          checked={formData.sifat_barang === 'REUSABLE'}
+                          onChange={(e) => setFormData({ ...formData, sifat_barang: e.target.value as 'PRIVATE' | 'OFFICE' | 'REUSABLE' })}
+                          className="sr-only"
+                        />
+                        <span className="text-sm font-medium">REUSABLE</span>
                       </label>
                     </div>
                   </div>
@@ -2853,6 +3196,42 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       Tanggal audit: {new Date(formData.tanggal_audit).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                   )}
+
+                  {editingItem && (
+                    <div className="mt-4 pt-3 border-t border-blue-100">
+                      <h5 className="flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">
+                        <History size={13} />
+                        Riwayat Audit
+                      </h5>
+                      {loadingAuditHistory ? (
+                        <div className="flex items-center text-xs text-gray-400 py-2">
+                          <Loader2 size={14} className="animate-spin mr-1.5" />
+                          Memuat riwayat...
+                        </div>
+                      ) : auditHistory.length === 0 ? (
+                        <p className="text-xs text-gray-400">Belum ada riwayat audit sebelumnya.</p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                          {auditHistory.map((h) => (
+                            <div key={h.id} className="flex items-center justify-between text-xs bg-white border border-blue-100 rounded-lg px-2.5 py-1.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={cn(
+                                  "px-1.5 py-0.5 rounded-full font-semibold border shrink-0",
+                                  h.note_audit === 'ADA' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
+                                )}>
+                                  {h.note_audit}
+                                </span>
+                                <span className="text-gray-500 truncate">{h.audited_by || 'Auditor'}</span>
+                              </div>
+                              <span className="text-gray-400 shrink-0 ml-2">
+                                {new Date(h.tanggal_audit || h.created_at).toLocaleDateString('id-ID')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2942,12 +3321,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Status Barang</label>
                 <select
                   value={bulkEditData.sifat_barang}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, sifat_barang: e.target.value as '' | 'PRIVATE' | 'OFFICE' })}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, sifat_barang: e.target.value as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                 >
                   <option value="">Jangan Ubah Status</option>
                   <option value="OFFICE">OFFICE</option>
                   <option value="PRIVATE">PRIVATE</option>
+                  <option value="REUSABLE">REUSABLE</option>
                 </select>
               </div>
               <div>
@@ -2998,25 +3378,39 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <X size={20} />
               </button>
             </div>
+            <div className="px-6 pt-4">
+              <div className="flex items-start space-x-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <span>Foto barang tidak bisa dibawa lewat Excel — barang hasil import ini akan tersimpan tanpa foto dulu. Silakan lengkapi foto masing-masing barang lewat Edit Barang setelah import selesai. Kode Barang yang dikosongkan di Excel akan dibuat otomatis oleh sistem secara berurutan.</span>
+              </div>
+            </div>
             <div className="flex-1 overflow-auto p-6 scrollbar-hide">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
                     <th className="pb-3">Kode</th>
                     <th className="pb-3">Nama Barang</th>
-                    <th className="pb-3">Deskripsi</th>
                     <th className="pb-3">Jumlah</th>
                     <th className="pb-3">Lokasi</th>
+                    <th className="pb-3">Kategori</th>
+                    <th className="pb-3">Kepemilikan</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3">Kondisi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {importPreviewData.map((row, idx) => (
                     <tr key={idx}>
-                      <td className="py-3 font-mono text-xs">{row.kode_barang}</td>
+                      <td className="py-3 font-mono text-xs">
+                        {row.kode_barang || <span className="italic text-gray-400 font-sans">(Otomatis)</span>}
+                      </td>
                       <td className="py-3 font-medium">{row.nama_barang}</td>
-                      <td className="py-3 text-xs text-gray-500 max-w-[200px] truncate" title={row.deskripsi}>{row.deskripsi || '-'}</td>
                       <td className="py-3">{row.jumlah_barang}</td>
-                      <td className="py-3">{row.nama_lokasi}</td>
+                      <td className="py-3">{row.nama_lokasi || '-'}</td>
+                      <td className="py-3">{row.nama_kategori || '-'}</td>
+                      <td className="py-3">{row.nama_kepemilikan || '-'}</td>
+                      <td className="py-3">{row.sifat_barang}</td>
+                      <td className="py-3">{row.kondisi_barang || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -3105,6 +3499,40 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="mt-4 text-white/70 text-sm font-medium">
               {currentCarouselIndex + 1} / {carouselImages.length}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {documentPreview && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-300"
+          onClick={() => setDocumentPreview(null)}
+        >
+          <div className="flex items-center justify-between px-4 py-3 bg-black/40 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <span className="text-white text-sm font-medium truncate pr-4">{documentPreview.name}</span>
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                onClick={handleDownloadDocument}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Download size={16} />
+                <span>Download</span>
+              </button>
+              <button
+                onClick={() => setDocumentPreview(null)}
+                className="p-1.5 text-white/70 hover:text-white transition-colors"
+              >
+                <X size={22} />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 p-2 sm:p-4 min-h-0" onClick={(e) => e.stopPropagation()}>
+            <iframe
+              src={`${documentPreview.url}#toolbar=0&navpanes=0`}
+              title={documentPreview.name}
+              className="w-full h-full bg-white rounded-lg shadow-2xl border-0"
+            />
           </div>
         </div>
       )}
@@ -3290,8 +3718,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                              Garansi: Ada
                            </span>
                            {selectedItemForDetail.dokumen_garansi_url && (
-                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_garansi_url)} className="text-[10px] text-blue-600 hover:underline px-1">
-                               ⬇ Download Garansi
+                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_garansi_url, `${selectedItemForDetail.kode_barang} - Garansi`)} className="text-[10px] text-blue-600 hover:underline px-1">
+                               Lihat Dokumen Garansi
                              </a>
                            )}
                          </div>
@@ -3307,8 +3735,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                              Sertifikat: Ada
                            </span>
                            {selectedItemForDetail.dokumen_sertifikat_url && (
-                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_sertifikat_url)} className="text-[10px] text-blue-600 hover:underline px-1">
-                               ⬇ Download Sertifikat
+                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_sertifikat_url, `${selectedItemForDetail.kode_barang} - Sertifikat`)} className="text-[10px] text-blue-600 hover:underline px-1">
+                               Lihat Dokumen Sertifikat
                              </a>
                            )}
                          </div>
@@ -3324,8 +3752,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                              Manual Book: Ada
                            </span>
                            {selectedItemForDetail.dokumen_manual_url && (
-                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_manual_url)} className="text-[10px] text-blue-600 hover:underline px-1">
-                               ⬇ Download Manual
+                             <a href="#" onClick={(e) => handleOpenDocument(e, selectedItemForDetail.dokumen_manual_url, `${selectedItemForDetail.kode_barang} - Manual Book`)} className="text-[10px] text-blue-600 hover:underline px-1">
+                               Lihat Dokumen Manual Book
                              </a>
                            )}
                          </div>
@@ -3377,6 +3805,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               >
                 Tutup
               </button>
+              <button
+                onClick={() => handleOpenItemHistory(selectedItemForDetail)}
+                className="px-6 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 bg-indigo-50 rounded-lg transition-colors flex items-center space-x-1.5"
+              >
+                <History size={15} />
+                <span>Riwayat</span>
+              </button>
               {profile?.role === 'admin' || profile?.role === 'auditor' ? (
                 <button
                   onClick={() => {
@@ -3395,6 +3830,80 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   <AlertCircle size={16} />
                   <span>Mode Lihat Saja</span>
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Item History Modal — riwayat perubahan singkat tanpa pindah halaman */}
+      {isItemHistoryModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsItemHistoryModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[80dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <History size={18} className="text-indigo-600" />
+                Riwayat Perubahan
+              </h3>
+              <button
+                onClick={() => setIsItemHistoryModalOpen(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              {loadingItemHistory ? (
+                <div className="flex items-center justify-center text-sm text-gray-400 py-8">
+                  <Loader2 size={18} className="animate-spin mr-2" />
+                  Memuat riwayat...
+                </div>
+              ) : itemHistoryLogs.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">Belum ada riwayat perubahan untuk barang ini.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {itemHistoryLogs.map((log) => (
+                    <div key={log.id} className="text-xs bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded-full font-semibold shrink-0",
+                            log.action === 'CREATE' ? "bg-green-100 text-green-700" :
+                            log.action === 'UPDATE' ? "bg-blue-100 text-blue-700" :
+                            "bg-gray-100 text-gray-700"
+                          )}>
+                            {log.action}
+                          </span>
+                          <span className="text-gray-500 truncate">{log.profiles?.full_name || 'Sistem'}</span>
+                        </div>
+                        <span className="text-gray-400 shrink-0 whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      {log.action === 'CREATE' ? (
+                        <p className="text-gray-600">Barang dibuat</p>
+                      ) : (
+                        <div className="space-y-0.5">
+                          {getFieldChanges(log.old_values, log.new_values).map((chg, idx) => (
+                            <p key={idx} className="text-gray-600 leading-relaxed">
+                              <span className="font-medium text-gray-500">{chg.label}:</span>{' '}
+                              <span className="text-gray-400">{chg.oldDisplay}</span>
+                              <span className="mx-1 text-gray-400">→</span>
+                              <span className="text-gray-900 font-medium">{chg.newDisplay}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -3810,6 +4319,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         onClose={() => {
           setIsApprovalListModalOpen(false);
           fetchItems();
+          fetchPendingApprovalCounts();
         }}
         profile={profile}
       />
@@ -3818,6 +4328,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         onClose={() => {
           setIsSPKApprovalListModalOpen(false);
           fetchItems();
+          fetchPendingApprovalCounts();
         }}
         profile={profile}
       />

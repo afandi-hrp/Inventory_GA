@@ -164,6 +164,13 @@ export default function ManageUsers() {
 
     setUploadingAvatar(true);
     try {
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Hanya file gambar (JPG/PNG/WEBP/GIF) yang diperbolehkan');
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Ukuran foto terlalu besar (Maks 10MB)');
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `avatars/${fileName}`;

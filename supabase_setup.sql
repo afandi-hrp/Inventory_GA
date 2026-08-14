@@ -1,10 +1,25 @@
 # Supabase Setup SQL
+#
+# CATATAN (hasil audit keamanan 2026-08-14): file ini adalah snapshot
+# historis, BUKAN sumber kebenaran untuk skema live saat ini. Skema live
+# sudah berkembang lewat SQL ad-hoc yang dijalankan langsung di Supabase SQL
+# Editor dan gak semuanya sempat dicatat balik ke file ini — misalnya tabel
+# disposal_requests, disposal_request_items, spk_requests, spk_request_items,
+# item_flag_defs, item_audit_history, master_lokasi, master_kepemilikan, dan
+# bucket storage item-documents sama sekali gak ada di file ini. CHECK
+# constraint role di bawah juga sudah diperbarui supaya cocok sama 6 role
+# yang beneran dipakai app (lihat src/types.ts), tapi ini cuma berlaku kalau
+# skrip dipakai buat bootstrap project BARU — CREATE TABLE IF NOT EXISTS
+# gak menyentuh tabel yang sudah ada di project live sekarang.
+#
+# Buat verifikasi 100% state live (RLS enabled + jumlah policy per tabel),
+# jalankan query terpisah yang dikasih di chat, bukan asumsi dari file ini.
 
 -- 1. Create Tables (if not exists)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   full_name TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+  role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user', 'auditor', 'spv', 'direktur', 'requester')),
   avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -164,9 +179,6 @@ CREATE POLICY "Authenticated users can insert history" ON take_item_history FOR 
 -- Item Audit Logs
 CREATE POLICY "Admins can view audit logs" ON item_audit_logs FOR SELECT TO authenticated USING (is_admin());
 
--- Force all existing users to admin for testing
-UPDATE profiles SET role = 'admin';
-
 -- Ensure authenticated users have necessary permissions
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
@@ -180,7 +192,12 @@ CREATE POLICY "Admins can manage settings" ON app_settings FOR ALL TO authentica
 
 -- 5. STORAGE POLICIES (Run these in SQL Editor)
 -- Ensure buckets exist first
-INSERT INTO storage.buckets (id, name, public) VALUES ('item-photos', 'item-photos', true) ON CONFLICT (id) DO NOTHING;
+-- item-photos & item-documents sengaja PRIVATE (diverifikasi live 2026-08-14)
+-- — app-nya akses foto/dokumen lewat signed URL (lihat src/lib/signedStorage.ts),
+-- bukan URL publik langsung. app-assets sengaja PUBLIC karena dipakai halaman
+-- login sebelum user login (belum ada session buat generate signed URL).
+INSERT INTO storage.buckets (id, name, public) VALUES ('item-photos', 'item-photos', false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('item-documents', 'item-documents', false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('app-assets', 'app-assets', true) ON CONFLICT (id) DO NOTHING;
 
 -- Policies for item-photos
@@ -194,17 +211,21 @@ CREATE POLICY "Public Assets Access" ON storage.objects FOR SELECT USING (bucket
 CREATE POLICY "Admin Assets Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'app-assets' AND COALESCE((SELECT role FROM profiles WHERE id = auth.uid()), 'user') = 'admin');
 
 -- 6. TRIGGER FOR NEW USER (Ensure it exists and is correct)
+-- Role diambil dari user_metadata (diisi oleh endpoint /api/admin/create-user
+-- saat admin bikin akun baru), default ke 'user' kalau gak diisi. JANGAN
+-- hardcode 'admin' di sini — versi lama file ini pernah begitu dan itu berarti
+-- SETIAP orang yang signup otomatis jadi admin (celah privilege escalation).
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, full_name, avatar_url, role)
   VALUES (
-    new.id, 
-    COALESCE(new.raw_user_meta_data->>'full_name', new.email), 
-    new.raw_user_meta_data->>'avatar_url', 
-    'admin'
+    new.id,
+    COALESCE(new.raw_user_meta_data->>'full_name', new.email),
+    new.raw_user_meta_data->>'avatar_url',
+    COALESCE(new.raw_user_meta_data->>'role', 'user')
   )
-  ON CONFLICT (id) DO UPDATE SET role = 'admin';
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

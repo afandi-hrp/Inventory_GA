@@ -1538,6 +1538,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           return;
         }
 
+        const nonImageFiles = files.filter(f => !f.type.startsWith('image/'));
+        if (nonImageFiles.length > 0) {
+          showToast('Hanya file gambar (JPG/PNG/WEBP/GIF) yang diperbolehkan', 'error');
+          return;
+        }
+
         // Compress images
         const compressedFiles = await Promise.all(
           files.map(async (file) => {
@@ -1595,7 +1601,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       let finalDocManualUrl = formData.dokumen_manual_url;
 
       // Helper function to upload document
+      const ALLOWED_DOC_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
       const uploadDocument = async (file: File) => {
+        if (!ALLOWED_DOC_TYPES.includes(file.type)) {
+          throw new Error('Tipe dokumen tidak didukung. Gunakan PDF, DOC, DOCX, JPG, atau PNG.');
+        }
+        if (file.size > 15 * 1024 * 1024) {
+          throw new Error('Ukuran dokumen terlalu besar (Maks 15MB)');
+        }
+
         const fileExt = file.name.split('.').pop();
         const fileName = `doc-${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage

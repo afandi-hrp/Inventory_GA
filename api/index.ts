@@ -12,11 +12,36 @@ dotenv.config();
 const app = express();
 app.set('trust proxy', 1); // Trust the reverse proxy
 const port = 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
 
 // Security Middlewares
 // 1. Helmet: Adds various HTTP headers to secure the app (e.g., XSS filter, prevent clickjacking)
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for Vite dev server compatibility
+  // CSP only in production — in dev, Vite's middleware-mode HMR client relies on
+  // inline/eval'd module reloading that a strict policy would block outright.
+  contentSecurityPolicy: isProduction ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      // 'unsafe-inline' needed for React's inline style={{...}} props (compiled to
+      // real style="..." attributes, which CSP can't allowlist via nonce/hash).
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', ...(supabaseUrl ? [supabaseUrl] : [])],
+      mediaSrc: ["'self'"],
+      connectSrc: [
+        "'self'",
+        ...(supabaseUrl ? [supabaseUrl, supabaseUrl.replace(/^https:/, 'wss:')] : []),
+      ],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
+    },
+  } : false,
   crossOriginEmbedderPolicy: false,
 }));
 
@@ -45,7 +70,6 @@ app.use('/api/', apiLimiter);
 
 app.use(express.json());
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Initialize Supabase Admin only if keys are present

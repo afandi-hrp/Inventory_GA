@@ -71,8 +71,8 @@ function ToastItem({ toast, onRemove }: any) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg animate-in slide-in-from-right-full duration-300 ${colors[toast.type]}`}>
       {icons[toast.type]}
-      <p className="text-sm font-medium text-gray-800">{toast.message}</p>
-      <button onClick={onRemove} className="ml-2 text-gray-400 hover:text-gray-600">
+      <p className="text-sm font-medium text-brand-purple">{toast.message}</p>
+      <button onClick={onRemove} className="ml-2 text-brand-purple hover:text-brand-purple">
         <X size={16} />
       </button>
     </div>

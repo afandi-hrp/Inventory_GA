@@ -163,8 +163,8 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Master Lokasi</h2>
-          <p className="text-gray-500">Kelola daftar lokasi penyimpanan barang</p>
+          <h2 className="text-2xl font-bold text-brand-purple">Master Lokasi</h2>
+          <p className="text-brand-purple">Kelola daftar lokasi penyimpanan barang</p>
         </div>
         {profile?.role === 'admin' && (
           <button
@@ -179,7 +179,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
 
       <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50">
         <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari kode atau nama lokasi..."
@@ -197,7 +197,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Kode Lokasi</th>
                 <th className="px-6 py-4">Nama Lokasi</th>
                 <th className="px-6 py-4">Sub Dari</th>
@@ -209,14 +209,14 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
                 <tr>
                   <td colSpan={4} className="px-6 py-10 text-center">
                     <Loader2 className="animate-spin text-blue-600 mx-auto mb-2" size={32} />
-                    <p className="text-gray-500">Memuat data...</p>
+                    <p className="text-brand-purple">Memuat data...</p>
                   </td>
                 </tr>
               ) : locations.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-10 text-center">
-                    <MapPin className="text-gray-300 mx-auto mb-2" size={48} />
-                    <p className="text-gray-500">Tidak ada lokasi ditemukan</p>
+                    <MapPin className="text-brand-purple mx-auto mb-2" size={48} />
+                    <p className="text-brand-purple">Tidak ada lokasi ditemukan</p>
                   </td>
                 </tr>
               ) : (
@@ -224,15 +224,15 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
                   <tr key={loc.kode_lokasi} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <Hash size={16} className="text-gray-400" />
+                        <Hash size={16} className="text-brand-purple" />
                         <span className="font-mono text-sm font-medium text-blue-600">{loc.kode_lokasi}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 font-medium">{loc.nama_lokasi}</span>
+                      <span className="text-sm text-brand-purple font-medium">{loc.nama_lokasi}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-brand-purple">
                         {loc.parent_kode_lokasi ? locations.find(l => l.kode_lokasi === loc.parent_kode_lokasi)?.nama_lokasi || loc.parent_kode_lokasi : '-'}
                       </span>
                     </td>
@@ -277,11 +277,11 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
         {/* Pagination Controls */}
         <div className="px-6 py-4 border-t border-gray-200/50 bg-gray-50/30 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <div className="text-sm text-gray-500 text-center">
-              Menampilkan <span className="font-medium text-gray-900">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium text-gray-900">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium text-gray-900">{totalCount}</span> lokasi
+            <div className="text-sm text-brand-purple text-center">
+              Menampilkan <span className="font-medium text-brand-purple">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium text-brand-purple">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium text-brand-purple">{totalCount}</span> lokasi
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Per halaman:</span>
+              <span className="text-sm text-brand-purple">Per halaman:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -302,7 +302,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
               <button
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -320,7 +320,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
                       onClick={() => setPage(pageNum)}
                       className={cn(
                         "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                        page === pageNum ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                        page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
                       )}
                     >
                       {pageNum}
@@ -331,7 +331,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <ChevronRight size={18} />
               </button>
@@ -343,7 +343,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
       {/* Modal Add/Edit */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-300"
           onClick={() => setIsModalOpen(false)}
         >
           <div 
@@ -351,30 +351,30 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-brand-purple">
                 {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="text-brand-purple hover:text-brand-purple transition-colors">
                 <X size={24} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-700 flex items-center">
+                <label className="text-sm font-semibold text-brand-purple flex items-center">
                   <Hash size={14} className="mr-1" /> Kode Lokasi
                 </label>
                 <input
                   type="text"
                   value={formData.kode_lokasi}
                   disabled
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 font-mono text-sm cursor-not-allowed"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-brand-purple font-mono text-sm cursor-not-allowed"
                 />
-                <p className="text-[10px] text-gray-400">Kode digenerate otomatis</p>
+                <p className="text-[10px] text-brand-purple">Kode digenerate otomatis</p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-700 flex items-center">
+                <label className="text-sm font-semibold text-brand-purple flex items-center">
                   <MapPin size={14} className="mr-1" /> Nama Lokasi
                 </label>
                 <input
@@ -388,7 +388,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-700 flex items-center">
+                <label className="text-sm font-semibold text-brand-purple flex items-center">
                   <MapPin size={14} className="mr-1" /> Sub Dari (Opsional)
                 </label>
                 <select
@@ -409,7 +409,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
+                  className="flex-1 px-4 py-2.5 border border-gray-200 text-brand-purple rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
                 >
                   Batal
                 </button>

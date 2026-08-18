@@ -57,7 +57,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-brand-purple/50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -172,7 +172,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
         {/* Mobile Menu Button (Floating) */}
         <button 
           onClick={() => setIsSidebarOpen(true)}
-          className="lg:hidden absolute top-4 left-4 z-30 p-2 bg-white/80 backdrop-blur-md text-gray-700 shadow-md rounded-xl border border-gray-200"
+          className="lg:hidden absolute top-4 left-4 z-30 p-2 bg-white/80 backdrop-blur-md text-brand-purple shadow-md rounded-xl border border-gray-200"
         >
           <Menu size={24} />
         </button>

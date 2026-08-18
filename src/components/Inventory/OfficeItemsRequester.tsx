@@ -537,11 +537,11 @@ export default function OfficeItemsRequester() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+        <h2 className="text-2xl font-bold text-brand-purple flex items-center space-x-2">
           <ShoppingCart className="text-sky-600" size={24} />
           <span>Barang Office</span>
         </h2>
-        <p className="text-gray-500">Lihat & ajukan pengambilan barang milik kantor</p>
+        <p className="text-brand-purple">Lihat & ajukan pengambilan barang milik kantor</p>
       </div>
 
       {/* Tabs */}
@@ -550,7 +550,7 @@ export default function OfficeItemsRequester() {
           onClick={() => setTab('items')}
           className={cn(
             "px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap shrink-0",
-            tab === 'items' ? "border-sky-600 text-sky-700" : "border-transparent text-gray-500 hover:text-gray-700"
+            tab === 'items' ? "border-sky-600 text-sky-700" : "border-transparent text-brand-purple hover:text-brand-purple"
           )}
         >
           Daftar Barang
@@ -559,7 +559,7 @@ export default function OfficeItemsRequester() {
           onClick={() => setTab('history')}
           className={cn(
             "px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center space-x-1.5 whitespace-nowrap shrink-0",
-            tab === 'history' ? "border-sky-600 text-sky-700" : "border-transparent text-gray-500 hover:text-gray-700"
+            tab === 'history' ? "border-sky-600 text-sky-700" : "border-transparent text-brand-purple hover:text-brand-purple"
           )}
         >
           <ClipboardList size={16} />
@@ -572,7 +572,7 @@ export default function OfficeItemsRequester() {
           {/* Filters */}
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
               <input
                 type="text"
                 placeholder="Cari nama, kode, atau deskripsi barang..."
@@ -631,9 +631,9 @@ export default function OfficeItemsRequester() {
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                     <th className="px-6 py-4 w-10">
-                      <button onClick={toggleSelectAll} className="text-gray-400 hover:text-sky-600 transition-colors">
+                      <button onClick={toggleSelectAll} className="text-brand-purple hover:text-sky-600 transition-colors">
                         {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={20} className="text-sky-600" /> : <Square size={20} />}
                       </button>
                     </th>
@@ -651,14 +651,14 @@ export default function OfficeItemsRequester() {
                     <tr>
                       <td colSpan={8} className="px-6 py-12 text-center">
                         <Loader2 className="animate-spin mx-auto text-sky-600 mb-2" size={32} />
-                        <p className="text-gray-500">Memuat data...</p>
+                        <p className="text-brand-purple">Memuat data...</p>
                       </td>
                     </tr>
                   ) : items.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-6 py-12 text-center">
-                        <Package className="mx-auto text-gray-300 mb-2" size={48} />
-                        <p className="text-gray-500">Tidak ada barang Office ditemukan</p>
+                        <Package className="mx-auto text-brand-purple mb-2" size={48} />
+                        <p className="text-brand-purple">Tidak ada barang Office ditemukan</p>
                       </td>
                     </tr>
                   ) : (
@@ -669,7 +669,7 @@ export default function OfficeItemsRequester() {
                         className={cn("hover:bg-gray-50 transition-colors cursor-pointer", selectedItems.includes(item.id) && "bg-sky-50/50")}
                       >
                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => toggleSelectItem(item.id)} className="text-gray-400 hover:text-sky-600 transition-colors">
+                          <button onClick={() => toggleSelectItem(item.id)} className="text-brand-purple hover:text-sky-600 transition-colors">
                             {selectedItems.includes(item.id) ? <CheckSquare size={20} className="text-sky-600" /> : <Square size={20} />}
                           </button>
                         </td>
@@ -677,14 +677,14 @@ export default function OfficeItemsRequester() {
                           {item.foto_urls && item.foto_urls.length > 0 ? (
                             <SignedImage bucket="item-photos" path={item.foto_urls[0]} alt={item.nama_barang} className="w-14 h-14 rounded-xl object-cover border border-gray-100 shadow-sm" />
                           ) : (
-                            <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-100">
+                            <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-brand-purple border border-gray-100">
                               <Package size={20} />
                             </div>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.nama_barang}</div>
-                          <div className="text-xs text-gray-400 font-mono">{item.kode_barang}</div>
+                          <div className="text-sm font-medium text-brand-purple">{item.nama_barang}</div>
+                          <div className="text-xs text-brand-purple font-mono">{item.kode_barang}</div>
                         </td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
@@ -696,7 +696,7 @@ export default function OfficeItemsRequester() {
                             {(item as any).master_lokasi?.nama_lokasi || '-'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
+                        <td className="px-6 py-4 text-sm text-brand-purple">
                           {(item as any).master_kepemilikan?.nama_pemilik || '-'}
                         </td>
                         <td className="px-6 py-4">
@@ -712,16 +712,16 @@ export default function OfficeItemsRequester() {
                                 );
                               })}
                               {item.flags.length > 2 && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-500 border border-gray-200">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-brand-purple border border-gray-200">
                                   +{item.flags.length - 2}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-300">-</span>
+                            <span className="text-xs text-brand-purple">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{item.jumlah_barang}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-brand-purple">{item.jumlah_barang}</td>
                       </tr>
                     ))
                   )}
@@ -731,7 +731,7 @@ export default function OfficeItemsRequester() {
 
             {/* Pagination */}
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-brand-purple">
                 Menampilkan <span className="font-medium">{totalCount === 0 ? 0 : (page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium">{totalCount}</span> barang
               </p>
               {totalPages > 1 && (
@@ -739,15 +739,15 @@ export default function OfficeItemsRequester() {
                   <button
                     disabled={page === 1}
                     onClick={() => setPage(p => p - 1)}
-                    className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <span className="text-sm text-gray-600 px-2">{page} / {totalPages}</span>
+                  <span className="text-sm text-brand-purple px-2">{page} / {totalPages}</span>
                   <button
                     disabled={page === totalPages}
                     onClick={() => setPage(p => p + 1)}
-                    className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
                   >
                     <ChevronRight size={18} />
                   </button>
@@ -761,7 +761,7 @@ export default function OfficeItemsRequester() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                   <th className="px-6 py-4">Nomor SPK</th>
                   <th className="px-6 py-4">Tanggal</th>
                   <th className="px-6 py-4">Jumlah</th>
@@ -777,28 +777,28 @@ export default function OfficeItemsRequester() {
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center">
                       <Loader2 className="animate-spin mx-auto text-sky-600 mb-2" size={32} />
-                      <p className="text-gray-500">Memuat riwayat...</p>
+                      <p className="text-brand-purple">Memuat riwayat...</p>
                     </td>
                   </tr>
                 ) : myRequests.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center">
-                      <ClipboardList className="mx-auto text-gray-300 mb-2" size={48} />
-                      <p className="text-gray-500">Belum ada pengajuan SPK.</p>
+                      <ClipboardList className="mx-auto text-brand-purple mb-2" size={48} />
+                      <p className="text-brand-purple">Belum ada pengajuan SPK.</p>
                     </td>
                   </tr>
                 ) : (
                   myRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => handleViewRequestDetail(req)}>
-                      <td className="px-6 py-4 font-semibold text-gray-900">{req.nomor_spk}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 flex items-center">
-                        <Calendar size={14} className="mr-1.5 text-gray-400" />
+                      <td className="px-6 py-4 font-semibold text-brand-purple">{req.nomor_spk}</td>
+                      <td className="px-6 py-4 text-sm text-brand-purple flex items-center">
+                        <Calendar size={14} className="mr-1.5 text-brand-purple" />
                         {new Date(req.tanggal_pengajuan || req.created_at).toLocaleDateString('id-ID')}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">{req.jumlah || '-'} barang</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{summarizeRequestField(req, 'nama_kategori')}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{summarizeRequestField(req, 'nama_lokasi')}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{req.lokasi_tujuan || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-brand-purple font-medium">{req.jumlah || '-'} barang</td>
+                      <td className="px-6 py-4 text-sm text-brand-purple">{summarizeRequestField(req, 'nama_kategori')}</td>
+                      <td className="px-6 py-4 text-sm text-brand-purple">{summarizeRequestField(req, 'nama_lokasi')}</td>
+                      <td className="px-6 py-4 text-sm text-brand-purple">{req.lokasi_tujuan || '-'}</td>
                       <td className="px-6 py-4">{statusBadge(req.status)}</td>
                       <td className="px-6 py-4 text-right">
                         <button className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded-lg text-sm font-medium transition-colors border border-sky-100">
@@ -818,7 +818,7 @@ export default function OfficeItemsRequester() {
       {/* SPK Submit Modal */}
       {isSPKModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
         >
           <div
@@ -832,7 +832,7 @@ export default function OfficeItemsRequester() {
               </div>
               <button
                 onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
                 disabled={isSubmittingSPK}
               >
                 <X size={20} />
@@ -846,7 +846,7 @@ export default function OfficeItemsRequester() {
                 </p>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">Lokasi Tujuan <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-brand-purple">Lokasi Tujuan <span className="text-red-500">*</span></label>
                 <select
                   required
                   value={spkLokasiTujuan}
@@ -860,7 +860,7 @@ export default function OfficeItemsRequester() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">Keterangan / Keperluan <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-brand-purple">Keterangan / Keperluan <span className="text-red-500">*</span></label>
                 <textarea
                   required
                   rows={4}
@@ -875,7 +875,7 @@ export default function OfficeItemsRequester() {
               <button
                 onClick={() => setIsSPKModalOpen(false)}
                 disabled={isSubmittingSPK}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
               >
                 Batal
               </button>
@@ -895,7 +895,7 @@ export default function OfficeItemsRequester() {
       {/* Request Detail Modal */}
       {selectedRequest && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setSelectedRequest(null)}
         >
           <div
@@ -904,16 +904,16 @@ export default function OfficeItemsRequester() {
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">{selectedRequest.nomor_spk}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</p>
+                <h3 className="text-lg font-bold text-brand-purple">{selectedRequest.nomor_spk}</h3>
+                <p className="text-xs text-brand-purple mt-0.5">{new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</p>
               </div>
-              <button onClick={() => setSelectedRequest(null)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+              <button onClick={() => setSelectedRequest(null)} className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Status</span>
+                <span className="text-xs font-semibold text-brand-purple uppercase">Status</span>
                 {statusBadge(selectedRequest.status)}
               </div>
 
@@ -928,25 +928,25 @@ export default function OfficeItemsRequester() {
                 ];
                 return (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <p className="text-xs font-semibold text-gray-400 uppercase mb-3">Progres Persetujuan</p>
+                    <p className="text-xs font-semibold text-brand-purple uppercase mb-3">Progres Persetujuan</p>
                     <div className="flex items-start">
                       {steps.map((step, idx) => (
                         <React.Fragment key={step.label}>
                           <div className="flex flex-col items-center text-center w-1/4 shrink-0 px-1">
                             <div className={cn(
                               "w-8 h-8 rounded-full flex items-center justify-center border-2 shrink-0",
-                              step.done ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-gray-200 text-gray-300"
+                              step.done ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-gray-200 text-brand-purple"
                             )}>
                               {step.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                             </div>
-                            <p className={cn("text-[11px] font-semibold mt-1.5 leading-tight", step.done ? "text-gray-800" : "text-gray-400")}>
+                            <p className={cn("text-[11px] font-semibold mt-1.5 leading-tight", step.done ? "text-brand-purple" : "text-brand-purple")}>
                               {step.label}
                             </p>
                             {step.done && step.by && (
-                              <p className="text-[10px] text-gray-500 mt-0.5 truncate w-full" title={step.by}>{step.by}</p>
+                              <p className="text-[10px] text-brand-purple mt-0.5 truncate w-full" title={step.by}>{step.by}</p>
                             )}
                             {step.done && step.at && (
-                              <p className="text-[10px] text-gray-400">{new Date(step.at).toLocaleDateString('id-ID')}</p>
+                              <p className="text-[10px] text-brand-purple">{new Date(step.at).toLocaleDateString('id-ID')}</p>
                             )}
                           </div>
                           {idx < steps.length - 1 && (
@@ -977,18 +977,18 @@ export default function OfficeItemsRequester() {
               )}
               {selectedRequest.lokasi_tujuan && (
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Lokasi Tujuan</p>
-                  <p className="text-sm text-gray-700">{selectedRequest.lokasi_tujuan}</p>
+                  <p className="text-xs font-semibold text-brand-purple uppercase mb-1">Lokasi Tujuan</p>
+                  <p className="text-sm text-brand-purple">{selectedRequest.lokasi_tujuan}</p>
                 </div>
               )}
               {selectedRequest.keterangan && (
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Keterangan</p>
-                  <p className="text-sm text-gray-700">{selectedRequest.keterangan}</p>
+                  <p className="text-xs font-semibold text-brand-purple uppercase mb-1">Keterangan</p>
+                  <p className="text-sm text-brand-purple">{selectedRequest.keterangan}</p>
                 </div>
               )}
 
-              <h4 className="text-sm font-bold text-gray-900 pt-2">Daftar Barang</h4>
+              <h4 className="text-sm font-bold text-brand-purple pt-2">Daftar Barang</h4>
               {loadingRequestItems ? (
                 <div className="py-8 text-center">
                   <Loader2 className="animate-spin mx-auto text-sky-600" size={28} />
@@ -1000,13 +1000,13 @@ export default function OfficeItemsRequester() {
                       {item.foto_urls && item.foto_urls.length > 0 ? (
                         <SignedImage bucket="item-photos" path={item.foto_urls[0]} alt={item.nama_barang} className="w-12 h-12 rounded-lg object-cover border border-gray-100" />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300 shrink-0">
+                        <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-brand-purple shrink-0">
                           <Package size={18} />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{item.nama_barang}</p>
-                        <p className="text-xs text-gray-400 font-mono">{item.kode_barang}</p>
+                        <p className="text-sm font-semibold text-brand-purple truncate">{item.nama_barang}</p>
+                        <p className="text-xs text-brand-purple font-mono">{item.kode_barang}</p>
                       </div>
                       {item.status_item === 'REJECTED' && (
                         <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg shrink-0">Ditolak</span>
@@ -1019,7 +1019,7 @@ export default function OfficeItemsRequester() {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
               <button
                 onClick={() => setSelectedRequest(null)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -1031,7 +1031,7 @@ export default function OfficeItemsRequester() {
       {/* Item Detail Modal */}
       {selectedItemDetail && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setSelectedItemDetail(null)}
         >
           <div
@@ -1040,10 +1040,10 @@ export default function OfficeItemsRequester() {
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <div className="min-w-0">
-                <h3 className="text-lg font-bold text-gray-900 truncate">{selectedItemDetail.nama_barang}</h3>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedItemDetail.kode_barang}</p>
+                <h3 className="text-lg font-bold text-brand-purple truncate">{selectedItemDetail.nama_barang}</h3>
+                <p className="text-xs text-brand-purple font-mono mt-0.5">{selectedItemDetail.kode_barang}</p>
               </div>
-              <button onClick={() => setSelectedItemDetail(null)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors shrink-0">
+              <button onClick={() => setSelectedItemDetail(null)} className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors shrink-0">
                 <X size={20} />
               </button>
             </div>
@@ -1061,7 +1061,7 @@ export default function OfficeItemsRequester() {
                       alt={selectedItemDetail.nama_barang}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    <div className="absolute inset-0 bg-brand-purple/0 group-hover:bg-brand-purple/30 transition-colors flex items-center justify-center">
                       <Eye className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={28} />
                     </div>
                   </button>
@@ -1080,7 +1080,7 @@ export default function OfficeItemsRequester() {
                   )}
                 </div>
               ) : (
-                <div className="w-full aspect-video rounded-xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center text-gray-300">
+                <div className="w-full aspect-video rounded-xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center text-brand-purple">
                   <Package size={40} />
                   <span className="text-xs mt-2">Tidak ada foto</span>
                 </div>
@@ -1089,27 +1089,27 @@ export default function OfficeItemsRequester() {
               {/* Info Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase flex items-center"><Tag size={12} className="mr-1" /> Kategori</p>
-                  <p className="text-sm font-medium text-gray-800 mt-1">{selectedItemDetail.categories?.nama_kategori || '-'}</p>
+                  <p className="text-[11px] font-semibold text-brand-purple uppercase flex items-center"><Tag size={12} className="mr-1" /> Kategori</p>
+                  <p className="text-sm font-medium text-brand-purple mt-1">{selectedItemDetail.categories?.nama_kategori || '-'}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase flex items-center"><MapPin size={12} className="mr-1" /> Lokasi</p>
-                  <p className="text-sm font-medium text-gray-800 mt-1">{(selectedItemDetail as any).master_lokasi?.nama_lokasi || '-'}</p>
+                  <p className="text-[11px] font-semibold text-brand-purple uppercase flex items-center"><MapPin size={12} className="mr-1" /> Lokasi</p>
+                  <p className="text-sm font-medium text-brand-purple mt-1">{(selectedItemDetail as any).master_lokasi?.nama_lokasi || '-'}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase flex items-center"><UserCheck size={12} className="mr-1" /> Kepemilikan</p>
-                  <p className="text-sm font-medium text-gray-800 mt-1">{selectedItemDetail.master_kepemilikan?.nama_pemilik || '-'}</p>
+                  <p className="text-[11px] font-semibold text-brand-purple uppercase flex items-center"><UserCheck size={12} className="mr-1" /> Kepemilikan</p>
+                  <p className="text-sm font-medium text-brand-purple mt-1">{selectedItemDetail.master_kepemilikan?.nama_pemilik || '-'}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase">Stok</p>
-                  <p className="text-sm font-medium text-gray-800 mt-1">{selectedItemDetail.jumlah_barang}</p>
+                  <p className="text-[11px] font-semibold text-brand-purple uppercase">Stok</p>
+                  <p className="text-sm font-medium text-brand-purple mt-1">{selectedItemDetail.jumlah_barang}</p>
                 </div>
               </div>
 
               {selectedItemDetail.deskripsi && (
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase mb-1">Deskripsi</p>
-                  <p className="text-sm text-gray-700">{selectedItemDetail.deskripsi}</p>
+                  <p className="text-[11px] font-semibold text-brand-purple uppercase mb-1">Deskripsi</p>
+                  <p className="text-sm text-brand-purple">{selectedItemDetail.deskripsi}</p>
                 </div>
               )}
 
@@ -1145,7 +1145,7 @@ export default function OfficeItemsRequester() {
               </button>
               <button
                 onClick={() => setSelectedItemDetail(null)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -1157,7 +1157,7 @@ export default function OfficeItemsRequester() {
       {/* Image Carousel / Lightbox */}
       {carouselImages.length > 0 && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setCarouselImages([])}
         >
           <div className="relative w-full max-w-5xl h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
@@ -1172,13 +1172,13 @@ export default function OfficeItemsRequester() {
               {carouselImages.length > 1 && (
                 <>
                   <button
-                    className="absolute left-2 md:left-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute left-2 md:left-4 p-3 bg-brand-purple/20 hover:bg-brand-purple/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     onClick={() => setCurrentCarouselIndex((prev) => (prev === 0 ? carouselImages.length - 1 : prev - 1))}
                   >
                     <ChevronLeft size={32} />
                   </button>
                   <button
-                    className="absolute right-2 md:right-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute right-2 md:right-4 p-3 bg-brand-purple/20 hover:bg-brand-purple/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     onClick={() => setCurrentCarouselIndex((prev) => (prev === carouselImages.length - 1 ? 0 : prev + 1))}
                   >
                     <ChevronRight size={32} />

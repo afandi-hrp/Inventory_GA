@@ -1844,13 +1844,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Master Barang</h2>
+          <h2 className="text-2xl font-bold text-brand-purple">Master Barang</h2>
           <div className="flex items-center space-x-2">
-            <p className="text-gray-500">Kelola daftar inventaris barang Anda</p>
+            <p className="text-brand-purple">Kelola daftar inventaris barang Anda</p>
             {profile && (
               <span className={cn(
                 "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-                profile.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                profile.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
               )}>
                 Role: {profile.role}
               </span>
@@ -1863,7 +1863,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <div className="relative">
                 <button
                   onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
-                  className="flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
+                  className="flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 border border-gray-200 text-brand-purple px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
                 >
                   <FileSpreadsheet size={20} />
                   <span>Excel &amp; PDF</span>
@@ -1875,14 +1875,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                       <button
                         onClick={() => { handleDownloadTemplate(); setIsFileMenuOpen(false); }}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
                       >
-                        <Download size={16} className="text-gray-400" />
+                        <Download size={16} className="text-brand-purple" />
                         <span>Download Template</span>
                       </button>
                       <label
                         onClick={() => setIsFileMenuOpen(false)}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors cursor-pointer"
                       >
                         {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
                         <span>Import Excel</span>
@@ -1890,7 +1890,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       </label>
                       <button
                         onClick={() => { handlePrepareExport(); setIsFileMenuOpen(false); }}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
                       >
                         <FileSpreadsheet size={16} className="text-emerald-600" />
                         <span>Export Excel</span>
@@ -1898,7 +1898,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       <button
                         onClick={() => { handleExportPDF(); setIsFileMenuOpen(false); }}
                         disabled={isExportingPDF}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors disabled:opacity-50"
                       >
                         {isExportingPDF ? <Loader2 size={16} className="animate-spin text-red-500" /> : <FileText size={16} className="text-red-500" />}
                         <span>Export PDF</span>
@@ -1953,7 +1953,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Row 1: Search + Sifat + Reset */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari nama, kode, atau deskripsi barang..."
@@ -1964,7 +1964,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-purple hover:text-brand-purple"
             >
               <X size={16} />
             </button>
@@ -2028,19 +2028,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
           )}
         >
-          <div className={cn("p-2 rounded-xl shrink-0", filterKategori || activeFilterPanel === 'kategori' ? "bg-orange-100 text-orange-600" : "bg-gray-50 text-gray-400")}>
+          <div className={cn("p-2 rounded-xl shrink-0", filterKategori || activeFilterPanel === 'kategori' ? "bg-orange-100 text-orange-600" : "bg-gray-50 text-brand-purple")}>
             <Package size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kategori</h4>
-            <p className={cn("text-sm font-semibold truncate", filterKategori || activeFilterPanel === 'kategori' ? "text-orange-800" : "text-gray-700")}>
+            <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Kategori</h4>
+            <p className={cn("text-sm font-semibold truncate", filterKategori || activeFilterPanel === 'kategori' ? "text-orange-800" : "text-brand-purple")}>
               {filterKategori ? (categories.find(c => c.id === filterKategori)?.nama_kategori || 'Terpilih') : 'Semua Kategori'}
             </p>
           </div>
           {filterKategori ? (
-            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKategori(''); setActiveFilterPanel(''); }} className="text-gray-400 hover:text-red-600 shrink-0" />
+            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKategori(''); setActiveFilterPanel(''); }} className="text-brand-purple hover:text-red-600 shrink-0" />
           ) : (
-            <ChevronDown size={16} className={cn("text-gray-400 shrink-0 transition-transform", activeFilterPanel === 'kategori' && "rotate-180")} />
+            <ChevronDown size={16} className={cn("text-brand-purple shrink-0 transition-transform", activeFilterPanel === 'kategori' && "rotate-180")} />
           )}
         </button>
 
@@ -2054,19 +2054,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
           )}
         >
-          <div className={cn("p-2 rounded-xl shrink-0", filterLokasi || activeFilterPanel === 'lokasi' ? "bg-blue-100 text-blue-600" : "bg-gray-50 text-gray-400")}>
+          <div className={cn("p-2 rounded-xl shrink-0", filterLokasi || activeFilterPanel === 'lokasi' ? "bg-blue-100 text-blue-600" : "bg-gray-50 text-brand-purple")}>
             <MapPin size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Lokasi</h4>
-            <p className={cn("text-sm font-semibold truncate", filterLokasi || activeFilterPanel === 'lokasi' ? "text-blue-800" : "text-gray-700")}>
+            <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Lokasi</h4>
+            <p className={cn("text-sm font-semibold truncate", filterLokasi || activeFilterPanel === 'lokasi' ? "text-blue-800" : "text-brand-purple")}>
               {filterLokasi ? (availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi || 'Terpilih') : 'Semua Lokasi'}
             </p>
           </div>
           {filterLokasi ? (
-            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterLokasi(''); setActiveFilterPanel(''); }} className="text-gray-400 hover:text-red-600 shrink-0" />
+            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterLokasi(''); setActiveFilterPanel(''); }} className="text-brand-purple hover:text-red-600 shrink-0" />
           ) : (
-            <ChevronDown size={16} className={cn("text-gray-400 shrink-0 transition-transform", activeFilterPanel === 'lokasi' && "rotate-180")} />
+            <ChevronDown size={16} className={cn("text-brand-purple shrink-0 transition-transform", activeFilterPanel === 'lokasi' && "rotate-180")} />
           )}
         </button>
 
@@ -2080,19 +2080,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
           )}
         >
-          <div className={cn("p-2 rounded-xl shrink-0", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "bg-emerald-100 text-emerald-600" : "bg-gray-50 text-gray-400")}>
+          <div className={cn("p-2 rounded-xl shrink-0", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "bg-emerald-100 text-emerald-600" : "bg-gray-50 text-brand-purple")}>
             <UserCheck size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kepemilikan</h4>
-            <p className={cn("text-sm font-semibold truncate", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "text-emerald-800" : "text-gray-700")}>
+            <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Kepemilikan</h4>
+            <p className={cn("text-sm font-semibold truncate", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "text-emerald-800" : "text-brand-purple")}>
               {filterKepemilikan ? (kepemilikanList.find(k => k.id === filterKepemilikan)?.nama_pemilik || 'Terpilih') : 'Semua Kepemilikan'}
             </p>
           </div>
           {filterKepemilikan ? (
-            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKepemilikan(''); setActiveFilterPanel(''); }} className="text-gray-400 hover:text-red-600 shrink-0" />
+            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKepemilikan(''); setActiveFilterPanel(''); }} className="text-brand-purple hover:text-red-600 shrink-0" />
           ) : (
-            <ChevronDown size={16} className={cn("text-gray-400 shrink-0 transition-transform", activeFilterPanel === 'kepemilikan' && "rotate-180")} />
+            <ChevronDown size={16} className={cn("text-brand-purple shrink-0 transition-transform", activeFilterPanel === 'kepemilikan' && "rotate-180")} />
           )}
         </button>
       </div>
@@ -2106,17 +2106,17 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           activeFilterPanel === 'kepemilikan' && "bg-emerald-50/50 border-emerald-100"
         )}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-800">
+            <h3 className="text-sm font-semibold text-brand-purple">
               Pilih {activeFilterPanel === 'kategori' ? 'Kategori' : activeFilterPanel === 'lokasi' ? 'Lokasi' : 'Kepemilikan'}
             </h3>
-            <button onClick={() => setActiveFilterPanel('')} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setActiveFilterPanel('')} className="text-brand-purple hover:text-brand-purple">
               <X size={16} />
             </button>
           </div>
 
           {loadingDimensionStats ? (
             <div className="py-6 text-center">
-              <Loader2 className="animate-spin mx-auto text-gray-400" size={24} />
+              <Loader2 className="animate-spin mx-auto text-brand-purple" size={24} />
             </div>
           ) : (
             <div className="flex flex-wrap gap-3">
@@ -2130,10 +2130,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 }}
                 className="bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all"
               >
-                <h4 className="text-xs font-bold text-gray-600">Semua</h4>
+                <h4 className="text-xs font-bold text-brand-purple">Semua</h4>
               </div>
               {dimensionStats.length === 0 ? (
-                <p className="text-xs text-gray-400 italic py-2">Tidak ada data</p>
+                <p className="text-xs text-brand-purple italic py-2">Tidak ada data</p>
               ) : (
                 dimensionStats.map((stat) => (
                   <div
@@ -2148,8 +2148,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     }}
                     className="bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all"
                   >
-                    <h4 className="text-xs font-bold text-gray-800">{stat.name}</h4>
-                    <p className="text-[10px] text-gray-500">{stat.count} Jenis • {stat.stock} Stok</p>
+                    <h4 className="text-xs font-bold text-brand-purple">{stat.name}</h4>
+                    <p className="text-[10px] text-brand-purple">{stat.count} Jenis • {stat.stock} Stok</p>
                   </div>
                 ))
               )}
@@ -2171,7 +2171,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 "flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm",
                 filterPemusnahan
                   ? "bg-red-500 text-white border-red-600 shadow-red-500/20"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  : "bg-white text-brand-purple border-gray-200 hover:bg-gray-50"
               )}
             >
               <AlertTriangle size={18} />
@@ -2247,9 +2247,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         >
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                 <th className="px-2 py-3 w-10">
-                  <button onClick={toggleSelectAll} className="text-gray-400 hover:text-blue-600 transition-colors">
+                  <button onClick={toggleSelectAll} className="text-brand-purple hover:text-blue-600 transition-colors">
                     {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
                   </button>
                 </th>
@@ -2320,14 +2320,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <tr>
                   <td colSpan={13} className="px-6 py-12 text-center">
                     <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
-                    <p className="text-gray-500">Memuat data...</p>
+                    <p className="text-brand-purple">Memuat data...</p>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="px-6 py-12 text-center">
-                    <Package className="mx-auto text-gray-300 mb-2" size={48} />
-                    <p className="text-gray-500">Tidak ada barang ditemukan</p>
+                    <Package className="mx-auto text-brand-purple mb-2" size={48} />
+                    <p className="text-brand-purple">Tidak ada barang ditemukan</p>
                   </td>
                 </tr>
               ) : (
@@ -2337,7 +2337,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     selectedItems.includes(item.id) && "bg-blue-50/50"
                   )} onClick={() => handleShowDetail(item)}>
                     <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => toggleSelectItem(item.id)} className="text-gray-400 hover:text-blue-600 transition-colors">
+                      <button onClick={() => toggleSelectItem(item.id)} className="text-brand-purple hover:text-blue-600 transition-colors">
                         {selectedItems.includes(item.id) ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
                       </button>
                     </td>
@@ -2359,7 +2359,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               />
                             ))}
                             {item.foto_urls.length > 2 && (
-                              <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-bold text-gray-500 shadow-md">
+                              <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-bold text-brand-purple shadow-md">
                                 +{item.foto_urls.length - 2}
                               </div>
                             )}
@@ -2371,12 +2371,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs text-gray-600">{item.kode_barang}</td>
+                    <td className="px-3 py-3 font-mono text-xs text-brand-purple">{item.kode_barang}</td>
                     <td className="px-3 py-3">
-                      <div className="text-sm font-medium text-gray-900">{item.nama_barang}</div>
+                      <div className="text-sm font-medium text-brand-purple">{item.nama_barang}</div>
                     </td>
                     <td className="px-3 py-3">
-                      <div className="text-xs text-gray-500">{item.deskripsi || '-'}</div>
+                      <div className="text-xs text-brand-purple">{item.deskripsi || '-'}</div>
                     </td>
                     <td className="px-3 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
@@ -2389,7 +2389,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs text-brand-purple">
                         {(item as any).master_kepemilikan?.nama_pemilik || '-'}
                       </span>
                     </td>
@@ -2414,7 +2414,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           {item.kondisi_barang}
                         </span>
                       ) : (
-                        <span className="text-gray-400 text-xs">-</span>
+                        <span className="text-brand-purple text-xs">-</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
@@ -2449,13 +2449,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-300">-</span>
+                        <span className="text-xs text-brand-purple">-</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
                       <div className={cn(
                         "text-sm font-bold",
-                        item.jumlah_barang <= 5 ? "text-red-600" : "text-gray-900"
+                        item.jumlah_barang <= 5 ? "text-red-600" : "text-brand-purple"
                       )}>
                         {item.jumlah_barang}
                       </div>
@@ -2470,7 +2470,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                             left: Math.max(8, rect.right - 192),
                           });
                         }}
-                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-brand-purple rounded-lg text-xs font-semibold shadow-sm transition-colors"
                       >
                         <span>Aksi</span>
                         <ChevronDown size={14} className={cn("transition-transform", actionMenu?.itemId === item.id && "rotate-180")} />
@@ -2490,7 +2490,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                                   navigate('/log-item-change');
                                 }
                               }}
-                              className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
                             >
                               <History size={16} className="text-indigo-600 shrink-0" />
                               <span>Lihat Riwayat</span>
@@ -2501,14 +2501,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                                   <>
                                     <button
                                       onClick={() => { setActionMenu(null); handleStockOut(item); }}
-                                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
                                     >
                                       <Archive size={16} className="text-red-600 shrink-0" />
                                       <span>Keluarkan Barang</span>
                                     </button>
                                     <button
                                       onClick={() => { setActionMenu(null); handleTakeItem(item); }}
-                                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
                                     >
                                       <LogOut size={16} className="text-orange-600 shrink-0" />
                                       <span>Ambil Barang</span>
@@ -2517,7 +2517,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                                 )}
                                 <button
                                   onClick={() => { setActionMenu(null); handleOpenModal(item); }}
-                                  className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                  className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
                                 >
                                   <Edit2 size={16} className="text-blue-600 shrink-0" />
                                   <span>Edit</span>
@@ -2539,11 +2539,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         {/* Pagination */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-brand-purple">
               Menampilkan <span className="font-medium">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium">{totalCount}</span> barang
             </p>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Per halaman:</span>
+              <span className="text-sm text-brand-purple">Per halaman:</span>
               <select 
                 value={itemsPerPage} 
                 onChange={(e) => {
@@ -2563,7 +2563,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <button
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -2581,7 +2581,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       onClick={() => setPage(pageNum)}
                       className={cn(
                         "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                        page === pageNum ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                        page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
                       )}
                     >
                       {pageNum}
@@ -2592,7 +2592,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <ChevronRight size={18} />
               </button>
@@ -2604,7 +2604,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Modal */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsModalOpen(false)}
         >
           <div 
@@ -2612,10 +2612,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-brand-purple">
                 {editingItem ? 'Edit Barang' : 'Tambah Barang Baru'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="text-brand-purple hover:text-brand-purple p-1 rounded-full hover:bg-gray-200 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -2647,7 +2647,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kode Barang</label>
+                    <label className="block text-sm font-medium text-brand-purple mb-1">Kode Barang</label>
                     <input
                       type="text"
                       required
@@ -2658,7 +2658,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
+                    <label className="block text-sm font-medium text-brand-purple mb-1">Nama Barang</label>
                     <input
                       type="text"
                       required
@@ -2671,7 +2671,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
+                      <label className="block text-sm font-medium text-brand-purple mb-1">Jumlah</label>
                       <input
                         type="number"
                         min="0"
@@ -2683,7 +2683,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                      <label className="block text-sm font-medium text-brand-purple mb-1">Kategori</label>
                       <select
                         disabled={profile?.role === 'auditor'}
                         value={formData.kategori_id}
@@ -2703,7 +2703,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                    <label className="block text-sm font-medium text-brand-purple mb-1">Lokasi</label>
                     <select
                       required
                       disabled={profile?.role === 'auditor'}
@@ -2723,7 +2723,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Status Barang <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-brand-purple mb-2">Status Barang <span className="text-red-500">*</span></label>
                     <div className="grid grid-cols-3 gap-3">
                       <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.sifat_barang === 'OFFICE' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <input
@@ -2764,7 +2764,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </div>
                   </div>
                   <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-brand-purple mb-2">
                       <Tag size={14} className="text-teal-600" /> Flag
                     </label>
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -2827,7 +2827,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       if (suggestions.length === 0) return null;
                       return (
                         <div className="mt-2">
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Flag Tersedia (klik untuk pakai)</p>
+                          <p className="text-[11px] font-semibold text-brand-purple uppercase tracking-wide mb-1.5">Flag Tersedia (klik untuk pakai)</p>
                           <div className="flex flex-wrap gap-1.5">
                             {suggestions.map((f) => {
                               const { classes, Icon } = getFlagStyle(f.nama_flag);
@@ -2871,8 +2871,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       return (
                       <div className="mt-2 p-3 border border-teal-200 bg-teal-50/40 rounded-xl space-y-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-medium text-gray-600">
-                            Buat flag baru: <span className="font-bold text-gray-900">"{trimmedFlagInput}"</span>
+                          <p className="text-xs font-medium text-brand-purple">
+                            Buat flag baru: <span className="font-bold text-brand-purple">"{trimmedFlagInput}"</span>
                           </p>
                           <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-medium", FLAG_COLOR_STYLES[newFlagColorKey])}>
                             {React.createElement(FLAG_ICON_MAP[newFlagIconKey], { size: 11, className: "shrink-0" })}
@@ -2881,7 +2881,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         </div>
 
                         <div>
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Warna</p>
+                          <p className="text-[11px] font-semibold text-brand-purple uppercase tracking-wide mb-1.5">Warna</p>
                           <div className="flex flex-wrap gap-2">
                             {Object.keys(FLAG_COLOR_SWATCH).map((key) => (
                               <button
@@ -2900,7 +2900,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         </div>
 
                         <div>
-                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ikon</p>
+                          <p className="text-[11px] font-semibold text-brand-purple uppercase tracking-wide mb-1.5">Ikon</p>
                           <div className="flex flex-wrap gap-2">
                             {Object.entries(FLAG_ICON_MAP).map(([key, IconComp]) => (
                               <button
@@ -2909,11 +2909,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                                 onClick={() => setNewFlagIconKey(key)}
                                 className={cn(
                                   "w-8 h-8 rounded-lg border flex items-center justify-center transition-colors",
-                                  newFlagIconKey === key ? "border-gray-800 bg-white" : "border-gray-200 bg-white/60 hover:bg-white"
+                                  newFlagIconKey === key ? "border-brand-purple bg-white" : "border-gray-200 bg-white/60 hover:bg-white"
                                 )}
                                 title={key}
                               >
-                                <IconComp size={15} className="text-gray-700" />
+                                <IconComp size={15} className="text-brand-purple" />
                               </button>
                             ))}
                           </div>
@@ -2923,7 +2923,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           <button
                             type="button"
                             onClick={() => { setFlagInput(''); setNewFlagColorKey('teal'); setNewFlagIconKey('tag'); }}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white rounded-lg transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-brand-purple hover:bg-white rounded-lg transition-colors"
                           >
                             Batal
                           </button>
@@ -2942,7 +2942,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     })()}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Kondisi Barang</label>
+                    <label className="block text-sm font-medium text-brand-purple mb-2">Kondisi Barang</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <label className={`flex items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors ${formData.kondisi_barang === 'BAIK' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <input
@@ -2983,7 +2983,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Kelengkapan Dokumen</label>
+                    <label className="block text-sm font-medium text-brand-purple mb-2">Kelengkapan Dokumen</label>
                     <div className="space-y-3">
                       {/* Garansi */}
                       <div className="flex flex-col space-y-2 border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
@@ -2995,7 +2995,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                             onChange={(e) => setFormData({ ...formData, kelengkapan_garansi: e.target.checked })}
                             className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
                           />
-                          <span className="text-sm font-medium text-gray-700">Garansi</span>
+                          <span className="text-sm font-medium text-brand-purple">Garansi</span>
                         </label>
                         {formData.kelengkapan_garansi && (
                           <div className="pl-6 pt-1">
@@ -3004,7 +3004,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                               disabled={profile?.role === 'auditor'}
                               onChange={(e) => setDocGaransiFile(e.target.files?.[0] || null)}
-                              className="text-xs text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              className="text-xs text-brand-purple file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               required={!formData.dokumen_garansi_url} // Required if no URL exists yet
                             />
                             {formData.dokumen_garansi_url && !docGaransiFile && (
@@ -3024,7 +3024,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                             onChange={(e) => setFormData({ ...formData, kelengkapan_sertifikat: e.target.checked })}
                             className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
                           />
-                          <span className="text-sm font-medium text-gray-700">Sertifikat</span>
+                          <span className="text-sm font-medium text-brand-purple">Sertifikat</span>
                         </label>
                         {formData.kelengkapan_sertifikat && (
                           <div className="pl-6 pt-1">
@@ -3033,7 +3033,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                               disabled={profile?.role === 'auditor'}
                               onChange={(e) => setDocSertifikatFile(e.target.files?.[0] || null)}
-                              className="text-xs text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              className="text-xs text-brand-purple file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               required={!formData.dokumen_sertifikat_url}
                             />
                             {formData.dokumen_sertifikat_url && !docSertifikatFile && (
@@ -3053,7 +3053,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                             onChange={(e) => setFormData({ ...formData, kelengkapan_manual: e.target.checked })}
                             className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
                           />
-                          <span className="text-sm font-medium text-gray-700">Manual Book</span>
+                          <span className="text-sm font-medium text-brand-purple">Manual Book</span>
                         </label>
                         {formData.kelengkapan_manual && (
                           <div className="pl-6 pt-1">
@@ -3062,7 +3062,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                               disabled={profile?.role === 'auditor'}
                               onChange={(e) => setDocManualFile(e.target.files?.[0] || null)}
-                              className="text-xs text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              className="text-xs text-brand-purple file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                               required={!formData.dokumen_manual_url}
                             />
                             {formData.dokumen_manual_url && !docManualFile && (
@@ -3074,7 +3074,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                    <label className="block text-sm font-medium text-brand-purple mb-1">Deskripsi</label>
                     <textarea
                       rows={3}
                       disabled={profile?.role === 'auditor'}
@@ -3089,7 +3089,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 {/* Right Column: Photo Upload */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-gray-700">Foto Barang <span className="text-red-500">*</span> ({formData.foto_urls.length + selectedFiles.length}/10)</label>
+                    <label className="block text-sm font-medium text-brand-purple">Foto Barang <span className="text-red-500">*</span> ({formData.foto_urls.length + selectedFiles.length}/10)</label>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2">
@@ -3119,7 +3119,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           type="button"
                           onClick={() => cameraInputRef.current?.click()}
                           disabled={isProcessingImages}
-                          className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-brand-purple hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isProcessingImages ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
                           <span className="text-[10px] mt-1 font-medium">{isProcessingImages ? 'Memproses...' : 'Kamera'}</span>
@@ -3128,7 +3128,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isProcessingImages}
-                          className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-brand-purple hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isProcessingImages ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
                           <span className="text-[10px] mt-1 font-medium">{isProcessingImages ? 'Memproses...' : 'Galeri'}</span>
@@ -3137,7 +3137,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                   {profile?.role !== 'auditor' && (
-                    <p className="text-[10px] text-gray-500 italic">Maks 5MB per foto. Format: PNG, JPG, WEBP.</p>
+                    <p className="text-[10px] text-brand-purple italic">Maks 5MB per foto. Format: PNG, JPG, WEBP.</p>
                   )}
                   {/* Hidden input for Gallery (Multiple) */}
                   <input
@@ -3200,13 +3200,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       onChange={(e) => setFormData({ ...formData, tanggal_audit: e.target.checked ? new Date().toISOString().split('T')[0] : '' })}
                       className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
                     />
-                    <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                      <Calendar size={14} className="text-gray-400" />
+                    <span className="text-sm font-medium text-brand-purple flex items-center gap-1.5">
+                      <Calendar size={14} className="text-brand-purple" />
                       Audit Hari Ini
                     </span>
                   </label>
                   {formData.tanggal_audit && (
-                    <p className="text-xs text-gray-500 mt-1 ml-6">
+                    <p className="text-xs text-brand-purple mt-1 ml-6">
                       Tanggal audit: {new Date(formData.tanggal_audit).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                   )}
@@ -3218,12 +3218,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         Riwayat Audit
                       </h5>
                       {loadingAuditHistory ? (
-                        <div className="flex items-center text-xs text-gray-400 py-2">
+                        <div className="flex items-center text-xs text-brand-purple py-2">
                           <Loader2 size={14} className="animate-spin mr-1.5" />
                           Memuat riwayat...
                         </div>
                       ) : auditHistory.length === 0 ? (
-                        <p className="text-xs text-gray-400">Belum ada riwayat audit sebelumnya.</p>
+                        <p className="text-xs text-brand-purple">Belum ada riwayat audit sebelumnya.</p>
                       ) : (
                         <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                           {auditHistory.map((h) => (
@@ -3235,9 +3235,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                                 )}>
                                   {h.note_audit}
                                 </span>
-                                <span className="text-gray-500 truncate">{h.audited_by || 'Auditor'}</span>
+                                <span className="text-brand-purple truncate">{h.audited_by || 'Auditor'}</span>
                               </div>
-                              <span className="text-gray-400 shrink-0 ml-2">
+                              <span className="text-brand-purple shrink-0 ml-2">
                                 {new Date(h.tanggal_audit || h.created_at).toLocaleDateString('id-ID')}
                               </span>
                             </div>
@@ -3253,7 +3253,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Batal
                 </button>
@@ -3273,7 +3273,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Bulk Edit Modal */}
       {isBulkEditOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm"
           onClick={() => setIsBulkEditOpen(false)}
         >
           <div 
@@ -3281,14 +3281,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Edit Massal ({selectedItems.length} barang)</h3>
-              <button onClick={() => setIsBulkEditOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-brand-purple">Edit Massal ({selectedItems.length} barang)</h3>
+              <button onClick={() => setIsBulkEditOpen(false)} className="text-brand-purple hover:text-brand-purple">
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleBulkEdit} className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Lokasi</label>
+                <label className="block text-sm font-medium text-brand-purple mb-1">Ubah Lokasi</label>
                 <select
                   value={bulkEditData.kode_lokasi}
                   onChange={(e) => setBulkEditData({ ...bulkEditData, kode_lokasi: e.target.value })}
@@ -3301,7 +3301,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Kategori</label>
+                <label className="block text-sm font-medium text-brand-purple mb-1">Ubah Kategori</label>
                 <select
                   value={bulkEditData.kategori_id}
                   onChange={(e) => setBulkEditData({ ...bulkEditData, kategori_id: e.target.value })}
@@ -3319,7 +3319,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Kepemilikan</label>
+                <label className="block text-sm font-medium text-brand-purple mb-1">Ubah Kepemilikan</label>
                 <select
                   value={bulkEditData.kepemilikan_id}
                   onChange={(e) => setBulkEditData({ ...bulkEditData, kepemilikan_id: e.target.value })}
@@ -3332,7 +3332,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Status Barang</label>
+                <label className="block text-sm font-medium text-brand-purple mb-1">Ubah Status Barang</label>
                 <select
                   value={bulkEditData.sifat_barang}
                   onChange={(e) => setBulkEditData({ ...bulkEditData, sifat_barang: e.target.value as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE' })}
@@ -3345,7 +3345,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Jumlah Stok</label>
+                <label className="block text-sm font-medium text-brand-purple mb-1">Ubah Jumlah Stok</label>
                 <input
                   type="number"
                   min="-1"
@@ -3354,13 +3354,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                   placeholder="-1 untuk tidak mengubah"
                 />
-                <p className="text-xs text-gray-500 mt-1">Set ke -1 jika tidak ingin mengubah stok</p>
+                <p className="text-xs text-brand-purple mt-1">Set ke -1 jika tidak ingin mengubah stok</p>
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsBulkEditOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
                 >
                   Batal
                 </button>
@@ -3379,7 +3379,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Import Preview Modal */}
       {isImportPreviewOpen && (
         <div 
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsImportPreviewOpen(false)}
         >
           <div 
@@ -3387,8 +3387,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Preview Import ({importPreviewData.length} barang)</h3>
-              <button onClick={() => setIsImportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-brand-purple">Preview Import ({importPreviewData.length} barang)</h3>
+              <button onClick={() => setIsImportPreviewOpen(false)} className="text-brand-purple hover:text-brand-purple">
                 <X size={20} />
               </button>
             </div>
@@ -3401,7 +3401,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="flex-1 overflow-auto p-6 scrollbar-hide">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                  <tr className="border-b border-gray-100 text-brand-purple font-semibold">
                     <th className="pb-3">Kode</th>
                     <th className="pb-3">Nama Barang</th>
                     <th className="pb-3">Jumlah</th>
@@ -3416,7 +3416,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   {importPreviewData.map((row, idx) => (
                     <tr key={idx}>
                       <td className="py-3 font-mono text-xs">
-                        {row.kode_barang || <span className="italic text-gray-400 font-sans">(Otomatis)</span>}
+                        {row.kode_barang || <span className="italic text-brand-purple font-sans">(Otomatis)</span>}
                       </td>
                       <td className="py-3 font-medium">{row.nama_barang}</td>
                       <td className="py-3">{row.jumlah_barang}</td>
@@ -3433,7 +3433,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsImportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
               >
                 Batal
               </button>
@@ -3453,7 +3453,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Image Carousel / Preview Modal */}
       {carouselImages.length > 0 && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setCarouselImages([])}
         >
           <div className="relative w-full max-w-5xl h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
@@ -3470,13 +3470,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               {carouselImages.length > 1 && (
                 <>
                   <button
-                    className="absolute left-2 md:left-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute left-2 md:left-4 p-3 bg-brand-purple/20 hover:bg-brand-purple/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     onClick={() => setCurrentCarouselIndex((prev) => (prev === 0 ? carouselImages.length - 1 : prev - 1))}
                   >
                     <ChevronLeft size={32} />
                   </button>
                   <button
-                    className="absolute right-2 md:right-4 p-3 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute right-2 md:right-4 p-3 bg-brand-purple/20 hover:bg-brand-purple/40 text-white rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     onClick={() => setCurrentCarouselIndex((prev) => (prev === carouselImages.length - 1 ? 0 : prev + 1))}
                   >
                     <ChevronRight size={32} />
@@ -3520,10 +3520,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Document Preview Modal */}
       {documentPreview && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[100] flex flex-col bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setDocumentPreview(null)}
         >
-          <div className="flex items-center justify-between px-4 py-3 bg-black/40 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 bg-brand-purple/40 shrink-0" onClick={(e) => e.stopPropagation()}>
             <span className="text-white text-sm font-medium truncate pr-4">{documentPreview.name}</span>
             <div className="flex items-center space-x-2 shrink-0">
               <button
@@ -3554,7 +3554,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Item Detail Modal */}
       {isDetailModalOpen && selectedItemForDetail && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => {
             setIsDetailModalOpen(false);
             setSelectedItemForDetail(null);
@@ -3565,13 +3565,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Detail Barang</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Detail Barang</h3>
               <button 
                 onClick={() => {
                   setIsDetailModalOpen(false);
                   setSelectedItemForDetail(null);
                 }} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
@@ -3593,12 +3593,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           alt={selectedItemForDetail.nama_barang}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <div className="absolute inset-0 bg-brand-purple/0 group-hover:bg-brand-purple/10 transition-colors flex items-center justify-center">
                           <Search className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={32} />
                         </div>
                       </>
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-brand-purple">
                         <ImageIcon size={48} className="mb-2" />
                         <span className="text-sm">Tidak ada foto</span>
                       </div>
@@ -3623,15 +3623,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 {/* Right Column: Info */}
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Informasi Dasar</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Informasi Dasar</h4>
                     <div className="space-y-3">
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                           <Package size={18} />
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Nama Barang</p>
-                          <p className="text-base font-bold text-gray-900">{selectedItemForDetail.nama_barang}</p>
+                          <p className="text-xs text-brand-purple">Nama Barang</p>
+                          <p className="text-base font-bold text-brand-purple">{selectedItemForDetail.nama_barang}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
@@ -3639,23 +3639,23 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           <Hash size={18} />
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Kode Barang</p>
-                          <p className="text-sm font-mono font-medium text-gray-700">{selectedItemForDetail.kode_barang}</p>
+                          <p className="text-xs text-brand-purple">Kode Barang</p>
+                          <p className="text-sm font-mono font-medium text-brand-purple">{selectedItemForDetail.kode_barang}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Lokasi & Kategori & Stok</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Lokasi & Kategori & Stok</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-orange-50 text-orange-600 rounded-lg">
                           <Package size={18} />
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Kategori</p>
-                          <p className="text-sm font-medium text-gray-700">{(selectedItemForDetail as any).categories?.nama_kategori || 'Tanpa Kategori'}</p>
+                          <p className="text-xs text-brand-purple">Kategori</p>
+                          <p className="text-sm font-medium text-brand-purple">{(selectedItemForDetail as any).categories?.nama_kategori || 'Tanpa Kategori'}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
@@ -3663,8 +3663,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           <MapPin size={18} />
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Lokasi</p>
-                          <p className="text-sm font-medium text-gray-700">{(selectedItemForDetail as any).master_lokasi?.nama_lokasi || 'N/A'}</p>
+                          <p className="text-xs text-brand-purple">Lokasi</p>
+                          <p className="text-sm font-medium text-brand-purple">{(selectedItemForDetail as any).master_lokasi?.nama_lokasi || 'N/A'}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
@@ -3672,8 +3672,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           <Info size={18} />
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Stok Saat Ini</p>
-                          <p className="text-sm font-bold text-gray-900">{selectedItemForDetail.jumlah_barang} unit</p>
+                          <p className="text-xs text-brand-purple">Stok Saat Ini</p>
+                          <p className="text-sm font-bold text-brand-purple">{selectedItemForDetail.jumlah_barang} unit</p>
                         </div>
                       </div>
                     </div>
@@ -3681,7 +3681,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
                   {selectedItemForDetail.flags && selectedItemForDetail.flags.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Flags</h4>
+                      <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Flags</h4>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {selectedItemForDetail.flags.map((flag) => {
                           const { classes, Icon } = getFlagStyle(flag);
@@ -3697,7 +3697,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   )}
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Kondisi Barang</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Kondisi Barang</h4>
                     <div className="mt-2">
                       {selectedItemForDetail.kondisi_barang ? (
                         <span className={cn(
@@ -3709,22 +3709,22 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           {selectedItemForDetail.kondisi_barang}
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-500">-</span>
+                        <span className="text-sm text-brand-purple">-</span>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Deskripsi</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Deskripsi</h4>
                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <p className="text-sm text-gray-600 leading-relaxed">
+                      <p className="text-sm text-brand-purple leading-relaxed">
                         {selectedItemForDetail.deskripsi || 'Tidak ada deskripsi tambahan untuk barang ini.'}
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Kelengkapan Dokumen</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Kelengkapan Dokumen</h4>
                     <div className="flex flex-wrap gap-2 mt-2">
                        {selectedItemForDetail.kelengkapan_garansi ? (
                          <div className="flex flex-col gap-1">
@@ -3738,7 +3738,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                            )}
                          </div>
                        ) : (
-                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200 h-[22px]">
+                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-brand-purple border-gray-200 h-[22px]">
                            Garansi: Tidak Ada
                          </span>
                        )}
@@ -3755,7 +3755,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                            )}
                          </div>
                        ) : (
-                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200 h-[22px]">
+                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-brand-purple border-gray-200 h-[22px]">
                            Sertifikat: Tidak Ada
                          </span>
                        )}
@@ -3772,7 +3772,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                            )}
                          </div>
                        ) : (
-                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200 h-[22px]">
+                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-brand-purple border-gray-200 h-[22px]">
                            Manual Book: Tidak Ada
                          </span>
                        )}
@@ -3781,7 +3781,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
                   {selectedItemForDetail.note_audit && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Hasil Audit</h4>
+                      <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Hasil Audit</h4>
                       <div className="flex items-center gap-3">
                         <span className={cn(
                           "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border",
@@ -3790,7 +3790,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           {selectedItemForDetail.note_audit}
                         </span>
                         {selectedItemForDetail.tanggal_audit && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <span className="text-xs text-brand-purple flex items-center gap-1">
                             <Calendar size={12} />
                             {new Date(selectedItemForDetail.tanggal_audit).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                           </span>
@@ -3800,7 +3800,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   )}
 
                   <div className="pt-4 border-t border-gray-100">
-                    <div className="flex items-center text-xs text-gray-400">
+                    <div className="flex items-center text-xs text-brand-purple">
                       <Calendar size={14} className="mr-1" />
                       <span>Terakhir diperbarui: {new Date(selectedItemForDetail.updated_at).toLocaleString('id-ID')}</span>
                     </div>
@@ -3815,7 +3815,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   setIsDetailModalOpen(false);
                   setSelectedItemForDetail(null);
                 }}
-                className="px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
+                className="px-6 py-2 text-sm font-medium text-brand-purple hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -3839,7 +3839,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               ) : (
                 <button
                   disabled
-                  className="px-6 py-2 text-sm font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed flex items-center space-x-2"
+                  className="px-6 py-2 text-sm font-medium text-brand-purple bg-gray-100 rounded-lg cursor-not-allowed flex items-center space-x-2"
                 >
                   <AlertCircle size={16} />
                   <span>Mode Lihat Saja</span>
@@ -3853,7 +3853,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Item History Modal — riwayat perubahan singkat tanpa pindah halaman */}
       {isItemHistoryModalOpen && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsItemHistoryModalOpen(false)}
         >
           <div
@@ -3861,7 +3861,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <h3 className="text-base font-bold text-brand-purple flex items-center gap-2">
                 <History size={18} className="text-indigo-600" />
                 Riwayat Perubahan
               </h3>
@@ -3869,18 +3869,18 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 onClick={() => setIsItemHistoryModalOpen(false)}
                 className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
               >
-                <X size={18} className="text-gray-400" />
+                <X size={18} className="text-brand-purple" />
               </button>
             </div>
 
             <div className="px-6 py-4 overflow-y-auto flex-1">
               {loadingItemHistory ? (
-                <div className="flex items-center justify-center text-sm text-gray-400 py-8">
+                <div className="flex items-center justify-center text-sm text-brand-purple py-8">
                   <Loader2 size={18} className="animate-spin mr-2" />
                   Memuat riwayat...
                 </div>
               ) : itemHistoryLogs.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-8">Belum ada riwayat perubahan untuk barang ini.</p>
+                <p className="text-sm text-brand-purple text-center py-8">Belum ada riwayat perubahan untuk barang ini.</p>
               ) : (
                 <div className="space-y-1.5">
                   {itemHistoryLogs.map((log) => (
@@ -3891,26 +3891,26 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                             "px-1.5 py-0.5 rounded-full font-semibold shrink-0",
                             log.action === 'CREATE' ? "bg-green-100 text-green-700" :
                             log.action === 'UPDATE' ? "bg-blue-100 text-blue-700" :
-                            "bg-gray-100 text-gray-700"
+                            "bg-gray-100 text-brand-purple"
                           )}>
                             {log.action}
                           </span>
-                          <span className="text-gray-500 truncate">{log.profiles?.full_name || 'Sistem'}</span>
+                          <span className="text-brand-purple truncate">{log.profiles?.full_name || 'Sistem'}</span>
                         </div>
-                        <span className="text-gray-400 shrink-0 whitespace-nowrap">
+                        <span className="text-brand-purple shrink-0 whitespace-nowrap">
                           {new Date(log.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
                       {log.action === 'CREATE' ? (
-                        <p className="text-gray-600">Barang dibuat</p>
+                        <p className="text-brand-purple">Barang dibuat</p>
                       ) : (
                         <div className="space-y-0.5">
                           {getFieldChanges(log.old_values, log.new_values).map((chg, idx) => (
-                            <p key={idx} className="text-gray-600 leading-relaxed">
-                              <span className="font-medium text-gray-500">{chg.label}:</span>{' '}
-                              <span className="text-gray-400">{chg.oldDisplay}</span>
-                              <span className="mx-1 text-gray-400">→</span>
-                              <span className="text-gray-900 font-medium">{chg.newDisplay}</span>
+                            <p key={idx} className="text-brand-purple leading-relaxed">
+                              <span className="font-medium text-brand-purple">{chg.label}:</span>{' '}
+                              <span className="text-brand-purple">{chg.oldDisplay}</span>
+                              <span className="mx-1 text-brand-purple">→</span>
+                              <span className="text-brand-purple font-medium">{chg.newDisplay}</span>
                             </p>
                           ))}
                         </div>
@@ -3927,7 +3927,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Take Item Modal */}
       {isTakeItemModalOpen && selectedItemForTake && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsTakeItemModalOpen(false)}
         >
           <div 
@@ -3935,17 +3935,17 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Ambil Barang: {selectedItemForTake.nama_barang}</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Ambil Barang: {selectedItemForTake.nama_barang}</h3>
               <button 
                 onClick={() => setIsTakeItemModalOpen(false)} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); confirmTakeItem(); }} className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
               <div className="space-y-2">
-                <label htmlFor="takeJumlah" className="block text-sm font-medium text-gray-700">Jumlah yang Diambil</label>
+                <label htmlFor="takeJumlah" className="block text-sm font-medium text-brand-purple">Jumlah yang Diambil</label>
                 <input
                   type="number"
                   id="takeJumlah"
@@ -3956,10 +3956,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   required
                 />
-                <p className="text-xs text-gray-500">Stok Tersedia: {selectedItemForTake.jumlah_barang}</p>
+                <p className="text-xs text-brand-purple">Stok Tersedia: {selectedItemForTake.jumlah_barang}</p>
               </div>
               <div className="space-y-2">
-                <label htmlFor="takeAlasan" className="block text-sm font-medium text-gray-700">Alasan/Tujuan</label>
+                <label htmlFor="takeAlasan" className="block text-sm font-medium text-brand-purple">Alasan/Tujuan</label>
                 <textarea
                   id="takeAlasan"
                   value={takeItemData.alasan}
@@ -3974,7 +3974,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <button
                   type="button"
                   onClick={() => setIsTakeItemModalOpen(false)}
-                  className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
                   Batal
                 </button>
@@ -3995,7 +3995,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Stock Out Modal */}
       {isStockOutModalOpen && selectedItemForStockOut && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsStockOutModalOpen(false)}
         >
           <div 
@@ -4003,10 +4003,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Keluarkan Barang ke Riwayat</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Keluarkan Barang ke Riwayat</h3>
               <button 
                 onClick={() => setIsStockOutModalOpen(false)} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
@@ -4015,32 +4015,32 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               {/* Data Preview (Read-only) */}
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">Preview Data Barang</span>
-                  <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold">READ ONLY</span>
+                  <span className="text-xs font-semibold text-brand-purple uppercase">Preview Data Barang</span>
+                  <span className="text-[10px] bg-gray-200 text-brand-purple px-2 py-0.5 rounded font-bold">READ ONLY</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold">Kode Barang</p>
-                      <p className="text-sm font-mono text-gray-700">{selectedItemForStockOut.kode_barang}</p>
+                      <p className="text-[10px] text-brand-purple uppercase font-bold">Kode Barang</p>
+                      <p className="text-sm font-mono text-brand-purple">{selectedItemForStockOut.kode_barang}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold">Nama Barang</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedItemForStockOut.nama_barang}</p>
+                      <p className="text-[10px] text-brand-purple uppercase font-bold">Nama Barang</p>
+                      <p className="text-sm font-medium text-brand-purple">{selectedItemForStockOut.nama_barang}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold">Lokasi</p>
-                      <p className="text-sm text-gray-700">{(selectedItemForStockOut as any).master_lokasi?.nama_lokasi || '-'}</p>
+                      <p className="text-[10px] text-brand-purple uppercase font-bold">Lokasi</p>
+                      <p className="text-sm text-brand-purple">{(selectedItemForStockOut as any).master_lokasi?.nama_lokasi || '-'}</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold">Stok Saat Ini</p>
-                      <p className="text-sm font-bold text-gray-900">{selectedItemForStockOut.jumlah_barang} unit</p>
+                      <p className="text-[10px] text-brand-purple uppercase font-bold">Stok Saat Ini</p>
+                      <p className="text-sm font-bold text-brand-purple">{selectedItemForStockOut.jumlah_barang} unit</p>
                     </div>
                     {selectedItemForStockOut.foto_urls && selectedItemForStockOut.foto_urls.length > 0 && (
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Foto</p>
+                        <p className="text-[10px] text-brand-purple uppercase font-bold mb-1">Foto</p>
                         <div className="flex -space-x-2">
                           {selectedItemForStockOut.foto_urls.slice(0, 4).map((url, idx) => (
                             <SignedImage key={idx} bucket="item-photos" path={url} className="w-8 h-8 rounded-full border-2 border-white object-cover" alt="Preview" />
@@ -4055,7 +4055,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               {/* Input Field */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700">Lokasi Tujuan / Barang Keluar <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-brand-purple">Lokasi Tujuan / Barang Keluar <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={stockOutData.lokasi_keluar}
@@ -4074,7 +4074,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700">Keterangan / Alasan Keluar <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-brand-purple">Keterangan / Alasan Keluar <span className="text-red-500">*</span></label>
                   <textarea
                     required
                     rows={3}
@@ -4089,7 +4089,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsStockOutModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 Batal
               </button>
@@ -4109,7 +4109,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Disposal Request Modal */}
       {isDisposalModalOpen && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => !isSubmittingDisposal && setIsDisposalModalOpen(false)}
         >
           <div 
@@ -4123,7 +4123,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               </div>
               <button 
                 onClick={() => !isSubmittingDisposal && setIsDisposalModalOpen(false)} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
                 disabled={isSubmittingDisposal}
               >
                 <X size={20} />
@@ -4143,7 +4143,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700">Metode Pemusnahan <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-brand-purple">Metode Pemusnahan <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={disposalData.metode_pemusnahan}
@@ -4157,7 +4157,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700">Keterangan / Alasan Pemusnahan <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-brand-purple">Keterangan / Alasan Pemusnahan <span className="text-red-500">*</span></label>
                   <textarea
                     required
                     rows={4}
@@ -4173,7 +4173,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <button
                 onClick={() => setIsDisposalModalOpen(false)}
                 disabled={isSubmittingDisposal}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
               >
                 Batal
               </button>
@@ -4193,7 +4193,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Bulk Stock Out Modal */}
       {isBulkStockOutModalOpen && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsBulkStockOutModalOpen(false)}
         >
           <div 
@@ -4201,10 +4201,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Keluarkan {selectedItems.length} Barang</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Keluarkan {selectedItems.length} Barang</h3>
               <button 
                 onClick={() => setIsBulkStockOutModalOpen(false)} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
@@ -4223,7 +4223,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700">Lokasi Tujuan / Barang Keluar <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-brand-purple">Lokasi Tujuan / Barang Keluar <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={stockOutData.lokasi_keluar}
@@ -4242,7 +4242,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700">Keterangan / Alasan Keluar Massal <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-brand-purple">Keterangan / Alasan Keluar Massal <span className="text-red-500">*</span></label>
                   <textarea
                     required
                     rows={3}
@@ -4257,7 +4257,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsBulkStockOutModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 Batal
               </button>
@@ -4277,7 +4277,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsExportPreviewOpen(false)}
         >
           <div 
@@ -4285,15 +4285,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
-              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-brand-purple">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-brand-purple hover:text-brand-purple">
                 <X size={20} />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-6 scrollbar-hide">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                  <tr className="border-b border-gray-100 text-brand-purple font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
                       <th key={key} className="pb-3 px-2">{key}</th>
                     ))}
@@ -4303,7 +4303,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   {exportData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       {Object.values(row).map((val: any, i) => (
-                        <td key={i} className="py-2 px-2 text-gray-600">{val}</td>
+                        <td key={i} className="py-2 px-2 text-brand-purple">{val}</td>
                       ))}
                     </tr>
                   ))}
@@ -4313,7 +4313,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
               >
                 Batal
               </button>

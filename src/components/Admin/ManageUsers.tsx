@@ -214,8 +214,8 @@ export default function ManageUsers() {
     <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold text-brand-purple">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
+          <p className="text-brand-purple">
             {profile?.role === 'admin' 
               ? 'Kelola hak akses dan profil seluruh pengguna aplikasi' 
               : 'Kelola informasi profil dan keamanan akun Anda'}
@@ -228,7 +228,7 @@ export default function ManageUsers() {
         <div className={cn(profile?.role === 'requester' ? "grid grid-cols-1 sm:grid-cols-2 gap-6" : "lg:col-span-1 space-y-6")}>
           <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
             <div className="p-6 border-b border-white/30 bg-white/20">
-              <h3 className="font-bold text-gray-900 flex items-center">
+              <h3 className="font-bold text-brand-purple flex items-center">
                 <UserIcon size={18} className="mr-2 text-blue-600" />
                 Profil Saya
               </h3>
@@ -240,7 +240,7 @@ export default function ManageUsers() {
                     {avatarUrl ? (
                       <SignedImage bucket="item-photos" path={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <UserIcon size={40} className="text-gray-300" />
+                      <UserIcon size={40} className="text-brand-purple" />
                     )}
                   </div>
                   <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors group-hover:scale-110 transform duration-200">
@@ -249,12 +249,12 @@ export default function ManageUsers() {
                   </label>
                 </div>
                 <div className="mt-4 text-center">
-                  <p className="font-bold text-gray-900">{profile?.full_name || 'User'}</p>
+                  <p className="font-bold text-brand-purple">{profile?.full_name || 'User'}</p>
                   {profile?.role !== 'requester' && (
-                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">
+                    <p className="text-xs text-brand-purple uppercase tracking-widest font-bold mt-1">
                       <span className={cn(
                         "px-2 py-0.5 rounded",
-                        profile?.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                        profile?.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
                       )}>
                         {profile?.role}
                       </span>
@@ -265,7 +265,7 @@ export default function ManageUsers() {
 
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Lengkap</label>
+                  <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Nama Lengkap</label>
                   <input
                     type="text"
                     value={fullName}
@@ -275,12 +275,12 @@ export default function ManageUsers() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
+                  <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Email</label>
                   <input
                     type="text"
                     value={user?.email || ''}
                     disabled
-                    className="w-full px-4 py-2 border border-gray-100 bg-gray-50 rounded-xl text-gray-400 text-sm cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-gray-100 bg-gray-50 rounded-xl text-brand-purple text-sm cursor-not-allowed"
                   />
                 </div>
                 <button
@@ -297,14 +297,14 @@ export default function ManageUsers() {
 
           <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
             <div className="p-6 border-b border-white/30 bg-white/20">
-              <h3 className="font-bold text-gray-900 flex items-center">
+              <h3 className="font-bold text-brand-purple flex items-center">
                 <Key size={18} className="mr-2 text-orange-600" />
                 Ganti Password
               </h3>
             </div>
             <form onSubmit={handleUpdatePassword} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Password Baru</label>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Password Baru</label>
                 <input
                   type="password"
                   value={newPassword}
@@ -315,7 +315,7 @@ export default function ManageUsers() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Konfirmasi Password</label>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Konfirmasi Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
@@ -343,7 +343,7 @@ export default function ManageUsers() {
           {profile?.role === 'admin' ? (
             <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden h-full flex flex-col">
               <div className="p-6 border-b border-white/30 bg-white/20 flex items-center justify-between">
-                <h3 className="font-bold text-gray-900 flex items-center">
+                <h3 className="font-bold text-brand-purple flex items-center">
                   <Shield size={18} className="mr-2 text-emerald-600" />
                   Daftar Seluruh Pengguna
                 </h3>
@@ -353,7 +353,7 @@ export default function ManageUsers() {
               </div>
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-left min-w-[480px]">
-                  <thead className="bg-gray-50 text-[10px] uppercase tracking-wider font-bold text-gray-400 border-b border-gray-100">
+                  <thead className="bg-gray-50 text-[10px] uppercase tracking-wider font-bold text-brand-purple border-b border-gray-100">
                     <tr>
                       <th className="px-6 py-4">User</th>
                       <th className="px-6 py-4">Role</th>
@@ -369,23 +369,23 @@ export default function ManageUsers() {
                               {p.avatar_url ? (
                                 <SignedImage bucket="item-photos" path={p.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <UserIcon size={14} className="text-gray-400" />
+                                <UserIcon size={14} className="text-brand-purple" />
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-bold text-gray-900 truncate">{p.full_name || 'No Name'}</p>
+                              <p className="text-sm font-bold text-brand-purple truncate">{p.full_name || 'No Name'}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={cn(
                             "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
-                            p.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                            p.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
                           )}>
                             {p.role}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
+                        <td className="px-6 py-4 text-xs text-brand-purple whitespace-nowrap">
                           {new Date(p.created_at).toLocaleDateString('id-ID')}
                         </td>
                       </tr>
@@ -400,18 +400,18 @@ export default function ManageUsers() {
                 <Shield size={32} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Akses Terbatas</h3>
-                <p className="text-sm text-gray-600 max-w-sm mt-2">
+                <h3 className="text-lg font-bold text-brand-purple">Akses Terbatas</h3>
+                <p className="text-sm text-brand-purple max-w-sm mt-2">
                   Sebagai pengguna dengan role <strong className="capitalize">{profile?.role || 'User'}</strong>, Anda hanya dapat mengelola profil dan keamanan akun Anda sendiri.
                 </p>
               </div>
               <div className="pt-4 grid grid-cols-2 gap-4 w-full max-w-xs">
                 <div className="bg-white/60 backdrop-blur-md p-3 rounded-xl border border-white/50 shadow-sm">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">Inventory</p>
+                  <p className="text-[10px] font-bold text-brand-purple uppercase">Inventory</p>
                   <p className="text-xs font-bold text-blue-600">View Only</p>
                 </div>
                 <div className="bg-white/60 backdrop-blur-md p-3 rounded-xl border border-white/50 shadow-sm">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">Profile</p>
+                  <p className="text-[10px] font-bold text-brand-purple uppercase">Profile</p>
                   <p className="text-xs font-bold text-blue-600">Full Access</p>
                 </div>
               </div>
@@ -424,7 +424,7 @@ export default function ManageUsers() {
       {/* Add User Modal */}
       {isAddUserModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsAddUserModalOpen(false)}
         >
           <div 
@@ -432,18 +432,18 @@ export default function ManageUsers() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-white/30 flex items-center justify-between bg-white/20 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center">
+              <h3 className="text-lg font-bold text-brand-purple flex items-center">
                 <UserPlus size={20} className="mr-2 text-blue-600" />
                 Tambah User Baru
               </h3>
-              <button onClick={() => setIsAddUserModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+              <button onClick={() => setIsAddUserModalOpen(false)} className="text-brand-purple hover:text-brand-purple p-1 rounded-full hover:bg-gray-200 transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleAddUser} className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Lengkap</label>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Nama Lengkap</label>
                 <input
                   type="text"
                   value={newUserForm.full_name}
@@ -454,7 +454,7 @@ export default function ManageUsers() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Email</label>
                 <input
                   type="email"
                   value={newUserForm.email}
@@ -465,7 +465,7 @@ export default function ManageUsers() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Password</label>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Password</label>
                 <input
                   type="password"
                   value={newUserForm.password}
@@ -477,7 +477,7 @@ export default function ManageUsers() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Role</label>
                 <select
                   value={newUserForm.role}
                   onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' })}
@@ -496,7 +496,7 @@ export default function ManageUsers() {
                 <button
                   type="button"
                   onClick={() => setIsAddUserModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors"
+                  className="flex-1 px-4 py-2.5 text-sm font-bold text-brand-purple hover:bg-gray-100 rounded-xl transition-colors"
                 >
                   Batal
                 </button>

@@ -501,7 +501,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={() => !isSubmitting && onClose()}
     >
       <div
@@ -517,7 +517,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
           </div>
           <button
             onClick={() => !isSubmitting && onClose()}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
             disabled={isSubmitting}
           >
             <X size={24} />
@@ -529,7 +529,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
             <div className="p-6 h-full min-h-0 flex flex-col">
               <div className="flex justify-between items-center mb-6">
                 <div className="relative w-full max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
                   <input
                     type="text"
                     placeholder="Cari nomor SPK atau nama pemohon..."
@@ -543,7 +543,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
               <div className="flex-1 overflow-auto bg-white rounded-2xl border shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50/80 sticky top-0 backdrop-blur-sm z-10">
-                    <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    <tr className="text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                       <th className="px-6 py-4">Nomor SPK</th>
                       <th className="px-6 py-4">Diajukan Oleh</th>
                       <th className="px-6 py-4">Tanggal</th>
@@ -556,31 +556,31 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                       <tr>
                         <td colSpan={5} className="px-6 py-12 text-center">
                           <Loader2 className="animate-spin mx-auto text-sky-600 mb-2" size={32} />
-                          <p className="text-gray-500">Memuat data...</p>
+                          <p className="text-brand-purple">Memuat data...</p>
                         </td>
                       </tr>
                     ) : filteredRequests.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-6 py-12 text-center">
-                          <ClipboardList className="mx-auto text-gray-300 mb-2" size={48} />
-                          <p className="text-gray-500">Belum ada pengajuan SPK.</p>
+                          <ClipboardList className="mx-auto text-brand-purple mb-2" size={48} />
+                          <p className="text-brand-purple">Belum ada pengajuan SPK.</p>
                         </td>
                       </tr>
                     ) : (
                       filteredRequests.map((req) => (
                         <tr key={req.id} className="hover:bg-sky-50/30 transition-colors group">
                           <td className="px-6 py-4">
-                            <span className="font-semibold text-gray-900">{req.nomor_spk}</span>
+                            <span className="font-semibold text-brand-purple">{req.nomor_spk}</span>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex items-center text-gray-700">
-                              <User size={14} className="mr-1.5 text-gray-400" />
+                            <div className="flex items-center text-brand-purple">
+                              <User size={14} className="mr-1.5 text-brand-purple" />
                               {req.diajukan_oleh}
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex items-center text-gray-600">
-                              <Calendar size={14} className="mr-1.5 text-gray-400" />
+                            <div className="flex items-center text-brand-purple">
+                              <Calendar size={14} className="mr-1.5 text-brand-purple" />
                               {new Date(req.tanggal_pengajuan || req.created_at).toLocaleDateString('id-ID')}
                             </div>
                           </td>
@@ -621,22 +621,22 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                 <div>
                   <button
                     onClick={() => setIsDetailView(false)}
-                    className="flex items-center text-sm text-gray-500 hover:text-sky-600 transition-colors mb-3"
+                    className="flex items-center text-sm text-brand-purple hover:text-sky-600 transition-colors mb-3"
                   >
                     <X size={16} className="mr-1" /> Kembali ke Daftar
                   </button>
-                  <h4 className="text-xl font-bold text-gray-900 mb-2">Detail Pengajuan: {selectedRequest.nomor_spk}</h4>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    <span className="flex items-center"><User size={14} className="mr-1.5 text-gray-400" /> Pemohon: {selectedRequest.diajukan_oleh}</span>
-                    <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-gray-400" /> Tanggal: {new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
+                  <h4 className="text-xl font-bold text-brand-purple mb-2">Detail Pengajuan: {selectedRequest.nomor_spk}</h4>
+                  <div className="flex flex-wrap gap-4 text-sm text-brand-purple">
+                    <span className="flex items-center"><User size={14} className="mr-1.5 text-brand-purple" /> Pemohon: {selectedRequest.diajukan_oleh}</span>
+                    <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-brand-purple" /> Tanggal: {new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
                   </div>
                   <div className="mt-4 p-3 bg-white border rounded-xl shadow-sm">
-                    <span className="text-xs font-semibold text-gray-400 uppercase">Lokasi Tujuan</span>
-                    <p className="text-sm font-medium text-gray-800 mt-1">{selectedRequest.lokasi_tujuan || 'Tidak ada lokasi tujuan'}</p>
+                    <span className="text-xs font-semibold text-brand-purple uppercase">Lokasi Tujuan</span>
+                    <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.lokasi_tujuan || 'Tidak ada lokasi tujuan'}</p>
                   </div>
                   <div className="mt-3 p-3 bg-white border rounded-xl shadow-sm">
-                    <span className="text-xs font-semibold text-gray-400 uppercase">Keterangan</span>
-                    <p className="text-sm font-medium text-gray-800 mt-1">{selectedRequest.keterangan || 'Tidak ada keterangan'}</p>
+                    <span className="text-xs font-semibold text-brand-purple uppercase">Keterangan</span>
+                    <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.keterangan || 'Tidak ada keterangan'}</p>
                   </div>
                 </div>
 
@@ -658,7 +658,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                   {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'PENDING_SPV') && (
                     <button
                       onClick={downloadPDF}
-                      className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl shadow-sm text-sm font-semibold transition-all"
+                      className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-brand-purple rounded-xl shadow-sm text-sm font-semibold transition-all"
                     >
                       <Download size={16} />
                       <span>Download SPK</span>
@@ -668,7 +668,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
               </div>
 
               <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-white">
-                <h5 className="font-bold text-gray-900 mb-4 flex items-center">
+                <h5 className="font-bold text-brand-purple mb-4 flex items-center">
                   <Package className="mr-2 text-sky-500" size={18} />
                   Daftar Barang ({requestItems.length})
                 </h5>
@@ -676,7 +676,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                 {loadingItems ? (
                   <div className="py-12 text-center">
                     <Loader2 className="animate-spin mx-auto text-sky-600 mb-2" size={32} />
-                    <p className="text-gray-500">Memuat barang...</p>
+                    <p className="text-brand-purple">Memuat barang...</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -688,15 +688,15 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                           </div>
                         ) : (
                           <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                            <Package className="text-gray-300" size={24} />
+                            <Package className="text-brand-purple" size={24} />
                           </div>
                         )}
 
                         <div className="flex-1">
-                          <h6 className="font-bold text-gray-900 text-base">{item.nama_barang}</h6>
-                          <div className="text-sm text-gray-500 font-mono mt-0.5">{item.kode_barang}</div>
+                          <h6 className="font-bold text-brand-purple text-base">{item.nama_barang}</h6>
+                          <div className="text-sm text-brand-purple font-mono mt-0.5">{item.kode_barang}</div>
                           <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium">
-                            <span className="flex items-center bg-gray-100 text-gray-700 px-2 py-1 rounded-md">
+                            <span className="flex items-center bg-gray-100 text-brand-purple px-2 py-1 rounded-md">
                               <MapPin size={12} className="mr-1" />
                               {(item as any).items?.master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi'}
                             </span>
@@ -713,8 +713,8 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                                 <XCircle size={14} className="mr-1.5" />
                                 Item Ditolak
                               </div>
-                              <div className="text-[11px] text-gray-500 max-w-[200px]">
-                                <span className="font-semibold text-gray-700 block mb-0.5">Oleh: {parseRejectionReason(item.alasan_rejection).rejectedBy} {parseRejectionReason(item.alasan_rejection).role ? `(${parseRejectionReason(item.alasan_rejection).role})` : ''}</span>
+                              <div className="text-[11px] text-brand-purple max-w-[200px]">
+                                <span className="font-semibold text-brand-purple block mb-0.5">Oleh: {parseRejectionReason(item.alasan_rejection).rejectedBy} {parseRejectionReason(item.alasan_rejection).role ? `(${parseRejectionReason(item.alasan_rejection).role})` : ''}</span>
                                 "{parseRejectionReason(item.alasan_rejection).alasan}"
                               </div>
                             </div>
@@ -745,7 +745,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
               </div>
 
               <div className="shrink-0 p-6 border-t border-gray-100 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-brand-purple">
                   {selectedRequest.status === 'PENDING_ADMIN' && 'Perlu ditandai diketahui oleh Admin.'}
                   {selectedRequest.status === 'PENDING_AUDITOR' && 'Perlu ditandai diketahui oleh Auditor.'}
                   {selectedRequest.status === 'PENDING_SPV' && 'Persetujuan SPV (Final) diperlukan.'}
@@ -805,16 +805,16 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
 
       {/* Reject Item Modal */}
       {rejectItemModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">Batalkan Item</h3>
-              <button onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })} className="text-gray-400 hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
+              <h3 className="font-bold text-brand-purple">Batalkan Item</h3>
+              <button onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })} className="text-brand-purple hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
                 <X size={18} />
               </button>
             </div>
             <div className="p-6">
-              <label className="block text-sm font-bold text-gray-700 mb-2">Alasan Penolakan</label>
+              <label className="block text-sm font-bold text-brand-purple mb-2">Alasan Penolakan</label>
               <textarea
                 autoFocus
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
@@ -827,7 +827,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
               <button
                 onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
               >
                 Kembali
               </button>
@@ -850,16 +850,16 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
 
       {/* Reject Full Request Modal */}
       {rejectFullModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setRejectFullModal({ isOpen: false, reason: '' })}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setRejectFullModal({ isOpen: false, reason: '' })}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">Tolak Semua Pengajuan</h3>
-              <button onClick={() => setRejectFullModal({ isOpen: false, reason: '' })} className="text-gray-400 hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
+              <h3 className="font-bold text-brand-purple">Tolak Semua Pengajuan</h3>
+              <button onClick={() => setRejectFullModal({ isOpen: false, reason: '' })} className="text-brand-purple hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
                 <X size={18} />
               </button>
             </div>
             <div className="p-6">
-              <label className="block text-sm font-bold text-gray-700 mb-2">Alasan Penolakan</label>
+              <label className="block text-sm font-bold text-brand-purple mb-2">Alasan Penolakan</label>
               <textarea
                 autoFocus
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
@@ -872,7 +872,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
               <button
                 onClick={() => setRejectFullModal({ isOpen: false, reason: '' })}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
               >
                 Kembali
               </button>

@@ -175,7 +175,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="p-6 bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+        <h2 className="text-2xl font-bold text-brand-purple flex items-center space-x-2">
           <History size={24} className="text-blue-600" />
           <span>Take Item History</span>
         </h2>
@@ -209,11 +209,11 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" />
           </div>
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
             <div className="flex items-center gap-2">
-              <Calendar size={18} className="text-gray-400 shrink-0" />
+              <Calendar size={18} className="text-brand-purple shrink-0" />
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1 min-w-0">
                 <input
                   type="date"
@@ -246,39 +246,39 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             <tr>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('created_at')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Tanggal</span>
                   {sortColumn === 'created_at' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'created_at' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'created_at' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('nama_barang')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Nama Barang</span>
                   {sortColumn === 'nama_barang' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'nama_barang' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'nama_barang' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('jumlah')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Jumlah</span>
                   {sortColumn === 'jumlah' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'jumlah' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'jumlah' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengambil</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alasan</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider">Pengambil</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider">Alasan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -286,28 +286,28 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
               <tr>
                 <td colSpan={5} className="px-6 py-12 text-center">
                   <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
-                  <p className="text-gray-500">Memuat riwayat...</p>
+                  <p className="text-brand-purple">Memuat riwayat...</p>
                 </td>
               </tr>
             ) : history.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-12 text-center">
-                  <History size={48} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-gray-500">Tidak ada riwayat pengambilan barang.</p>
+                  <History size={48} className="mx-auto text-brand-purple mb-2" />
+                  <p className="text-brand-purple">Tidak ada riwayat pengambilan barang.</p>
                 </td>
               </tr>
             ) : (
               history.map((entry) => (
                 <tr key={entry.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => handleOpenDetailModal(entry)}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-purple">
                     {new Date(entry.created_at).toLocaleString('id-ID')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
-                      <Package size={18} className="text-gray-400" />
+                      <Package size={18} className="text-brand-purple" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{entry.nama_barang || entry.items?.nama_barang || 'Item Deleted'}</p>
-                        <p className="text-xs text-gray-500 font-mono">{entry.kode_barang || entry.items?.kode_barang || '-'}</p>
+                        <p className="text-sm font-medium text-brand-purple">{entry.nama_barang || entry.items?.nama_barang || 'Item Deleted'}</p>
+                        <p className="text-xs text-brand-purple font-mono">{entry.kode_barang || entry.items?.kode_barang || '-'}</p>
                       </div>
                     </div>
                   </td>
@@ -318,11 +318,11 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
-                      <UserIcon size={18} className="text-gray-400" />
-                      <p className="text-sm text-gray-900">{entry.profiles?.full_name || entry.user_name || 'Unknown User'}</p>
+                      <UserIcon size={18} className="text-brand-purple" />
+                      <p className="text-sm text-brand-purple">{entry.profiles?.full_name || entry.user_name || 'Unknown User'}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
+                  <td className="px-6 py-4 text-sm text-brand-purple max-w-xs truncate">
                     {entry.alasan || '-'}
                   </td>
                 </tr>
@@ -335,11 +335,11 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
       {/* Pagination */}
       <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-brand-purple">
             Menampilkan <span className="font-medium">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium">{totalCount}</span> riwayat
           </p>
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Per halaman:</span>
+            <span className="text-sm text-brand-purple">Per halaman:</span>
             <select
               id="itemsPerPage"
               value={itemsPerPage}
@@ -361,7 +361,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             <button
               disabled={page === 1}
               onClick={() => setPage(p => p - 1)}
-              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <ChevronLeft size={18} />
             </button>
@@ -379,7 +379,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
                     onClick={() => setPage(pageNum)}
                     className={cn(
                       "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                      page === pageNum ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                      page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
                     )}
                   >
                     {pageNum}
@@ -390,7 +390,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             <button
               disabled={page === totalPages}
               onClick={() => setPage(p => p + 1)}
-              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <ChevronRight size={18} />
             </button>
@@ -402,7 +402,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
       {/* Detail History Modal */}
       {isDetailModalOpen && selectedHistoryEntryForDetail && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200" 
           onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
@@ -410,48 +410,48 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Detail Riwayat Pengambilan</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Detail Riwayat Pengambilan</h3>
               <button 
                 onClick={() => setIsDetailModalOpen(false)} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
             <div className="p-6 space-y-4 text-sm overflow-y-auto flex-1 scrollbar-hide">
               <div>
-                <p className="font-medium text-gray-700">Tanggal:</p>
-                <p className="text-gray-900">{new Date(selectedHistoryEntryForDetail.created_at).toLocaleString('id-ID')}</p>
+                <p className="font-medium text-brand-purple">Tanggal:</p>
+                <p className="text-brand-purple">{new Date(selectedHistoryEntryForDetail.created_at).toLocaleString('id-ID')}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Nama Barang:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.nama_barang || selectedHistoryEntryForDetail.items?.nama_barang || 'Item Deleted'}</p>
+                <p className="font-medium text-brand-purple">Nama Barang:</p>
+                <p className="text-brand-purple">{selectedHistoryEntryForDetail.nama_barang || selectedHistoryEntryForDetail.items?.nama_barang || 'Item Deleted'}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Kode Barang:</p>
-                <p className="text-gray-900 font-mono">{selectedHistoryEntryForDetail.kode_barang || selectedHistoryEntryForDetail.items?.kode_barang || '-'}</p>
+                <p className="font-medium text-brand-purple">Kode Barang:</p>
+                <p className="text-brand-purple font-mono">{selectedHistoryEntryForDetail.kode_barang || selectedHistoryEntryForDetail.items?.kode_barang || '-'}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Lokasi:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.nama_lokasi || selectedHistoryEntryForDetail.master_lokasi?.nama_lokasi || selectedHistoryEntryForDetail.kode_lokasi || '-'}</p>
+                <p className="font-medium text-brand-purple">Lokasi:</p>
+                <p className="text-brand-purple">{selectedHistoryEntryForDetail.nama_lokasi || selectedHistoryEntryForDetail.master_lokasi?.nama_lokasi || selectedHistoryEntryForDetail.kode_lokasi || '-'}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Jumlah:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.jumlah}</p>
+                <p className="font-medium text-brand-purple">Jumlah:</p>
+                <p className="text-brand-purple">{selectedHistoryEntryForDetail.jumlah}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Pengambil:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.profiles?.full_name || selectedHistoryEntryForDetail.user_name || 'Unknown User'}</p>
+                <p className="font-medium text-brand-purple">Pengambil:</p>
+                <p className="text-brand-purple">{selectedHistoryEntryForDetail.profiles?.full_name || selectedHistoryEntryForDetail.user_name || 'Unknown User'}</p>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Alasan:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.alasan || '-'}</p>
+                <p className="font-medium text-brand-purple">Alasan:</p>
+                <p className="text-brand-purple">{selectedHistoryEntryForDetail.alasan || '-'}</p>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
               <button
                 onClick={() => setIsDetailModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -462,18 +462,18 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
 
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
-              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-brand-purple">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-brand-purple hover:text-brand-purple">
                 <X size={20} />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-6">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                  <tr className="border-b border-gray-100 text-brand-purple font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
                       <th key={key} className="pb-3 px-2 whitespace-nowrap">{key}</th>
                     ))}
@@ -483,7 +483,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
                   {exportData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       {Object.values(row).map((val: any, i) => (
-                        <td key={i} className="py-2 px-2 text-gray-600 whitespace-nowrap">{val}</td>
+                        <td key={i} className="py-2 px-2 text-brand-purple whitespace-nowrap">{val}</td>
                       ))}
                     </tr>
                   ))}
@@ -493,7 +493,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
               >
                 Batal
               </button>

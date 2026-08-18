@@ -160,8 +160,8 @@ export default function MasterKategori() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 border-b-2 border-orange-500 pb-1 inline-block">Master Kategori</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola data kategori klasifikasi barang</p>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Kategori</h1>
+          <p className="text-sm text-brand-purple mt-1">Kelola data kategori klasifikasi barang</p>
         </div>
         
         {isAdmin && (
@@ -177,7 +177,7 @@ export default function MasterKategori() {
 
       <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50">
         <div className="relative group max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari kategori..."
@@ -188,7 +188,7 @@ export default function MasterKategori() {
           {search && (
             <button 
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-purple hover:text-brand-purple"
             >
               <X size={16} />
             </button>
@@ -200,7 +200,7 @@ export default function MasterKategori() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Nama Kategori</th>
                 <th className="px-6 py-4">Sub Dari</th>
                 <th className="px-6 py-4">Deskripsi</th>
@@ -211,15 +211,15 @@ export default function MasterKategori() {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 4} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={isAdmin ? 5 : 4} className="px-6 py-12 text-center text-brand-purple">
                     <Loader2 className="animate-spin mx-auto mb-2 text-orange-500" size={24} />
                     <p>Memuat data...</p>
                   </td>
                 </tr>
               ) : categories.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 4} className="px-6 py-12 text-center text-gray-500">
-                    <AlertCircle className="mx-auto mb-2 text-gray-400" size={24} />
+                  <td colSpan={isAdmin ? 5 : 4} className="px-6 py-12 text-center text-brand-purple">
+                    <AlertCircle className="mx-auto mb-2 text-brand-purple" size={24} />
                     <p>Tidak ada data kategori ditemukan.</p>
                   </td>
                 </tr>
@@ -227,18 +227,18 @@ export default function MasterKategori() {
                 categories.map((category) => (
                   <tr key={category.id} className="hover:bg-orange-50/50 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-gray-900">{category.nama_kategori}</div>
+                      <div className="text-sm font-semibold text-brand-purple">{category.nama_kategori}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-brand-purple">
                         {category.parent_id ? categories.find(c => c.id === category.parent_id)?.nama_kategori || '-' : '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 truncate max-w-sm">{category.deskripsi || '-'}</div>
+                      <div className="text-sm text-brand-purple truncate max-w-sm">{category.deskripsi || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-brand-purple">
                         {category.created_at ? new Date(category.created_at).toLocaleDateString('id-ID') : '-'}
                       </div>
                     </td>
@@ -273,7 +273,7 @@ export default function MasterKategori() {
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => !formLoading && setIsModalOpen(false)}
         >
           <div
@@ -281,12 +281,12 @@ export default function MasterKategori() {
             onClick={e => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-brand-purple">
                 {editingCategory ? 'Edit Kategori' : 'Tambah Kategori Baru'}
               </h3>
               <button 
                 onClick={() => setIsModalOpen(false)} 
-                className="text-gray-400 hover:text-gray-600 hover:bg-white rounded-full p-1 transition-colors"
+                className="text-brand-purple hover:text-brand-purple hover:bg-white rounded-full p-1 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -302,7 +302,7 @@ export default function MasterKategori() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Kategori <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-brand-purple mb-1.5">Nama Kategori <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     required
@@ -313,7 +313,7 @@ export default function MasterKategori() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Sub Dari (Opsional)</label>
+                  <label className="block text-sm font-semibold text-brand-purple mb-1.5">Sub Dari (Opsional)</label>
                   <select
                     value={formData.parent_id}
                     onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
@@ -328,7 +328,7 @@ export default function MasterKategori() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Deskripsi</label>
+                  <label className="block text-sm font-semibold text-brand-purple mb-1.5">Deskripsi</label>
                   <textarea
                     rows={4}
                     value={formData.deskripsi}
@@ -343,7 +343,7 @@ export default function MasterKategori() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                  className="px-5 py-2.5 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
                   Batal
                 </button>
@@ -363,20 +363,20 @@ export default function MasterKategori() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && deletingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90dvh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto">
               <AlertCircle className="text-red-600" size={24} />
             </div>
-            <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Hapus Kategori?</h3>
-            <p className="text-sm text-center text-gray-500 mb-6">
+            <h3 className="text-lg font-bold text-center text-brand-purple mb-2">Hapus Kategori?</h3>
+            <p className="text-sm text-center text-brand-purple mb-6">
               Hapus kategori <span className="font-bold text-red-600">{deletingCategory.nama_kategori}</span>? 
               Pastikan tidak ada barang yang terkait dengan kategori ini.
             </p>
             <div className="flex justify-center space-x-3">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors w-full"
+                className="px-4 py-2 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors w-full"
               >
                 Batal
               </button>

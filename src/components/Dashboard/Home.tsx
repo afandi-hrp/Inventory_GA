@@ -275,17 +275,17 @@ export default function DashboardHome() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header Summary */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 border-b-2 border-orange-500 pb-1 inline-block mb-2">
+        <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block mb-2">
           {isRequester ? 'Dashboard Barang Office' : 'Dashboard'}
         </h1>
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-sm font-medium text-gray-500">
-            {greeting.text}, <span className="font-bold text-gray-800">{profile?.full_name || 'User'}</span>
+          <p className="text-sm font-medium text-brand-purple">
+            {greeting.text}, <span className="font-bold text-brand-purple">{profile?.full_name || 'User'}</span>
           </p>
           <greeting.Icon className={cn(greeting.color)} size={20} />
         </div>
         {isRequester && (
-          <p className="text-sm text-gray-500 mt-1">Ringkasan barang Office yang tersedia & pengajuan SPK Anda</p>
+          <p className="text-sm text-brand-purple mt-1">Ringkasan barang Office yang tersedia & pengajuan SPK Anda</p>
         )}
       </div>
 
@@ -392,7 +392,7 @@ export default function DashboardHome() {
       {/* Chart - disembunyikan untuk requester karena datanya (audit log/stock-out) tidak ke-scope ke barang Office saja */}
       {!isRequester && (
         <div className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 w-full">
-          <h3 className="text-lg font-semibold mb-6 flex items-center text-gray-800">
+          <h3 className="text-lg font-semibold mb-6 flex items-center text-brand-purple">
             <BarChart2 className="mr-2 text-blue-600" size={20} />
             Statistik Aktivitas Inventaris (6 Bulan Terakhir)
           </h3>
@@ -436,14 +436,14 @@ export default function DashboardHome() {
 
       {/* Recent Items */}
       <div className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 flex flex-col">
-        <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0 text-gray-800">
+        <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0 text-brand-purple">
           <Clock className="mr-2 text-blue-600" size={20} />
           {isRequester ? 'Barang Office Terbaru' : 'Penambahan Barang Terbaru'}
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left relative">
             <thead className="bg-gray-50/50">
-              <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+              <tr className="text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                 <th className="py-3 px-4 rounded-tl-lg">Barang</th>
                 <th className="py-3 px-4">Kode</th>
                 <th className="py-3 px-4">Kategori</th>
@@ -458,27 +458,27 @@ export default function DashboardHome() {
                   onClick={() => setSelectedItemForDetail(item)}
                   className={`text-sm hover:bg-white/50 transition-colors cursor-pointer ${index < 3 ? 'bg-blue-50/30' : ''}`}
                 >
-                  <td className="py-3 px-4 font-medium text-gray-900">
+                  <td className="py-3 px-4 font-medium text-brand-purple">
                     <div className="flex items-center space-x-2">
                       {index < 3 && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.6)]" title="Terbaru"></span>}
                       <span className={index < 3 ? 'text-blue-700 font-semibold' : ''}>{item.nama_barang}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-gray-500">
+                  <td className="py-3 px-4 text-brand-purple">
                     <span className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{item.kode_barang}</span>
                   </td>
-                  <td className="py-3 px-4 text-gray-500">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                  <td className="py-3 px-4 text-brand-purple">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-brand-purple">
                       {(item as any).categories?.nama_kategori || 'Tanpa Kategori'}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-gray-500">{(item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || '-'}</td>
+                  <td className="py-3 px-4 text-brand-purple">{(item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || '-'}</td>
                   <td className="py-3 px-4 text-right font-bold text-blue-600">{item.jumlah_barang}</td>
                 </tr>
               ))}
               {recentItems.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-gray-400 italic">Belum ada data barang</td>
+                  <td colSpan={5} className="py-8 text-center text-brand-purple italic">Belum ada data barang</td>
                 </tr>
               )}
             </tbody>
@@ -489,7 +489,7 @@ export default function DashboardHome() {
       {/* Item Detail Modal */}
       {selectedItemForDetail && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setSelectedItemForDetail(null)}
         >
           <div
@@ -497,10 +497,10 @@ export default function DashboardHome() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Detail Barang</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Detail Barang</h3>
               <button
                 onClick={() => setSelectedItemForDetail(null)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
@@ -514,7 +514,7 @@ export default function DashboardHome() {
                     {selectedItemForDetail.foto_urls && selectedItemForDetail.foto_urls.length > 0 ? (
                       <SignedImage bucket="item-photos" path={selectedItemForDetail.foto_urls[0]} alt={selectedItemForDetail.nama_barang} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-brand-purple">
                         <ImageIcon size={48} className="mb-2" />
                         <span className="text-sm">Tidak ada foto</span>
                       </div>
@@ -534,54 +534,54 @@ export default function DashboardHome() {
                 {/* Info */}
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Informasi Dasar</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Informasi Dasar</h4>
                     <div className="space-y-3">
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Package size={18} /></div>
                         <div>
-                          <p className="text-xs text-gray-500">Nama Barang</p>
-                          <p className="text-base font-bold text-gray-900">{selectedItemForDetail.nama_barang}</p>
+                          <p className="text-xs text-brand-purple">Nama Barang</p>
+                          <p className="text-base font-bold text-brand-purple">{selectedItemForDetail.nama_barang}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Hash size={18} /></div>
                         <div>
-                          <p className="text-xs text-gray-500">Kode Barang</p>
-                          <p className="text-sm font-mono font-medium text-gray-700">{selectedItemForDetail.kode_barang}</p>
+                          <p className="text-xs text-brand-purple">Kode Barang</p>
+                          <p className="text-sm font-mono font-medium text-brand-purple">{selectedItemForDetail.kode_barang}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Kategori, Lokasi & Kepemilikan</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Kategori, Lokasi & Kepemilikan</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><Package size={18} /></div>
                         <div>
-                          <p className="text-xs text-gray-500">Kategori</p>
-                          <p className="text-sm font-medium text-gray-700">{(selectedItemForDetail as any).categories?.nama_kategori || 'Tanpa Kategori'}</p>
+                          <p className="text-xs text-brand-purple">Kategori</p>
+                          <p className="text-sm font-medium text-brand-purple">{(selectedItemForDetail as any).categories?.nama_kategori || 'Tanpa Kategori'}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><MapPin size={18} /></div>
                         <div>
-                          <p className="text-xs text-gray-500">Lokasi</p>
-                          <p className="text-sm font-medium text-gray-700">{(selectedItemForDetail as any).master_lokasi?.nama_lokasi || '-'}</p>
+                          <p className="text-xs text-brand-purple">Lokasi</p>
+                          <p className="text-sm font-medium text-brand-purple">{(selectedItemForDetail as any).master_lokasi?.nama_lokasi || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-sky-50 text-sky-600 rounded-lg"><UserCheck size={18} /></div>
                         <div>
-                          <p className="text-xs text-gray-500">Kepemilikan</p>
-                          <p className="text-sm font-medium text-gray-700">{(selectedItemForDetail as any).master_kepemilikan?.nama_pemilik || '-'}</p>
+                          <p className="text-xs text-brand-purple">Kepemilikan</p>
+                          <p className="text-sm font-medium text-brand-purple">{(selectedItemForDetail as any).master_kepemilikan?.nama_pemilik || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Info size={18} /></div>
                         <div>
-                          <p className="text-xs text-gray-500">Stok Saat Ini</p>
-                          <p className="text-sm font-bold text-gray-900">{selectedItemForDetail.jumlah_barang} unit</p>
+                          <p className="text-xs text-brand-purple">Stok Saat Ini</p>
+                          <p className="text-sm font-bold text-brand-purple">{selectedItemForDetail.jumlah_barang} unit</p>
                         </div>
                       </div>
                     </div>
@@ -589,7 +589,7 @@ export default function DashboardHome() {
 
                   {selectedItemForDetail.kondisi_barang && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Kondisi Barang</h4>
+                      <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Kondisi Barang</h4>
                       <span className={cn(
                         "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border",
                         selectedItemForDetail.kondisi_barang === 'BAIK' ? "bg-green-50 text-green-700 border-green-200" :
@@ -602,16 +602,16 @@ export default function DashboardHome() {
                   )}
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Deskripsi</h4>
+                    <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Deskripsi</h4>
                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <p className="text-sm text-gray-600 leading-relaxed">
+                      <p className="text-sm text-brand-purple leading-relaxed">
                         {selectedItemForDetail.deskripsi || 'Tidak ada deskripsi tambahan untuk barang ini.'}
                       </p>
                     </div>
                   </div>
 
                   <div className="pt-4 border-t border-gray-100">
-                    <div className="flex items-center text-xs text-gray-400">
+                    <div className="flex items-center text-xs text-brand-purple">
                       <Calendar size={14} className="mr-1" />
                       <span>Terakhir diperbarui: {new Date(selectedItemForDetail.updated_at).toLocaleString('id-ID')}</span>
                     </div>
@@ -623,7 +623,7 @@ export default function DashboardHome() {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setSelectedItemForDetail(null)}
-                className="px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
+                className="px-6 py-2 text-sm font-medium text-brand-purple hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -671,7 +671,7 @@ function ExploreDimensionPanel({ title, headerIcon, cardIcon, theme, data, selec
   const t = EXPLORE_THEME[theme];
   return (
     <div className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 flex flex-col">
-      <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0 text-gray-800">
+      <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0 text-brand-purple">
         {headerIcon}
         {title}
       </h3>
@@ -689,29 +689,29 @@ function ExploreDimensionPanel({ title, headerIcon, cardIcon, theme, data, selec
                   isSelected ? t.cardActive : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
                 )}
               >
-                <div className={cn("p-3 rounded-full mb-3 shadow-sm", isSelected ? t.iconActive : "bg-gray-50 text-gray-400")}>
+                <div className={cn("p-3 rounded-full mb-3 shadow-sm", isSelected ? t.iconActive : "bg-gray-50 text-brand-purple")}>
                   {cardIcon}
                 </div>
-                <h4 className={cn("font-semibold text-sm mb-1", isSelected ? t.titleActive : "text-gray-700")}>{d.name}</h4>
-                <p className="text-xs text-gray-500">{d.value} Barang</p>
+                <h4 className={cn("font-semibold text-sm mb-1", isSelected ? t.titleActive : "text-brand-purple")}>{d.name}</h4>
+                <p className="text-xs text-brand-purple">{d.value} Barang</p>
               </div>
             );
           })}
           {data.length === 0 && (
-            <p className="col-span-full text-sm text-gray-400 italic py-4">Belum ada data.</p>
+            <p className="col-span-full text-sm text-brand-purple italic py-4">Belum ada data.</p>
           )}
         </div>
       </div>
 
       {selected && (
         <div className="mt-6 pt-6 border-t border-gray-200/50 animate-in slide-in-from-top-4 fade-in duration-300">
-          <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
+          <h4 className="font-semibold text-brand-purple mb-4 flex items-center">
             Daftar Barang - <span className={cn("ml-1", t.textAccent)}>{selected}</span>
           </h4>
           <div className="overflow-auto max-h-[420px] border border-gray-100 rounded-xl">
             <table className="w-full text-left relative">
               <thead className="bg-gray-50/80 sticky top-0 backdrop-blur-sm z-10">
-                <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                <tr className="text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                   <th className="py-3 px-4">Barang</th>
                   <th className="py-3 px-4">Kode</th>
                   <th className="py-3 px-4">Lokasi</th>
@@ -727,9 +727,9 @@ function ExploreDimensionPanel({ title, headerIcon, cardIcon, theme, data, selec
                     onClick={() => onItemClick(item)}
                     className="text-sm hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="py-3 px-4 font-medium text-gray-900">{item.nama_barang}</td>
-                    <td className="py-3 px-4 text-gray-500 font-mono text-xs">{item.kode_barang}</td>
-                    <td className="py-3 px-4 text-gray-500">{(item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || '-'}</td>
+                    <td className="py-3 px-4 font-medium text-brand-purple">{item.nama_barang}</td>
+                    <td className="py-3 px-4 text-brand-purple font-mono text-xs">{item.kode_barang}</td>
+                    <td className="py-3 px-4 text-brand-purple">{(item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || '-'}</td>
                     <td className="py-3 px-4 text-right font-bold text-blue-600">{item.jumlah_barang}</td>
                   </tr>
                 ))}
@@ -749,11 +749,11 @@ function StatCard({ title, value, subtitle, icon, color }: { title: string, valu
         <div className={`p-3 rounded-2xl ${color} shadow-sm group-hover:scale-110 transition-transform`}>
           {icon}
         </div>
-        {subtitle && <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600 rounded-full">{subtitle}</span>}
+        {subtitle && <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-brand-purple rounded-full">{subtitle}</span>}
       </div>
       <div>
-        <p className="text-3xl font-extrabold text-gray-900 tracking-tight mb-1">{value.toLocaleString()}</p>
-        <p className="text-sm font-semibold text-gray-500">{title}</p>
+        <p className="text-3xl font-extrabold text-brand-purple tracking-tight mb-1">{value.toLocaleString()}</p>
+        <p className="text-sm font-semibold text-brand-purple">{title}</p>
       </div>
       <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12 scale-150 pointer-events-none group-hover:scale-110 transition-transform duration-500">
         {icon}
@@ -769,8 +769,8 @@ function MiniStatCard({ title, value, icon }: { title: string, value: number, ic
         {icon}
       </div>
       <div>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">{title}</p>
-        <p className="text-xl font-bold text-gray-900">{value.toLocaleString()}</p>
+        <p className="text-xs font-semibold text-brand-purple uppercase tracking-wider mb-0.5">{title}</p>
+        <p className="text-xl font-bold text-brand-purple">{value.toLocaleString()}</p>
       </div>
     </div>
   );

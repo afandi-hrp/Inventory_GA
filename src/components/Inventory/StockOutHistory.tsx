@@ -277,8 +277,8 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Stock Out History</h2>
-          <p className="text-gray-500">Daftar barang yang telah dikeluarkan dari inventaris</p>
+          <h2 className="text-2xl font-bold text-brand-purple">Stock Out History</h2>
+          <p className="text-brand-purple">Daftar barang yang telah dikeluarkan dari inventaris</p>
         </div>
         {profile?.role === 'admin' && (
           <button
@@ -295,7 +295,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {/* Filters */}
       <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col lg:flex-row gap-4">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari nama, kode, lokasi, atau deskripsi..."
@@ -306,7 +306,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex items-center space-x-2">
-            <Calendar size={18} className="text-gray-400" />
+            <Calendar size={18} className="text-brand-purple" />
             <input
               type="date"
               value={startDate}
@@ -315,7 +315,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
             />
           </div>
           <div className="flex items-center space-x-2">
-            <span className="text-gray-400">-</span>
+            <span className="text-brand-purple">-</span>
             <input
               type="date"
               value={endDate}
@@ -343,7 +343,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                 <th 
                   className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
                   onClick={() => handleSort('tanggal_keluar')}
@@ -371,14 +371,14 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
                     <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
-                    <p className="text-gray-500">Memuat riwayat...</p>
+                    <p className="text-brand-purple">Memuat riwayat...</p>
                   </td>
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
-                    <Package className="mx-auto text-gray-300 mb-2" size={48} />
-                    <p className="text-gray-500">Tidak ada riwayat ditemukan</p>
+                    <Package className="mx-auto text-brand-purple mb-2" size={48} />
+                    <p className="text-brand-purple">Tidak ada riwayat ditemukan</p>
                   </td>
                 </tr>
               ) : (
@@ -391,15 +391,15 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                       setIsDetailModalOpen(true);
                     }}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-6 py-4 text-sm text-brand-purple">
                       {new Date(entry.tanggal_keluar).toLocaleString('id-ID')}
                     </td>
-                    <td className="px-6 py-4 font-mono text-xs text-gray-600">{entry.kode_barang}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-brand-purple">{entry.kode_barang}</td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{entry.nama_barang}</div>
+                      <div className="text-sm font-medium text-brand-purple">{entry.nama_barang}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-brand-purple">
                         {entry.nama_lokasi || entry.master_lokasi?.nama_lokasi || entry.kode_lokasi || '-'}
                       </span>
                     </td>
@@ -408,9 +408,9 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                         {entry.lokasi_keluar || '-'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-bold text-gray-900">{entry.jumlah_barang}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-brand-purple">{entry.jumlah_barang}</td>
                     <td className="px-6 py-4">
-                      <div className="text-xs text-gray-500 truncate max-w-[150px]">{entry.keterangan_alasan}</div>
+                      <div className="text-xs text-brand-purple truncate max-w-[150px]">{entry.keterangan_alasan}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
@@ -463,11 +463,11 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
         {/* Pagination */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <p className="text-sm text-gray-500">
-              Menampilkan <span className="font-medium text-gray-900">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium text-gray-900">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium text-gray-900">{totalCount}</span> riwayat
+            <p className="text-sm text-brand-purple">
+              Menampilkan <span className="font-medium text-brand-purple">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium text-brand-purple">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium text-brand-purple">{totalCount}</span> riwayat
             </p>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Per halaman:</span>
+              <span className="text-sm text-brand-purple">Per halaman:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -488,7 +488,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               <button
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -506,7 +506,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                       onClick={() => setPage(pageNum)}
                       className={cn(
                         "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                        page === pageNum ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                        page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
                       )}
                     >
                       {pageNum}
@@ -517,7 +517,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <ChevronRight size={18} />
               </button>
@@ -529,7 +529,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {/* Detail Modal */}
       {isDetailModalOpen && selectedEntry && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
@@ -537,8 +537,8 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Detail Barang Keluar</h3>
-              <button onClick={() => setIsDetailModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+              <h3 className="text-lg font-bold text-brand-purple">Detail Barang Keluar</h3>
+              <button onClick={() => setIsDetailModalOpen(false)} className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -548,27 +548,27 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Informasi Barang</label>
+                    <label className="text-xs font-semibold text-brand-purple uppercase tracking-wider">Informasi Barang</label>
                     <div className="mt-2 space-y-2">
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Kode Barang</span>
-                        <span className="text-sm font-mono font-medium text-gray-900">{selectedEntry.kode_barang}</span>
+                        <span className="text-sm text-brand-purple">Kode Barang</span>
+                        <span className="text-sm font-mono font-medium text-brand-purple">{selectedEntry.kode_barang}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Nama Barang</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedEntry.nama_barang}</span>
+                        <span className="text-sm text-brand-purple">Nama Barang</span>
+                        <span className="text-sm font-medium text-brand-purple">{selectedEntry.nama_barang}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Lokasi Asal</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedEntry.nama_lokasi || selectedEntry.master_lokasi?.nama_lokasi || selectedEntry.kode_lokasi || '-'}</span>
+                        <span className="text-sm text-brand-purple">Lokasi Asal</span>
+                        <span className="text-sm font-medium text-brand-purple">{selectedEntry.nama_lokasi || selectedEntry.master_lokasi?.nama_lokasi || selectedEntry.kode_lokasi || '-'}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Lokasi Keluar</span>
+                        <span className="text-sm text-brand-purple">Lokasi Keluar</span>
                         <span className="text-sm font-bold text-orange-600 bg-orange-50 px-2 rounded">{selectedEntry.lokasi_keluar || '-'}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Jumlah</span>
-                        <span className="text-sm font-bold text-gray-900">{selectedEntry.jumlah_barang}</span>
+                        <span className="text-sm text-brand-purple">Jumlah</span>
+                        <span className="text-sm font-bold text-brand-purple">{selectedEntry.jumlah_barang}</span>
                       </div>
                     </div>
                   </div>
@@ -576,21 +576,21 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Detail Pengeluaran</label>
+                    <label className="text-xs font-semibold text-brand-purple uppercase tracking-wider">Detail Pengeluaran</label>
                     <div className="mt-2 space-y-2">
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Tanggal Keluar</span>
-                        <span className="text-sm font-medium text-gray-900">{new Date(selectedEntry.tanggal_keluar).toLocaleString('id-ID')}</span>
+                        <span className="text-sm text-brand-purple">Tanggal Keluar</span>
+                        <span className="text-sm font-medium text-brand-purple">{new Date(selectedEntry.tanggal_keluar).toLocaleString('id-ID')}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span className="text-sm text-gray-500">Oleh</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedEntry.user_name}</span>
+                        <span className="text-sm text-brand-purple">Oleh</span>
+                        <span className="text-sm font-medium text-brand-purple">{selectedEntry.user_name}</span>
                       </div>
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Alasan / Keterangan</label>
-                    <p className="mt-2 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 italic">
+                    <label className="text-xs font-semibold text-brand-purple uppercase tracking-wider">Alasan / Keterangan</label>
+                    <p className="mt-2 text-sm text-brand-purple bg-gray-50 p-3 rounded-lg border border-gray-100 italic">
                       "{selectedEntry.keterangan_alasan}"
                     </p>
                   </div>
@@ -600,7 +600,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               {/* Photos */}
               {selectedEntry.foto_urls && selectedEntry.foto_urls.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Foto Snapshot</label>
+                  <label className="text-xs font-semibold text-brand-purple uppercase tracking-wider">Foto Snapshot</label>
                   <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {selectedEntry.foto_urls.map((url, idx) => (
                       <div 
@@ -618,8 +618,8 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               {/* Description */}
               {selectedEntry.deskripsi && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Deskripsi Barang</label>
-                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                  <label className="text-xs font-semibold text-brand-purple uppercase tracking-wider">Deskripsi Barang</label>
+                  <p className="mt-2 text-sm text-brand-purple leading-relaxed">
                     {selectedEntry.deskripsi}
                   </p>
                 </div>
@@ -629,7 +629,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
               <button
                 onClick={() => setIsDetailModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -640,18 +640,18 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
 
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
-              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-brand-purple">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-brand-purple hover:text-brand-purple">
                 <X size={20} />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-6">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                  <tr className="border-b border-gray-100 text-brand-purple font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
                       <th key={key} className="pb-3 px-2 whitespace-nowrap">{key}</th>
                     ))}
@@ -661,7 +661,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                   {exportData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       {Object.values(row).map((val: any, i) => (
-                        <td key={i} className="py-2 px-2 text-gray-600 whitespace-nowrap">{val}</td>
+                        <td key={i} className="py-2 px-2 text-brand-purple whitespace-nowrap">{val}</td>
                       ))}
                     </tr>
                   ))}
@@ -671,7 +671,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
               >
                 Batal
               </button>
@@ -689,19 +689,19 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
 
       {/* Restore Confirmation Modal */}
       {isRestoreModalOpen && entryToRestore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col">
             <div className="p-6 overflow-y-auto">
               <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-4 mx-auto">
                 <RotateCcw className="text-emerald-600" size={24} />
               </div>
               
-              <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
+              <h3 className="text-xl font-bold text-center text-brand-purple mb-2">
                 Kembalikan ke Stock?
               </h3>
               
-              <p className="text-center text-gray-500 mb-6">
-                Anda akan mengembalikan <span className="font-semibold text-gray-900">{entryToRestore.nama_barang}</span> sebanyak <span className="font-semibold text-gray-900">{entryToRestore.jumlah_barang}</span> ke Master Barang.
+              <p className="text-center text-brand-purple mb-6">
+                Anda akan mengembalikan <span className="font-semibold text-brand-purple">{entryToRestore.nama_barang}</span> sebanyak <span className="font-semibold text-brand-purple">{entryToRestore.jumlah_barang}</span> ke Master Barang.
               </p>
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
@@ -722,7 +722,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                     setEntryToRestore(null);
                   }}
                   disabled={isRestoring}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-brand-purple rounded-xl hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
@@ -752,7 +752,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {/* Lightbox Modal */}
       {isLightboxOpen && lightboxImages.length > 0 && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-brand-purple/95 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setIsLightboxOpen(false)}
         >
           <button
@@ -797,7 +797,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
             )}
 
             {lightboxImages.length > 1 && (
-              <div className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 px-4 sm:px-6 py-2 sm:py-3 bg-black/50 rounded-full text-white text-sm sm:text-lg font-medium backdrop-blur-md border border-white/10 whitespace-nowrap">
+              <div className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 px-4 sm:px-6 py-2 sm:py-3 bg-brand-purple/50 rounded-full text-white text-sm sm:text-lg font-medium backdrop-blur-md border border-white/10 whitespace-nowrap">
                 {currentImageIndex + 1} / {lightboxImages.length}
               </div>
             )}

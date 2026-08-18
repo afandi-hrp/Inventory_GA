@@ -12,6 +12,25 @@
 
 body {
   font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  /* Default text color app-wide — any element with an explicit Tailwind
+     text-color class (badges, buttons, status colors, etc.) still wins,
+     since a class selector always beats this tag-level inherited value. */
+  color: var(--color-brand-purple);
+}
+
+/* Native form controls (input/select/option) render black by default in
+   browsers regardless of a parent's inherited color, unless a color is set
+   directly on the control itself. */
+input,
+select,
+textarea,
+option {
+  color: var(--color-brand-purple);
+}
+
+::placeholder {
+  color: var(--color-brand-purple);
+  opacity: 0.55;
 }
 
 @layer utilities {

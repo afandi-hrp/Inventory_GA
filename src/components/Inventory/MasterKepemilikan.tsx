@@ -153,8 +153,8 @@ export default function MasterKepemilikan() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 border-b-2 border-orange-500 pb-1 inline-block">Master Kepemilikan</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola daftar penanggung jawab (PIC) barang</p>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Kepemilikan</h1>
+          <p className="text-sm text-brand-purple mt-1">Kelola daftar penanggung jawab (PIC) barang</p>
         </div>
 
         {isAdmin && (
@@ -170,7 +170,7 @@ export default function MasterKepemilikan() {
 
       <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50">
         <div className="relative group max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari nama pemilik..."
@@ -181,7 +181,7 @@ export default function MasterKepemilikan() {
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-purple hover:text-brand-purple"
             >
               <X size={16} />
             </button>
@@ -193,7 +193,7 @@ export default function MasterKepemilikan() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Nama Pemilik</th>
                 <th className="px-6 py-4">Keterangan</th>
                 <th className="px-6 py-4">Tgl Dibuat</th>
@@ -203,15 +203,15 @@ export default function MasterKepemilikan() {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 4 : 3} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={isAdmin ? 4 : 3} className="px-6 py-12 text-center text-brand-purple">
                     <Loader2 className="animate-spin mx-auto mb-2 text-orange-500" size={24} />
                     <p>Memuat data...</p>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 4 : 3} className="px-6 py-12 text-center text-gray-500">
-                    <AlertCircle className="mx-auto mb-2 text-gray-400" size={24} />
+                  <td colSpan={isAdmin ? 4 : 3} className="px-6 py-12 text-center text-brand-purple">
+                    <AlertCircle className="mx-auto mb-2 text-brand-purple" size={24} />
                     <p>Tidak ada data kepemilikan ditemukan.</p>
                   </td>
                 </tr>
@@ -221,14 +221,14 @@ export default function MasterKepemilikan() {
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <UserCheck size={16} className="text-orange-500" />
-                        <span className="text-sm font-semibold text-gray-900">{item.nama_pemilik}</span>
+                        <span className="text-sm font-semibold text-brand-purple">{item.nama_pemilik}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 truncate max-w-sm">{item.keterangan || '-'}</div>
+                      <div className="text-sm text-brand-purple truncate max-w-sm">{item.keterangan || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-brand-purple">
                         {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : '-'}
                       </div>
                     </td>
@@ -263,7 +263,7 @@ export default function MasterKepemilikan() {
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => !formLoading && setIsModalOpen(false)}
         >
           <div
@@ -271,12 +271,12 @@ export default function MasterKepemilikan() {
             onClick={e => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-brand-purple">
                 {editingItem ? 'Edit Kepemilikan' : 'Tambah Kepemilikan Baru'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 hover:bg-white rounded-full p-1 transition-colors"
+                className="text-brand-purple hover:text-brand-purple hover:bg-white rounded-full p-1 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -292,7 +292,7 @@ export default function MasterKepemilikan() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Pemilik <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-brand-purple mb-1.5">Nama Pemilik <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     required
@@ -303,7 +303,7 @@ export default function MasterKepemilikan() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Keterangan</label>
+                  <label className="block text-sm font-semibold text-brand-purple mb-1.5">Keterangan</label>
                   <textarea
                     rows={4}
                     value={formData.keterangan}
@@ -318,7 +318,7 @@ export default function MasterKepemilikan() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                  className="px-5 py-2.5 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
                   Batal
                 </button>
@@ -338,20 +338,20 @@ export default function MasterKepemilikan() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && deletingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90dvh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto">
               <AlertCircle className="text-red-600" size={24} />
             </div>
-            <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Hapus Kepemilikan?</h3>
-            <p className="text-sm text-center text-gray-500 mb-6">
+            <h3 className="text-lg font-bold text-center text-brand-purple mb-2">Hapus Kepemilikan?</h3>
+            <p className="text-sm text-center text-brand-purple mb-6">
               Hapus kepemilikan <span className="font-bold text-red-600">{deletingItem.nama_pemilik}</span>?
               Pastikan tidak ada barang yang terkait dengan kepemilikan ini.
             </p>
             <div className="flex justify-center space-x-3">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors w-full"
+                className="px-4 py-2 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors w-full"
               >
                 Batal
               </button>

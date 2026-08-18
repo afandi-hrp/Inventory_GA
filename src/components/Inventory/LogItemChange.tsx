@@ -385,9 +385,9 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
         <table className="w-full text-sm text-left">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-4 py-3 font-semibold text-gray-600 w-1/4">Field</th>
-              <th className="px-4 py-3 font-semibold text-gray-600 w-3/8">Lama</th>
-              <th className="px-4 py-3 font-semibold text-gray-600 w-3/8">Baru</th>
+              <th className="px-4 py-3 font-semibold text-brand-purple w-1/4">Field</th>
+              <th className="px-4 py-3 font-semibold text-brand-purple w-3/8">Lama</th>
+              <th className="px-4 py-3 font-semibold text-brand-purple w-3/8">Baru</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -402,18 +402,18 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                   "transition-colors",
                   isChanged ? "bg-emerald-50/30" : "bg-white"
                 )}>
-                  <td className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                  <td className="px-4 py-3 font-medium text-brand-purple text-xs uppercase tracking-wider">
                     {displayName}
                   </td>
                   <td className={cn(
                     "px-4 py-3",
-                    isChanged ? "text-gray-900 font-semibold" : "text-gray-400"
+                    isChanged ? "text-brand-purple font-semibold" : "text-brand-purple"
                   )}>
                     {formatValue(key, oldValue)}
                   </td>
                   <td className={cn(
                     "px-4 py-3",
-                    isChanged ? "text-emerald-700 font-bold" : "text-gray-400"
+                    isChanged ? "text-emerald-700 font-bold" : "text-brand-purple"
                   )}>
                     {formatValue(key, newValue)}
                   </td>
@@ -447,7 +447,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="p-6 bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+        <h2 className="text-2xl font-bold text-brand-purple flex items-center space-x-2">
           <ClipboardList size={24} className="text-blue-600" />
           <span>Log Item Change</span>
         </h2>
@@ -480,11 +480,11 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" />
           </div>
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
             <div className="flex items-center gap-2">
-              <Calendar size={18} className="text-gray-400 shrink-0" />
+              <Calendar size={18} className="text-brand-purple shrink-0" />
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1 min-w-0">
                 <input
                   type="date"
@@ -517,50 +517,50 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             <tr>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('created_at')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Tanggal</span>
                   {sortColumn === 'created_at' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'created_at' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'created_at' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('action')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Aksi</span>
                   {sortColumn === 'action' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'action' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'action' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider">
                 Nama Barang
               </th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('kode_barang')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Kode Barang</span>
                   {sortColumn === 'kode_barang' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'kode_barang' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'kode_barang' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perubahan</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider">Perubahan</th>
               <th 
                 scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('changed_by')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Diubah Oleh</span>
                   {sortColumn === 'changed_by' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'changed_by' && <ArrowUpDown size={16} className="text-gray-300" />}
+                  {sortColumn !== 'changed_by' && <ArrowUpDown size={16} className="text-brand-purple" />}
                 </div>
               </th>
             </tr>
@@ -570,20 +570,20 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center">
                   <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
-                  <p className="text-gray-500">Memuat log audit...</p>
+                  <p className="text-brand-purple">Memuat log audit...</p>
                 </td>
               </tr>
             ) : auditLogs.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center">
-                  <ClipboardList size={48} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-gray-500">Tidak ada log perubahan item.</p>
+                  <ClipboardList size={48} className="mx-auto text-brand-purple mb-2" />
+                  <p className="text-brand-purple">Tidak ada log perubahan item.</p>
                 </td>
               </tr>
             ) : (
               auditLogs.map((entry) => (
                 <tr key={entry.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => handleOpenDetailModal(entry)}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-purple">
                     {new Date(entry.created_at).toLocaleString('id-ID')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -597,21 +597,21 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                       {entry.action}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-brand-purple">
                     {entry.items?.nama_barang || entry.new_values?.nama_barang || entry.old_values?.nama_barang || 'Item Deleted'}
                   </td>
-                  <td className="px-6 py-4 text-sm font-mono text-gray-700 max-w-[150px] truncate">
+                  <td className="px-6 py-4 text-sm font-mono text-brand-purple max-w-[150px] truncate">
                     {entry.items?.kode_barang || entry.new_values?.kode_barang || entry.old_values?.kode_barang || entry.item_id}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
+                  <td className="px-6 py-4 text-sm text-brand-purple">
                     <span className="text-blue-600 hover:underline">
                       {getChangeCount(entry.old_values, entry.new_values)} Perubahan
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
-                      <UserIcon size={18} className="text-gray-400" />
-                      <p className="text-sm text-gray-900">{entry.profiles?.full_name || 'Unknown User'}</p>
+                      <UserIcon size={18} className="text-brand-purple" />
+                      <p className="text-sm text-brand-purple">{entry.profiles?.full_name || 'Unknown User'}</p>
                     </div>
                   </td>
                 </tr>
@@ -624,11 +624,11 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       {/* Pagination */}
       <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-brand-purple">
             Menampilkan <span className="font-medium">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium">{totalCount}</span> log
           </p>
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Per halaman:</span>
+            <span className="text-sm text-brand-purple">Per halaman:</span>
             <select
               id="itemsPerPage"
               value={itemsPerPage}
@@ -649,7 +649,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             <button
               disabled={page === 1}
               onClick={() => setPage(p => p - 1)}
-              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <ChevronLeft size={18} />
             </button>
@@ -667,7 +667,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                     onClick={() => setPage(pageNum)}
                     className={cn(
                       "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                      page === pageNum ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                      page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
                     )}
                   >
                     {pageNum}
@@ -678,7 +678,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             <button
               disabled={page === totalPages}
               onClick={() => setPage(p => p + 1)}
-              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <ChevronRight size={18} />
             </button>
@@ -690,7 +690,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       {/* Detail Log Modal */}
       {isDetailModalOpen && selectedLogEntryForDetail && (
         <div 
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200" 
           onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
@@ -698,10 +698,10 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Detail Perubahan Log</h3>
+              <h3 className="text-lg font-bold text-brand-purple">Detail Perubahan Log</h3>
               <button 
                 onClick={() => setIsDetailModalOpen(false)} 
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
@@ -713,8 +713,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                     <Calendar size={18} className="text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Waktu Perubahan</p>
-                    <p className="text-sm font-medium text-gray-900">{new Date(selectedLogEntryForDetail.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-[10px] font-bold text-brand-purple uppercase tracking-wider">Waktu Perubahan</p>
+                    <p className="text-sm font-medium text-brand-purple">{new Date(selectedLogEntryForDetail.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -722,8 +722,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                     <UserIcon size={18} className="text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Diubah Oleh</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedLogEntryForDetail.profiles?.full_name || 'Unknown User'}</p>
+                    <p className="text-[10px] font-bold text-brand-purple uppercase tracking-wider">Diubah Oleh</p>
+                    <p className="text-sm font-medium text-brand-purple">{selectedLogEntryForDetail.profiles?.full_name || 'Unknown User'}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -731,8 +731,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                     <Package size={18} className="text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Kode Barang</p>
-                    <p className="text-sm font-mono font-medium text-gray-900">{selectedLogEntryForDetail.items?.kode_barang || selectedLogEntryForDetail.new_values?.kode_barang || selectedLogEntryForDetail.old_values?.kode_barang || selectedLogEntryForDetail.item_id}</p>
+                    <p className="text-[10px] font-bold text-brand-purple uppercase tracking-wider">Kode Barang</p>
+                    <p className="text-sm font-mono font-medium text-brand-purple">{selectedLogEntryForDetail.items?.kode_barang || selectedLogEntryForDetail.new_values?.kode_barang || selectedLogEntryForDetail.old_values?.kode_barang || selectedLogEntryForDetail.item_id}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -745,7 +745,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                     <ClipboardList size={18} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tipe Aksi</p>
+                    <p className="text-[10px] font-bold text-brand-purple uppercase tracking-wider">Tipe Aksi</p>
                     <p className={cn(
                       "text-sm font-bold",
                       selectedLogEntryForDetail.action === 'UPDATE' ? "text-blue-600" :
@@ -757,7 +757,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
+                <h4 className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3 flex items-center">
                   <ArrowUpDown size={14} className="mr-2" />
                   Perbandingan Nilai
                 </h4>
@@ -767,7 +767,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
               <button
                 onClick={() => setIsDetailModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Tutup
               </button>
@@ -778,18 +778,18 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
 
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
-              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-brand-purple">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-brand-purple hover:text-brand-purple">
                 <X size={20} />
               </button>
             </div>
             <div className="flex-1 overflow-auto p-6">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                  <tr className="border-b border-gray-100 text-brand-purple font-semibold">
                     {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
                       <th key={key} className="pb-3 px-2 whitespace-nowrap">{key}</th>
                     ))}
@@ -799,7 +799,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                   {exportData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       {Object.values(row).map((val: any, i) => (
-                        <td key={i} className="py-2 px-2 text-gray-600 max-w-xs truncate">{val}</td>
+                        <td key={i} className="py-2 px-2 text-brand-purple max-w-xs truncate">{val}</td>
                       ))}
                     </tr>
                   ))}
@@ -809,7 +809,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
               >
                 Batal
               </button>
@@ -828,12 +828,12 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       {/* Lightbox Modal */}
       {isLightboxOpen && lightboxImages.length > 0 && (
         <div 
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-brand-purple/90 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={closeLightbox}
         >
           <button
             onClick={closeLightbox}
-            className="absolute top-2 right-2 sm:top-4 sm:right-4 p-1.5 sm:p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-20"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 p-1.5 sm:p-2 text-white/70 hover:text-white bg-brand-purple/50 hover:bg-brand-purple/70 rounded-full transition-all z-20"
           >
             <X size={20} className="sm:w-6 sm:h-6" />
           </button>
@@ -845,7 +845,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             {lightboxImages.length > 1 && (
               <button
                 onClick={prevImage}
-                className="absolute left-1 sm:left-4 p-1.5 sm:p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
+                className="absolute left-1 sm:left-4 p-1.5 sm:p-3 text-white/70 hover:text-white bg-brand-purple/50 hover:bg-brand-purple/70 rounded-full transition-all z-10"
               >
                 <ChevronLeft size={20} className="sm:w-8 sm:h-8" />
               </button>
@@ -861,14 +861,14 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
             {lightboxImages.length > 1 && (
               <button
                 onClick={nextImage}
-                className="absolute right-1 sm:right-4 p-1.5 sm:p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
+                className="absolute right-1 sm:right-4 p-1.5 sm:p-3 text-white/70 hover:text-white bg-brand-purple/50 hover:bg-brand-purple/70 rounded-full transition-all z-10"
               >
                 <ChevronRight size={20} className="sm:w-8 sm:h-8" />
               </button>
             )}
 
             {lightboxImages.length > 1 && (
-              <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 sm:py-2 bg-black/50 rounded-full text-white text-xs sm:text-sm font-medium backdrop-blur-md whitespace-nowrap">
+              <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 sm:py-2 bg-brand-purple/50 rounded-full text-white text-xs sm:text-sm font-medium backdrop-blur-md whitespace-nowrap">
                 {currentImageIndex + 1} / {lightboxImages.length}
               </div>
             )}

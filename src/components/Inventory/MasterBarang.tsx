@@ -935,7 +935,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   };
 
   const handleOpenModal = async (item?: Item) => {
-    if (profile?.role !== 'admin' && profile?.role !== 'auditor') {
+    if (profile?.role !== 'admin' && profile?.role !== 'auditor' && profile?.role !== 'spv') {
       showToast('Akses Ditolak: Anda tidak memiliki izin untuk melakukan aksi ini', 'error');
       return;
     }
@@ -1605,7 +1605,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     setFormError(null);
 
     try {
-      if (profile?.role !== 'admin' && profile?.role !== 'auditor') {
+      if (profile?.role !== 'admin' && profile?.role !== 'auditor' && profile?.role !== 'spv') {
         throw new Error('Akses Ditolak: Anda tidak memiliki izin untuk menyimpan perubahan');
       }
       
@@ -1639,7 +1639,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         return publicUrl;
       };
 
-      if (profile?.role === 'admin') {
+      if (profile?.role === 'admin' || profile?.role === 'spv') {
         if (docGaransiFile) {
           finalDocGaransiUrl = await uploadDocument(docGaransiFile);
         }
@@ -1651,8 +1651,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         }
       }
 
-      // Upload new files (only if admin)
-      if (selectedFiles.length > 0 && profile?.role === 'admin') {
+      // Upload new files (only if admin/spv)
+      if (selectedFiles.length > 0 && (profile?.role === 'admin' || profile?.role === 'spv')) {
         setUploadingPhoto(true);
         const uploadPromises = selectedFiles.map(async (file) => {
           const fileExt = file.name.split('.').pop();
@@ -1864,7 +1864,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             {profile && (
               <span className={cn(
                 "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-                profile.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
+                (profile.role === 'admin' || profile.role === 'spv') ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
               )}>
                 Role: {profile.role}
               </span>
@@ -1872,7 +1872,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {profile?.role === 'admin' && (
+          {(profile?.role === 'admin' || profile?.role === 'spv') && (
             <>
               <div className="relative">
                 <button
@@ -1934,7 +1934,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       </div>
 
       {/* Bulk Actions Bar */}
-      {selectedItems.length > 0 && profile?.role === 'admin' && !filterPemusnahan && (
+      {selectedItems.length > 0 && (profile?.role === 'admin' || profile?.role === 'spv') && !filterPemusnahan && (
         <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-wrap items-center justify-between gap-y-2 animate-in slide-in-from-top-2 duration-300">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-blue-700 font-medium">{selectedItems.length} barang terpilih</span>
@@ -2512,9 +2512,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               <History size={16} className="text-indigo-600 shrink-0" />
                               <span>Lihat Riwayat</span>
                             </button>
-                            {(profile?.role === 'admin' || profile?.role === 'auditor') && (
+                            {(profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv') && (
                               <>
-                                {profile?.role === 'admin' && (
+                                {(profile?.role === 'admin' || profile?.role === 'spv') && (
                                   <>
                                     <button
                                       onClick={() => { setActionMenu(null); handleStockOut(item); }}
@@ -3834,7 +3834,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <History size={15} />
                 <span>Riwayat</span>
               </button>
-              {profile?.role === 'admin' || profile?.role === 'auditor' ? (
+              {profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv' ? (
                 <button
                   onClick={() => {
                     setIsDetailModalOpen(false);

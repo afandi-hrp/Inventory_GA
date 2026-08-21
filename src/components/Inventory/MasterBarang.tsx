@@ -428,16 +428,24 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       // Terapkan filter dari 2 dimensi lain yang sedang aktif (bukan dimensi yang lagi dibuka)
       if (dimension !== 'kategori' && filterKategori) {
-        const subCats = categories.filter(c => c.parent_id === filterKategori).map(c => c.id);
-        query = subCats.length > 0
-          ? query.in('kategori_id', [filterKategori, ...subCats])
-          : query.eq('kategori_id', filterKategori);
+        if (filterKategori === 'unassigned') {
+          query = query.is('kategori_id', null);
+        } else {
+          const subCats = categories.filter(c => c.parent_id === filterKategori).map(c => c.id);
+          query = subCats.length > 0
+            ? query.in('kategori_id', [filterKategori, ...subCats])
+            : query.eq('kategori_id', filterKategori);
+        }
       }
       if (dimension !== 'lokasi' && filterLokasi) {
-        query = query.eq('kode_lokasi', filterLokasi);
+        query = filterLokasi === 'unassigned'
+          ? query.is('kode_lokasi', null)
+          : query.eq('kode_lokasi', filterLokasi);
       }
       if (dimension !== 'kepemilikan' && filterKepemilikan) {
-        query = query.eq('kepemilikan_id', filterKepemilikan);
+        query = filterKepemilikan === 'unassigned'
+          ? query.is('kepemilikan_id', null)
+          : query.eq('kepemilikan_id', filterKepemilikan);
       }
 
       const { data, error } = await query;
@@ -518,11 +526,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.or(`nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%,deskripsi.ilike.%${debouncedSearch}%`);
       }
 
-      if (filterLokasi) {
+      if (filterLokasi === 'unassigned') {
+        query = query.is('kode_lokasi', null);
+      } else if (filterLokasi) {
         query = query.eq('kode_lokasi', filterLokasi);
       }
 
-      if (filterKategori) {
+      if (filterKategori === 'unassigned') {
+        query = query.is('kategori_id', null);
+      } else if (filterKategori) {
         const subCats = categories.filter(c => c.parent_id === filterKategori).map(c => c.id);
         if (subCats.length > 0) {
           query = query.in('kategori_id', [filterKategori, ...subCats]);
@@ -535,7 +547,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.in('kondisi_barang', ['RUSAK', 'CUKUP BAIK']);
       }
 
-      if (filterKepemilikan) {
+      if (filterKepemilikan === 'unassigned') {
+        query = query.is('kepemilikan_id', null);
+      } else if (filterKepemilikan) {
         query = query.eq('kepemilikan_id', filterKepemilikan);
       }
 
@@ -2034,7 +2048,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           <div className="min-w-0 flex-1">
             <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Kategori</h4>
             <p className={cn("text-sm font-semibold truncate", filterKategori || activeFilterPanel === 'kategori' ? "text-orange-800" : "text-brand-purple")}>
-              {filterKategori ? (categories.find(c => c.id === filterKategori)?.nama_kategori || 'Terpilih') : 'Semua Kategori'}
+              {filterKategori ? (filterKategori === 'unassigned' ? 'Tanpa Kategori' : categories.find(c => c.id === filterKategori)?.nama_kategori || 'Terpilih') : 'Semua Kategori'}
             </p>
           </div>
           {filterKategori ? (
@@ -2060,7 +2074,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           <div className="min-w-0 flex-1">
             <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Lokasi</h4>
             <p className={cn("text-sm font-semibold truncate", filterLokasi || activeFilterPanel === 'lokasi' ? "text-blue-800" : "text-brand-purple")}>
-              {filterLokasi ? (availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi || 'Terpilih') : 'Semua Lokasi'}
+              {filterLokasi ? (filterLokasi === 'unassigned' ? 'Tanpa Lokasi' : availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi || 'Terpilih') : 'Semua Lokasi'}
             </p>
           </div>
           {filterLokasi ? (
@@ -2086,7 +2100,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           <div className="min-w-0 flex-1">
             <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Kepemilikan</h4>
             <p className={cn("text-sm font-semibold truncate", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "text-emerald-800" : "text-brand-purple")}>
-              {filterKepemilikan ? (kepemilikanList.find(k => k.id === filterKepemilikan)?.nama_pemilik || 'Terpilih') : 'Semua Kepemilikan'}
+              {filterKepemilikan ? (filterKepemilikan === 'unassigned' ? 'Tanpa Kepemilikan' : kepemilikanList.find(k => k.id === filterKepemilikan)?.nama_pemilik || 'Terpilih') : 'Semua Kepemilikan'}
             </p>
           </div>
           {filterKepemilikan ? (
@@ -2139,7 +2153,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   <div
                     key={stat.id}
                     onClick={() => {
-                      const val = stat.id === 'unassigned' ? '' : stat.id;
+                      // stat.id tetap 'unassigned' apa adanya (BUKAN diubah jadi ''),
+                      // karena '' berarti "semua/gak ada filter" — kalau disamakan,
+                      // klik "Tanpa X" jadi gak ngefek sama sekali (filter di-skip).
+                      const val = stat.id;
                       if (activeFilterPanel === 'kategori') setFilterKategori(val);
                       if (activeFilterPanel === 'lokasi') setFilterLokasi(val);
                       if (activeFilterPanel === 'kepemilikan') setFilterKepemilikan(val);
@@ -2605,7 +2622,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -3274,7 +3290,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isBulkEditOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm"
-          onClick={() => setIsBulkEditOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -3380,7 +3395,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isImportPreviewOpen && (
         <div 
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsImportPreviewOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
@@ -3454,7 +3468,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {carouselImages.length > 0 && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
-          onClick={() => setCarouselImages([])}
         >
           <div className="relative w-full max-w-5xl h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {/* Close Button */}
@@ -3521,7 +3534,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {documentPreview && (
         <div
           className="fixed inset-0 z-[100] flex flex-col bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
-          onClick={() => setDocumentPreview(null)}
         >
           <div className="flex items-center justify-between px-4 py-3 bg-brand-purple/40 shrink-0" onClick={(e) => e.stopPropagation()}>
             <span className="text-white text-sm font-medium truncate pr-4">{documentPreview.name}</span>
@@ -3555,10 +3567,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isDetailModalOpen && selectedItemForDetail && (
         <div 
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => {
-            setIsDetailModalOpen(false);
-            setSelectedItemForDetail(null);
-          }}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
@@ -3854,7 +3862,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isItemHistoryModalOpen && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsItemHistoryModalOpen(false)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[80dvh] flex flex-col"
@@ -3928,7 +3935,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isTakeItemModalOpen && selectedItemForTake && (
         <div 
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsTakeItemModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -3996,7 +4002,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isStockOutModalOpen && selectedItemForStockOut && (
         <div 
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsStockOutModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -4110,7 +4115,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isDisposalModalOpen && (
         <div 
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => !isSubmittingDisposal && setIsDisposalModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -4194,7 +4198,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isBulkStockOutModalOpen && (
         <div 
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsBulkStockOutModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -4278,7 +4281,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {isExportPreviewOpen && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsExportPreviewOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"

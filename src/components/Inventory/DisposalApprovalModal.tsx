@@ -559,7 +559,6 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
   return (
     <div 
       className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={() => !isSubmitting && onClose()}
     >
       <div 
         className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"

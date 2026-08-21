@@ -819,7 +819,6 @@ export default function OfficeItemsRequester() {
       {isSPKModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => !isSubmittingSPK && setIsSPKModalOpen(false)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -896,7 +895,6 @@ export default function OfficeItemsRequester() {
       {selectedRequest && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setSelectedRequest(null)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -1032,7 +1030,6 @@ export default function OfficeItemsRequester() {
       {selectedItemDetail && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setSelectedItemDetail(null)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -1158,7 +1155,6 @@ export default function OfficeItemsRequester() {
       {carouselImages.length > 0 && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
-          onClick={() => setCarouselImages([])}
         >
           <div className="relative w-full max-w-5xl h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
             <button

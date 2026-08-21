@@ -274,7 +274,6 @@ export default function MasterKategori() {
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => !formLoading && setIsModalOpen(false)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"

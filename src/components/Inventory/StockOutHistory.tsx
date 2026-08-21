@@ -530,7 +530,6 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {isDetailModalOpen && selectedEntry && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
@@ -753,7 +752,6 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
       {isLightboxOpen && lightboxImages.length > 0 && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-brand-purple/95 backdrop-blur-md animate-in fade-in duration-300"
-          onClick={() => setIsLightboxOpen(false)}
         >
           <button
             className="absolute top-2 right-2 sm:top-6 sm:right-6 p-1.5 sm:p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-20"

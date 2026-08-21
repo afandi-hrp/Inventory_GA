@@ -344,7 +344,6 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-300"
-          onClick={() => setIsModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90dvh] flex flex-col"

@@ -691,7 +691,6 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       {isDetailModalOpen && selectedLogEntryForDetail && (
         <div 
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200" 
-          onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col" 
@@ -829,7 +828,6 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       {isLightboxOpen && lightboxImages.length > 0 && (
         <div 
           className="fixed inset-0 z-[110] flex items-center justify-center bg-brand-purple/90 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={closeLightbox}
         >
           <button
             onClick={closeLightbox}

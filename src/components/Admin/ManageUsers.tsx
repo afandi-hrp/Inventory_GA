@@ -425,7 +425,6 @@ export default function ManageUsers() {
       {isAddUserModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setIsAddUserModalOpen(false)}
         >
           <div 
             className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"

@@ -34,7 +34,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
 
   const menuItems = profile?.role === 'requester' ? [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { id: 'office-items', label: 'Barang Office', icon: <ShoppingCart size={20} /> },
+    { id: 'office-items', label: 'Barang Reusable', icon: <ShoppingCart size={20} /> },
     { id: 'manage-users', label: 'Akun Saya', icon: <Settings size={20} /> },
   ] : [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },

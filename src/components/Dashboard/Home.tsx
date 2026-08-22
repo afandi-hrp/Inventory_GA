@@ -276,7 +276,7 @@ export default function DashboardHome() {
       {/* Header Summary */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block mb-2">
-          {isRequester ? 'Dashboard Barang Office' : 'Dashboard'}
+          {isRequester ? 'Dashboard Barang Reusable' : 'Dashboard'}
         </h1>
         <div className="flex items-center gap-2 mb-2">
           <p className="text-sm font-medium text-brand-purple">
@@ -285,7 +285,7 @@ export default function DashboardHome() {
           <greeting.Icon className={cn(greeting.color)} size={20} />
         </div>
         {isRequester && (
-          <p className="text-sm text-brand-purple mt-1">Ringkasan barang Office yang tersedia & pengajuan SPK Anda</p>
+          <p className="text-sm text-brand-purple mt-1">Ringkasan barang Reusable yang tersedia & pengajuan SPK Anda</p>
         )}
       </div>
 
@@ -301,20 +301,20 @@ export default function DashboardHome() {
                 <ShoppingCart size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg">Mau ambil barang Office?</h3>
+                <h3 className="font-bold text-lg">Mau ambil barang Reusable?</h3>
                 <p className="text-sm text-sky-50">Lihat daftar barang & ajukan SPK pengambilan di sini</p>
               </div>
             </div>
             <span className="flex items-center space-x-2 bg-white/20 group-hover:bg-white/30 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0">
-              <span>Buka Barang Office</span>
+              <span>Buka Barang Reusable</span>
               <ArrowRight size={16} />
             </span>
           </Link>
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard title="Total Jenis Barang Office" value={stats.totalItems} icon={<Package className="text-blue-600" size={24} />} color="bg-blue-500/10 border border-blue-500/20" />
-            <StatCard title="Total Stok Office" value={stats.totalStockIn} subtitle="Tersedia" icon={<ArrowDownRight className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
+            <StatCard title="Total Jenis Barang Reusable" value={stats.totalItems} icon={<Package className="text-blue-600" size={24} />} color="bg-blue-500/10 border border-blue-500/20" />
+            <StatCard title="Total Stok Reusable" value={stats.totalStockIn} subtitle="Tersedia" icon={<ArrowDownRight className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
             <Link to="/office-items" className="block">
               <StatCard title="Pengajuan SPK Saya" value={mySpkStats.total} subtitle={`${mySpkStats.pending} Menunggu`} icon={<ClipboardList className="text-indigo-600" size={24} />} color="bg-indigo-500/10 border border-indigo-500/20" />
             </Link>
@@ -389,7 +389,7 @@ export default function DashboardHome() {
         onItemClick={setSelectedItemForDetail}
       />
 
-      {/* Chart - disembunyikan untuk requester karena datanya (audit log/stock-out) tidak ke-scope ke barang Office saja */}
+      {/* Chart - disembunyikan untuk requester karena datanya (audit log/stock-out) tidak ke-scope ke barang Reusable saja */}
       {!isRequester && (
         <div className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 w-full">
           <h3 className="text-lg font-semibold mb-6 flex items-center text-brand-purple">
@@ -438,7 +438,7 @@ export default function DashboardHome() {
       <div className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 flex flex-col">
         <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0 text-brand-purple">
           <Clock className="mr-2 text-blue-600" size={20} />
-          {isRequester ? 'Barang Office Terbaru' : 'Penambahan Barang Terbaru'}
+          {isRequester ? 'Barang Reusable Terbaru' : 'Penambahan Barang Terbaru'}
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left relative">

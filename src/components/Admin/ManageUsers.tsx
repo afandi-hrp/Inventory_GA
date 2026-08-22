@@ -487,7 +487,7 @@ export default function ManageUsers() {
                   <option value="auditor">Auditor (Audit Only)</option>
                   <option value="spv">SPV (Level 1 Approval)</option>
                   <option value="direktur">Direktur (Level 2 Approval)</option>
-                  <option value="requester">Requester (Ambil Barang Office)</option>
+                  <option value="requester">Requester (Ambil Barang Reusable)</option>
                 </select>
               </div>
 

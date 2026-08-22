@@ -112,7 +112,7 @@ export default function OfficeItemsRequester() {
   }, [tab, page, debouncedSearch, filterKategori, filterLokasi]);
 
   async function fetchFilterOptions() {
-    // Opsi filter diturunkan dari barang Office yang benar-benar ada saja
+    // Opsi filter diturunkan dari barang Reusable yang benar-benar ada saja
     // (bukan dari seluruh tabel categories/master_lokasi), supaya requester
     // tidak lihat kategori/lokasi/flag yang tidak relevan buat mereka.
     try {
@@ -192,7 +192,7 @@ export default function OfficeItemsRequester() {
       setTotalCount(count || 0);
       setSelectedItems([]);
     } catch (err: any) {
-      console.error('Error fetching office items:', err);
+      console.error('Error fetching reusable items:', err);
       showToast(err.message || 'Gagal mengambil daftar barang', 'error');
     } finally {
       setLoading(false);
@@ -539,9 +539,9 @@ export default function OfficeItemsRequester() {
       <div>
         <h2 className="text-2xl font-bold text-brand-purple flex items-center space-x-2">
           <ShoppingCart className="text-sky-600" size={24} />
-          <span>Barang Office</span>
+          <span>Barang Reusable</span>
         </h2>
-        <p className="text-brand-purple">Lihat & ajukan pengambilan barang milik kantor</p>
+        <p className="text-brand-purple">Lihat & ajukan pengambilan barang reusable</p>
       </div>
 
       {/* Tabs */}
@@ -658,7 +658,7 @@ export default function OfficeItemsRequester() {
                     <tr>
                       <td colSpan={8} className="px-6 py-12 text-center">
                         <Package className="mx-auto text-brand-purple mb-2" size={48} />
-                        <p className="text-brand-purple">Tidak ada barang Office ditemukan</p>
+                        <p className="text-brand-purple">Tidak ada barang Reusable ditemukan</p>
                       </td>
                     </tr>
                   ) : (

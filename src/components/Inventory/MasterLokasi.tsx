@@ -160,25 +160,14 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-brand-purple">Master Lokasi</h2>
-          <p className="text-brand-purple">Kelola daftar lokasi penyimpanan barang</p>
-        </div>
-        {profile?.role === 'admin' && (
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
-          >
-            <Plus size={20} />
-            <span>Tambah Lokasi</span>
-          </button>
-        )}
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Lokasi</h2>
+        <p className="text-brand-purple">Kelola daftar lokasi penyimpanan barang</p>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50">
-        <div className="relative group">
+      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative group w-full sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
@@ -188,16 +177,26 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm"
           />
         </div>
+
+        {profile?.role === 'admin' && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto shrink-0 flex items-center justify-center space-x-2 bg-brand-purple hover:bg-brand-purple-light text-white px-4 py-2.5 rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold"
+          >
+            <Plus size={20} />
+            <span>Tambah Lokasi</span>
+          </button>
+        )}
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
                 <th className="px-6 py-4">Kode Lokasi</th>
                 <th className="px-6 py-4">Nama Lokasi</th>
                 <th className="px-6 py-4">Sub Dari</th>
@@ -221,7 +220,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
                 </tr>
               ) : (
                 locations.map((loc) => (
-                  <tr key={loc.kode_lokasi} className="hover:bg-gray-50 transition-colors group">
+                  <tr key={loc.kode_lokasi} className="hover:bg-brand-purple/5 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <Hash size={16} className="text-brand-purple" />
@@ -320,7 +319,7 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
                       onClick={() => setPage(pageNum)}
                       className={cn(
                         "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                        page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
+                        page === pageNum ? "bg-brand-purple text-white" : "text-brand-purple hover:bg-gray-100"
                       )}
                     >
                       {pageNum}

@@ -6,7 +6,7 @@ import { useModalBackButton } from '../../hooks/useModalBackButton';
 import {
   Package, MapPin, Users, TrendingUp, Clock, Layers, ArrowDownRight, ArrowUpRight, BarChart2,
   ShoppingCart, ClipboardList, ArrowRight, X, Hash, Info, Calendar, Image as ImageIcon, UserCheck,
-  Sunrise, Sun, Sunset, Moon, AlertTriangle
+  AlertTriangle
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Item } from '../../types';
@@ -16,19 +16,6 @@ import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-function getGreeting(hour: number) {
-  if (hour >= 4 && hour < 11) {
-    return { text: 'Selamat Pagi', Icon: Sunrise, color: 'text-orange-500' };
-  }
-  if (hour >= 11 && hour < 15) {
-    return { text: 'Selamat Siang', Icon: Sun, color: 'text-amber-500' };
-  }
-  if (hour >= 15 && hour < 18) {
-    return { text: 'Selamat Sore', Icon: Sunset, color: 'text-orange-600' };
-  }
-  return { text: 'Selamat Malam', Icon: Moon, color: 'text-indigo-500' };
 }
 
 export default function DashboardHome() {
@@ -261,7 +248,6 @@ export default function DashboardHome() {
   }, [isRequester, profile?.role]);
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#6366f1'];
-  const greeting = getGreeting(new Date().getHours());
 
   if (loading) {
     return (
@@ -272,21 +258,17 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 animate-in fade-in duration-500">
       {/* Header Summary */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block mb-2">
+        <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">
           {isRequester ? 'Dashboard Barang Reusable' : 'Dashboard'}
         </h1>
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-sm font-medium text-brand-purple">
-            {greeting.text}, <span className="font-bold text-brand-purple">{profile?.full_name || 'User'}</span>
-          </p>
-          <greeting.Icon className={cn(greeting.color)} size={20} />
-        </div>
-        {isRequester && (
-          <p className="text-sm text-brand-purple mt-1">Ringkasan barang Reusable yang tersedia & pengajuan SPK Anda</p>
-        )}
+        <p className="text-brand-purple mt-1">
+          {isRequester
+            ? 'Ringkasan barang Reusable yang tersedia & pengajuan SPK Anda'
+            : 'Ringkasan aktivitas & statistik inventaris barang Anda'}
+        </p>
       </div>
 
       {isRequester ? (
@@ -312,7 +294,7 @@ export default function DashboardHome() {
           </Link>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <StatCard title="Total Jenis Barang Reusable" value={stats.totalItems} icon={<Package className="text-blue-600" size={24} />} color="bg-blue-500/10 border border-blue-500/20" />
             <StatCard title="Total Stok Reusable" value={stats.totalStockIn} subtitle="Tersedia" icon={<ArrowDownRight className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
             <Link to="/office-items" className="block">
@@ -321,30 +303,43 @@ export default function DashboardHome() {
           </div>
         </>
       ) : (
-        /* Summary Cards */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          <StatCard title="Total Jenis Barang" value={stats.totalItems} icon={<Package className="text-blue-600" size={24} />} color="bg-blue-500/10 border border-blue-500/20" />
-          <StatCard title="Total Registrasi Stok" value={stats.totalStockIn} subtitle="Stok Tersedia" icon={<ArrowDownRight className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
-          <StatCard title="Total Stok Keluar" value={stats.totalStockOut} subtitle="Dalam 6 bulan" icon={<ArrowUpRight className="text-rose-600" size={24} />} color="bg-rose-500/10 border border-rose-500/20" />
-          <div className="grid grid-rows-2 gap-4">
-            <MiniStatCard title="Total Lokasi" value={stats.totalLocations} icon={<MapPin size={18} className="text-indigo-600" />} />
-            <MiniStatCard title="Total Kategori" value={stats.totalCategories} icon={<Layers size={18} className="text-orange-600" />} />
-          </div>
+        /* Summary Cards — semua kartu dibuat seragam (bukan campuran kartu
+           besar + pasangan mini seperti sebelumnya) supaya tingginya sama
+           rata gak perlu regangan grid yang bikin gak rapi. */
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <StatCard title="Total Jenis Barang" value={stats.totalItems} icon={<Package className="text-blue-600" size={22} />} color="bg-blue-500/10 border border-blue-500/20" />
+          <StatCard title="Total Registrasi Stok" value={stats.totalStockIn} subtitle="Stok Tersedia" icon={<ArrowDownRight className="text-emerald-600" size={22} />} color="bg-emerald-500/10 border border-emerald-500/20" />
+          <StatCard title="Total Stok Keluar" value={stats.totalStockOut} subtitle="Dalam 6 bulan" icon={<ArrowUpRight className="text-rose-600" size={22} />} color="bg-rose-500/10 border border-rose-500/20" />
+          <StatCard title="Total Lokasi" value={stats.totalLocations} icon={<MapPin className="text-indigo-600" size={22} />} color="bg-indigo-500/10 border border-indigo-500/20" />
+          <StatCard title="Total Kategori" value={stats.totalCategories} icon={<Layers className="text-orange-600" size={22} />} color="bg-orange-500/10 border border-orange-500/20" />
         </div>
       )}
 
-      {/* Notifikasi Persetujuan Tertunda */}
-      {!isRequester && (pendingDisposalCount > 0 || pendingSPKCount > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {pendingDisposalCount > 0 && (
-            <Link to="/barang" className="block">
-              <StatCard title="Menunggu Persetujuan Pemusnahan" value={pendingDisposalCount} subtitle="Perlu Tindakan" icon={<AlertTriangle className="text-amber-600" size={24} />} color="bg-amber-500/10 border border-amber-500/20" />
-            </Link>
-          )}
-          {pendingSPKCount > 0 && (
-            <Link to="/barang" className="block">
-              <StatCard title="Menunggu Persetujuan SPK" value={pendingSPKCount} subtitle="Perlu Tindakan" icon={<ClipboardList className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
-            </Link>
+      {/* Notifikasi Persetujuan Tertunda — dari sini admin/auditor/spv/direktur
+          mantau pengajuan pemusnahan & SPK (termasuk yang diajukan role
+          requester). Sekarang SELALU tampil (gak disembunyikan total kalau
+          lagi kosong), dengan keterangan "belum ada" sebagai fallback. */}
+      {!isRequester && (
+        <div>
+          <h3 className="text-sm font-bold text-brand-purple uppercase tracking-wide mb-3">Menunggu Persetujuan</h3>
+          {(pendingDisposalCount > 0 || pendingSPKCount > 0) ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {pendingDisposalCount > 0 && (
+                <Link to="/approval" className="block">
+                  <StatCard title="Menunggu Persetujuan Pemusnahan" value={pendingDisposalCount} subtitle="Perlu Tindakan" icon={<AlertTriangle className="text-amber-600" size={24} />} color="bg-amber-500/10 border border-amber-500/20" />
+                </Link>
+              )}
+              {pendingSPKCount > 0 && (
+                <Link to="/approval" className="block">
+                  <StatCard title="Menunggu Persetujuan SPK" value={pendingSPKCount} subtitle="Perlu Tindakan" icon={<ClipboardList className="text-emerald-600" size={24} />} color="bg-emerald-500/10 border border-emerald-500/20" />
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl border border-white/50 text-center">
+              <ClipboardList className="mx-auto text-brand-purple/40 mb-2" size={28} />
+              <p className="text-sm text-brand-purple/60">Belum ada pengajuan yang menunggu persetujuan</p>
+            </div>
           )}
         </div>
       )}
@@ -743,15 +738,15 @@ function ExploreDimensionPanel({ title, headerIcon, cardIcon, theme, data, selec
 
 function StatCard({ title, value, subtitle, icon, color }: { title: string, value: number, subtitle?: string, icon: React.ReactNode, color: string }) {
   return (
-    <div className="bg-white/70 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 flex flex-col justify-center hover:shadow-xl transition-all hover:-translate-y-1 group relative overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-2xl ${color} shadow-sm group-hover:scale-110 transition-transform`}>
+    <div className="bg-white/70 backdrop-blur-xl p-4 rounded-2xl shadow-lg border border-white/50 hover:shadow-xl transition-all hover:-translate-y-1 group relative overflow-hidden">
+      <div className="flex items-center justify-between mb-2.5">
+        <div className={`p-2.5 rounded-xl ${color} shadow-sm group-hover:scale-110 transition-transform`}>
           {icon}
         </div>
         {subtitle && <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-brand-purple rounded-full">{subtitle}</span>}
       </div>
       <div>
-        <p className="text-3xl font-extrabold text-brand-purple tracking-tight mb-1">{value.toLocaleString()}</p>
+        <p className="text-2xl font-extrabold text-brand-purple tracking-tight mb-0.5">{value.toLocaleString()}</p>
         <p className="text-sm font-semibold text-brand-purple">{title}</p>
       </div>
       <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12 scale-150 pointer-events-none group-hover:scale-110 transition-transform duration-500">
@@ -761,17 +756,4 @@ function StatCard({ title, value, subtitle, icon, color }: { title: string, valu
   );
 }
 
-function MiniStatCard({ title, value, icon }: { title: string, value: number, icon: React.ReactNode }) {
-  return (
-    <div className="bg-white/70 backdrop-blur-xl p-4 rounded-2xl shadow-sm border border-white/50 flex items-center space-x-4 hover:shadow-md transition-all group">
-      <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 group-hover:bg-white transition-colors">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs font-semibold text-brand-purple uppercase tracking-wider mb-0.5">{title}</p>
-        <p className="text-xl font-bold text-brand-purple">{value.toLocaleString()}</p>
-      </div>
-    </div>
-  );
-}
 

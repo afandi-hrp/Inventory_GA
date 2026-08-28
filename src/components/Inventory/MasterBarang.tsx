@@ -15,8 +15,6 @@ import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useToast } from '../UI/Toast';
-import { DisposalApprovalModal } from './DisposalApprovalModal';
-import { SPKApprovalModal } from './SPKApprovalModal';
 import SignedImage from '../UI/SignedImage';
 import { getSignedUrl, getSignedUrls, extractPath } from '../../lib/signedStorage';
 import { generateDailyDocNumber } from '../../lib/utils';
@@ -107,12 +105,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [isStockOutModalOpen, setIsStockOutModalOpen] = useState(false);
   const [isBulkStockOutModalOpen, setIsBulkStockOutModalOpen] = useState(false);
   const [isDisposalModalOpen, setIsDisposalModalOpen] = useState(false);
-  const [isApprovalListModalOpen, setIsApprovalListModalOpen] = useState(false);
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
-  const [isSPKApprovalListModalOpen, setIsSPKApprovalListModalOpen] = useState(false);
-  const [pendingDisposalCount, setPendingDisposalCount] = useState(0);
-  const [pendingSPKCount, setPendingSPKCount] = useState(0);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
   const [isItemHistoryModalOpen, setIsItemHistoryModalOpen] = useState(false);
   const [itemHistoryLogs, setItemHistoryLogs] = useState<{ id: string; action: string; old_values: Record<string, any> | null; new_values: Record<string, any> | null; created_at: string; profiles: { full_name: string } | null }[]>([]);
@@ -183,13 +177,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [filterSifat, setFilterSifat] = useState<'' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'>('');
   const [flagInput, setFlagInput] = useState('');
   const [flagCatalog, setFlagCatalog] = useState<FlagDef[]>([]);
-  const [filterFlag, setFilterFlag] = useState('');
   const [newFlagColorKey, setNewFlagColorKey] = useState('teal');
   const [newFlagIconKey, setNewFlagIconKey] = useState('tag');
   const [savingNewFlag, setSavingNewFlag] = useState(false);
   const [activeFilterPanel, setActiveFilterPanel] = useState<'' | 'kategori' | 'lokasi' | 'kepemilikan'>('');
+  // Posisi dropdown dihitung manual (bukan cuma absolute+relative) & dirender
+  // lewat portal ke document.body, karena baris filter sekarang overflow-x-auto
+  // (biar muat 1 baris) — overflow-x-auto otomatis ikut meng-clip overflow-y,
+  // jadi dropdown yang absolute di dalamnya bakal ke-potong/gak keliatan kalau
+  // gak di-portal keluar dari container itu.
+  const [dimensionMenuPos, setDimensionMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [filterPemusnahan, setFilterPemusnahan] = useState(false);
-  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
+  const [isPemusnahanModalOpen, setIsPemusnahanModalOpen] = useState(false);
+  const [fileMenuPos, setFileMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   const [bulkEditData, setBulkEditData] = useState({
     kode_lokasi: '',
@@ -210,8 +210,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [loadingDimensionStats, setLoadingDimensionStats] = useState(false);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const topScrollbarRef = useRef<HTMLDivElement>(null);
-  const [tableContentWidth, setTableContentWidth] = useState(0);
 
   // DIMATIKAN SEMENTARA: 3 pendekatan berbeda untuk fitur "tombol Kembali
   // menutup modal" sama-sama menyebabkan modal Edit Barang hilang sendiri.
@@ -229,32 +227,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   // useModalBackButton(carouselImages.length > 0, () => setCarouselImages([]));
 
   useEffect(() => {
-    if (!tableContainerRef.current) return;
-    const observer = new ResizeObserver(() => {
-      if (tableContainerRef.current) {
-        setTableContentWidth(tableContainerRef.current.scrollWidth);
-      }
-    });
-    observer.observe(tableContainerRef.current);
-    const table = tableContainerRef.current.querySelector('table');
-    if (table) observer.observe(table);
-    
-    return () => observer.disconnect();
-  }, [items]);
-
-  const handleTopScroll = () => {
-    if (topScrollbarRef.current && tableContainerRef.current) {
-      tableContainerRef.current.scrollLeft = topScrollbarRef.current.scrollLeft;
-    }
-  };
-
-  const handleBottomScroll = () => {
-    if (topScrollbarRef.current && tableContainerRef.current) {
-      topScrollbarRef.current.scrollLeft = tableContainerRef.current.scrollLeft;
-    }
-  };
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
     }, 500);
@@ -266,55 +238,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     fetchCategories();
     fetchKepemilikan();
     fetchFlagCatalog();
-  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterFlag, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
-
-  useEffect(() => {
-    fetchPendingApprovalCounts();
-  }, [profile?.role]);
-
-  async function fetchPendingApprovalCounts() {
-    const role = profile?.role;
-    if (!role) return;
-
-    // Setiap role cuma "punya" satu tahap yang bisa dia proses di masing-masing
-    // alur — hitung berapa pengajuan yang lagi nunggu tahap itu.
-    const disposalStageByRole: Record<string, string> = {
-      auditor: 'PENDING_AUDITOR',
-      spv: 'PENDING_SPV',
-      direktur: 'PENDING_DIREKTUR',
-    };
-    const spkStageByRole: Record<string, string> = {
-      admin: 'PENDING_ADMIN',
-      auditor: 'PENDING_AUDITOR',
-      spv: 'PENDING_SPV',
-    };
-
-    try {
-      const disposalStage = disposalStageByRole[role];
-      if (disposalStage) {
-        const { count } = await supabase
-          .from('disposal_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', disposalStage);
-        setPendingDisposalCount(count || 0);
-      } else {
-        setPendingDisposalCount(0);
-      }
-
-      const spkStage = spkStageByRole[role];
-      if (spkStage) {
-        const { count } = await supabase
-          .from('spk_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', spkStage);
-        setPendingSPKCount(count || 0);
-      } else {
-        setPendingSPKCount(0);
-      }
-    } catch (err) {
-      console.error('Error fetching pending approval counts:', err);
-    }
-  }
+  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
 
   async function fetchFlagCatalog() {
     try {
@@ -557,10 +481,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.eq('sifat_barang', filterSifat);
       }
 
-      if (filterFlag) {
-        query = query.contains('flags', [filterFlag]);
-      }
-
       const from = (page - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
 
@@ -769,9 +689,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       showToast('Pengajuan pemusnahan berhasil dibuat!', 'success');
       setIsDisposalModalOpen(false);
-      setDisposalData({ keterangan: '' });
+      setDisposalData({ keterangan: '', metode_pemusnahan: '' });
       setSelectedItems([]);
       setFilterPemusnahan(false);
+      setIsPemusnahanModalOpen(false);
       // We don't deduct stock here, because it waits for final (Direktur) approval.
       fetchItems();
     } catch (err: any) {
@@ -1854,162 +1775,199 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-brand-purple">Master Barang</h2>
-          <div className="flex items-center space-x-2">
-            <p className="text-brand-purple">Kelola daftar inventaris barang Anda</p>
-            {profile && (
-              <span className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-                (profile.role === 'admin' || profile.role === 'spv') ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
-              )}>
-                Role: {profile.role}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {(profile?.role === 'admin' || profile?.role === 'spv') && (
-            <>
-              <div className="relative">
-                <button
-                  onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
-                  className="flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 border border-gray-200 text-brand-purple px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
-                >
-                  <FileSpreadsheet size={20} />
-                  <span>Excel &amp; PDF</span>
-                  <ChevronDown size={16} className={cn("transition-transform", isFileMenuOpen && "rotate-180")} />
-                </button>
-                {isFileMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsFileMenuOpen(false)} />
-                    <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                      <button
-                        onClick={() => { handleDownloadTemplate(); setIsFileMenuOpen(false); }}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
-                      >
-                        <Download size={16} className="text-brand-purple" />
-                        <span>Download Template</span>
-                      </button>
-                      <label
-                        onClick={() => setIsFileMenuOpen(false)}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors cursor-pointer"
-                      >
-                        {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
-                        <span>Import Excel</span>
-                        <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
-                      </label>
-                      <button
-                        onClick={() => { handlePrepareExport(); setIsFileMenuOpen(false); }}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
-                      >
-                        <FileSpreadsheet size={16} className="text-emerald-600" />
-                        <span>Export Excel</span>
-                      </button>
-                      <button
-                        onClick={() => { handleExportPDF(); setIsFileMenuOpen(false); }}
-                        disabled={isExportingPDF}
-                        className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors disabled:opacity-50"
-                      >
-                        {isExportingPDF ? <Loader2 size={16} className="animate-spin text-red-500" /> : <FileText size={16} className="text-red-500" />}
-                        <span>Export PDF</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <button
-                onClick={() => handleOpenModal()}
-                className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
-              >
-                <Plus size={20} />
-                <span>Tambah Barang</span>
-              </button>
-            </>
-          )}
-        </div>
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Barang</h2>
+        <p className="text-brand-purple">Kelola daftar inventaris barang Anda</p>
       </div>
 
       {/* Bulk Actions Bar */}
       {selectedItems.length > 0 && (profile?.role === 'admin' || profile?.role === 'spv') && !filterPemusnahan && (
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-wrap items-center justify-between gap-y-2 animate-in slide-in-from-top-2 duration-300">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="text-blue-700 font-medium">{selectedItems.length} barang terpilih</span>
-            <div className="hidden sm:block h-4 w-px bg-blue-200"></div>
+        <div className="bg-brand-purple/10 backdrop-blur-xl border border-brand-purple/20 p-4 rounded-xl flex flex-wrap items-center justify-between gap-y-2 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-brand-purple font-medium">{selectedItems.length} barang terpilih</span>
             <button
               onClick={() => setIsBulkEditOpen(true)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-brand-cream text-brand-purple border border-brand-purple/20 text-sm font-semibold rounded-lg shadow-sm transition-colors"
             >
-              <Edit2 size={16} className="mr-1" /> Edit Massal
+              <Edit2 size={16} /> Edit Massal
             </button>
-            <div className="hidden sm:block h-4 w-px bg-blue-200"></div>
             <button
               onClick={() => {
                 setStockOutData({ alasan: '' });
                 setIsBulkStockOutModalOpen(true);
               }}
-              className="text-orange-600 hover:text-orange-800 text-sm font-semibold flex items-center"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-brand-cream text-brand-purple border border-brand-purple/20 text-sm font-semibold rounded-lg shadow-sm transition-colors"
             >
-              <LogOut size={16} className="mr-1" /> Keluarkan Massal
+              <LogOut size={16} className="text-brand-coral" /> Keluarkan Massal
             </button>
           </div>
-          <button onClick={() => setSelectedItems([])} className="text-blue-400 hover:text-blue-600">
+          <button onClick={() => setSelectedItems([])} className="text-brand-purple/60 hover:text-brand-purple">
             <X size={20} />
           </button>
         </div>
       )}
 
-      {/* Panel Kontrol: Stats + Filter + Aksi, digabung jadi satu kartu biar tidak numpuk */}
-      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 space-y-4">
-      {/* Row 1: Search + Sifat + Reset */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
+      {/* Panel Kontrol: Search + Filter, digabung jadi satu kartu biar tidak numpuk.
+          Dipadatkan (padding & tinggi dikecilkan, semua filter jadi 1 baris)
+          supaya tabel barang di bawahnya gak keteken terlalu jauh. */}
+      <div className="bg-white/60 backdrop-blur-xl p-3 rounded-2xl shadow-lg border border-white/50 space-y-2.5">
+      {/* Search + semua filter cepat (Status, Kategori/Lokasi/Kepemilikan,
+          Perlu Pemusnahan, Reset, Excel & PDF, Tambah Barang) dipaksa jadi
+          SATU baris (flex-nowrap) — kalau layar sempit, baris ini scroll
+          horizontal sendiri (overflow-x-auto) alih-alih pindah ke baris baru. */}
+      <div className="flex items-center gap-2">
+      {/* Cuma bagian filter yang scroll horizontal kalau kepanjangan — tombol
+          aksi utama (Excel & PDF, Tambah Barang) sengaja ditaruh DI LUAR area
+          scroll ini supaya selalu keliatan penuh, gak ikut ke-scroll/terpotong
+          di layar sempit (mis. laptop 14"). */}
+      <div className="flex-1 min-w-0 flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+        <div className="relative group shrink-0 w-44">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={16} />
           <input
             type="text"
-            placeholder="Cari nama, kode, atau deskripsi barang..."
+            placeholder="Cari nama, kode..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full pl-9 pr-8 py-2 bg-white border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-purple hover:text-brand-purple"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-brand-purple hover:text-brand-purple"
             >
-              <X size={16} />
+              <X size={14} />
             </button>
           )}
         </div>
 
-        <div className="md:w-44 shrink-0">
-          <select
-            value={filterSifat}
-            onChange={(e) => { setFilterSifat(e.target.value as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'); setPage(1); }}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none bg-white font-medium"
+        <select
+          value={filterSifat}
+          onChange={(e) => { setFilterSifat(e.target.value as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'); setPage(1); }}
+          className="shrink-0 px-3 py-2 border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm appearance-none bg-white font-medium"
+        >
+          <option value="">Semua Status</option>
+          <option value="OFFICE">OFFICE</option>
+          <option value="PRIVATE">PRIVATE</option>
+          <option value="REUSABLE">REUSABLE</option>
+        </select>
+
+        {/* Kategori/Lokasi/Kepemilikan digabung jadi SATU tombol dropdown
+            (accordion 3 bagian di dalamnya) supaya gak makan banyak tempat
+            di baris filter. Dirender lewat portal (posisi dihitung manual)
+            karena baris filter ini overflow-x-auto — kalau dropdown-nya taruh
+            di dalam container itu langsung, dia ke-clip/gak keliatan. */}
+        <div className="shrink-0">
+          <button
+            onClick={(e) => {
+              if (dimensionMenuPos) {
+                setDimensionMenuPos(null);
+                setActiveFilterPanel('');
+              } else {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setDimensionMenuPos({ top: rect.bottom + 8, left: rect.left });
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+              (filterKategori || filterLokasi || filterKepemilikan || dimensionMenuPos)
+                ? "bg-orange-50 border-orange-300 text-orange-800"
+                : "bg-white border-brand-purple/20 text-brand-purple hover:border-brand-purple/40"
+            )}
           >
-            <option value="">Semua Status</option>
-            <option value="OFFICE">OFFICE</option>
-            <option value="PRIVATE">PRIVATE</option>
-            <option value="REUSABLE">REUSABLE</option>
-          </select>
+            <Filter size={15} className="shrink-0" />
+            <span className="max-w-[160px] truncate">
+              {[
+                filterKategori && (filterKategori === 'unassigned' ? 'Tanpa Kategori' : categories.find(c => c.id === filterKategori)?.nama_kategori),
+                filterLokasi && (filterLokasi === 'unassigned' ? 'Tanpa Lokasi' : availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi),
+                filterKepemilikan && (filterKepemilikan === 'unassigned' ? 'Tanpa Kepemilikan' : kepemilikanList.find(k => k.id === filterKepemilikan)?.nama_pemilik),
+              ].filter(Boolean).join(', ') || 'Kategori, Lokasi, Kepemilikan'}
+            </span>
+            <ChevronDown size={14} className={cn("shrink-0 transition-transform", dimensionMenuPos && "rotate-180")} />
+          </button>
+          {dimensionMenuPos && createPortal(
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => { setDimensionMenuPos(null); setActiveFilterPanel(''); }} />
+              <div
+                className="fixed w-72 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 max-h-96 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+                style={{ top: dimensionMenuPos.top, left: dimensionMenuPos.left }}
+              >
+                {([
+                  { key: 'kategori' as const, label: 'Kategori', icon: <Package size={14} />, value: filterKategori, setValue: setFilterKategori, list: categories as any[], nameKey: 'nama_kategori', idKey: 'id' },
+                  { key: 'lokasi' as const, label: 'Lokasi', icon: <MapPin size={14} />, value: filterLokasi, setValue: setFilterLokasi, list: availableLocations as any[], nameKey: 'nama_lokasi', idKey: 'kode_lokasi' },
+                  { key: 'kepemilikan' as const, label: 'Kepemilikan', icon: <UserCheck size={14} />, value: filterKepemilikan, setValue: setFilterKepemilikan, list: kepemilikanList as any[], nameKey: 'nama_pemilik', idKey: 'id' },
+                ]).map((dim) => {
+                  const currentLabel = dim.value
+                    ? (dim.value === 'unassigned' ? `Tanpa ${dim.label}` : dim.list.find((it) => it[dim.idKey] === dim.value)?.[dim.nameKey] || 'Terpilih')
+                    : `Semua ${dim.label}`;
+                  return (
+                    <div key={dim.key} className="border-b border-gray-50 last:border-0">
+                      <button
+                        onClick={() => setActiveFilterPanel(activeFilterPanel === dim.key ? '' : dim.key)}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="flex items-center gap-2 font-semibold">{dim.icon}{dim.label}</span>
+                        <span className="flex items-center gap-1 text-xs text-brand-purple/60 min-w-0">
+                          <span className="truncate max-w-[90px]">{currentLabel}</span>
+                          <ChevronDown size={12} className={cn("transition-transform shrink-0", activeFilterPanel === dim.key && "rotate-180")} />
+                        </span>
+                      </button>
+                      {activeFilterPanel === dim.key && (
+                        <div className="bg-gray-50/60 py-1 max-h-48 overflow-y-auto">
+                          {loadingDimensionStats ? (
+                            <div className="py-4 text-center">
+                              <Loader2 className="animate-spin mx-auto text-brand-purple" size={16} />
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => { dim.setValue(''); setPage(1); setActiveFilterPanel(''); setDimensionMenuPos(null); }}
+                                className="w-full text-left px-6 py-1.5 text-xs text-brand-purple hover:bg-white transition-colors font-medium"
+                              >
+                                Semua {dim.label}
+                              </button>
+                              {dimensionStats.length === 0 ? (
+                                <p className="px-6 py-1.5 text-xs text-brand-purple italic">Tidak ada data</p>
+                              ) : (
+                                dimensionStats.map((stat) => (
+                                  <button
+                                    key={stat.id}
+                                    onClick={() => { dim.setValue(stat.id); setPage(1); setActiveFilterPanel(''); setDimensionMenuPos(null); }}
+                                    className="w-full flex items-center justify-between gap-2 px-6 py-1.5 text-xs text-brand-purple hover:bg-white transition-colors"
+                                  >
+                                    <span className="truncate">{stat.name}</span>
+                                    <span className="text-brand-purple/50 shrink-0">{stat.count}</span>
+                                  </button>
+                                ))
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>,
+            document.body
+          )}
         </div>
 
-        <div className="md:w-44 shrink-0">
-          <select
-            value={filterFlag}
-            onChange={(e) => { setFilterFlag(e.target.value); setPage(1); }}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm appearance-none bg-white font-medium"
+        {profile?.role !== 'auditor' && (
+          <button
+            onClick={() => {
+              setFilterPemusnahan(true);
+              setSelectedItems([]);
+              setPage(1);
+              setIsPemusnahanModalOpen(true);
+            }}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all bg-white text-brand-purple border-brand-purple/20 hover:border-brand-purple/40"
           >
-            <option value="">Semua Flag</option>
-            {flagCatalog.map((flag) => (
-              <option key={flag.id} value={flag.nama_flag}>{flag.nama_flag}</option>
-            ))}
-          </select>
-        </div>
+            <AlertTriangle size={15} className="text-red-500 shrink-0" />
+            <span>Perlu Pemusnahan</span>
+          </button>
+        )}
 
         <button
           onClick={() => {
@@ -2018,261 +1976,134 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             setFilterKategori('');
             setFilterKepemilikan('');
             setFilterSifat('');
-            setFilterFlag('');
             setFilterPemusnahan(false);
             setActiveFilterPanel('');
+            setDimensionMenuPos(null);
             setPage(1);
           }}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 backdrop-blur-md rounded-lg transition-all text-sm font-medium whitespace-nowrap shadow-sm shrink-0"
+          title="Reset Pencarian & Filter"
+          className="shrink-0 flex items-center justify-center p-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 rounded-lg transition-all"
         >
           <XCircle size={16} />
-          <span>Reset Pencarian</span>
         </button>
       </div>
 
-      {/* Row 2: 3 Kartu Master Filter (Kategori/Lokasi/Kepemilikan) - saling cross-filter */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-gray-100">
-        {/* Kategori */}
-        <button
-          onClick={() => setActiveFilterPanel(activeFilterPanel === 'kategori' ? '' : 'kategori')}
-          className={cn(
-            "flex items-center space-x-3 p-3 rounded-2xl border text-left transition-all",
-            filterKategori || activeFilterPanel === 'kategori'
-              ? "bg-orange-50 border-orange-300 shadow-sm"
-              : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
-          )}
-        >
-          <div className={cn("p-2 rounded-xl shrink-0", filterKategori || activeFilterPanel === 'kategori' ? "bg-orange-100 text-orange-600" : "bg-gray-50 text-brand-purple")}>
-            <Package size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Kategori</h4>
-            <p className={cn("text-sm font-semibold truncate", filterKategori || activeFilterPanel === 'kategori' ? "text-orange-800" : "text-brand-purple")}>
-              {filterKategori ? (filterKategori === 'unassigned' ? 'Tanpa Kategori' : categories.find(c => c.id === filterKategori)?.nama_kategori || 'Terpilih') : 'Semua Kategori'}
-            </p>
-          </div>
-          {filterKategori ? (
-            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKategori(''); setActiveFilterPanel(''); }} className="text-brand-purple hover:text-red-600 shrink-0" />
-          ) : (
-            <ChevronDown size={16} className={cn("text-brand-purple shrink-0 transition-transform", activeFilterPanel === 'kategori' && "rotate-180")} />
-          )}
-        </button>
-
-        {/* Lokasi */}
-        <button
-          onClick={() => setActiveFilterPanel(activeFilterPanel === 'lokasi' ? '' : 'lokasi')}
-          className={cn(
-            "flex items-center space-x-3 p-3 rounded-2xl border text-left transition-all",
-            filterLokasi || activeFilterPanel === 'lokasi'
-              ? "bg-blue-50 border-blue-300 shadow-sm"
-              : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
-          )}
-        >
-          <div className={cn("p-2 rounded-xl shrink-0", filterLokasi || activeFilterPanel === 'lokasi' ? "bg-blue-100 text-blue-600" : "bg-gray-50 text-brand-purple")}>
-            <MapPin size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Lokasi</h4>
-            <p className={cn("text-sm font-semibold truncate", filterLokasi || activeFilterPanel === 'lokasi' ? "text-blue-800" : "text-brand-purple")}>
-              {filterLokasi ? (filterLokasi === 'unassigned' ? 'Tanpa Lokasi' : availableLocations.find(l => l.kode_lokasi === filterLokasi)?.nama_lokasi || 'Terpilih') : 'Semua Lokasi'}
-            </p>
-          </div>
-          {filterLokasi ? (
-            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterLokasi(''); setActiveFilterPanel(''); }} className="text-brand-purple hover:text-red-600 shrink-0" />
-          ) : (
-            <ChevronDown size={16} className={cn("text-brand-purple shrink-0 transition-transform", activeFilterPanel === 'lokasi' && "rotate-180")} />
-          )}
-        </button>
-
-        {/* Kepemilikan */}
-        <button
-          onClick={() => setActiveFilterPanel(activeFilterPanel === 'kepemilikan' ? '' : 'kepemilikan')}
-          className={cn(
-            "flex items-center space-x-3 p-3 rounded-2xl border text-left transition-all",
-            filterKepemilikan || activeFilterPanel === 'kepemilikan'
-              ? "bg-emerald-50 border-emerald-300 shadow-sm"
-              : "bg-white/60 border-gray-200 hover:border-gray-300 hover:shadow-sm"
-          )}
-        >
-          <div className={cn("p-2 rounded-xl shrink-0", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "bg-emerald-100 text-emerald-600" : "bg-gray-50 text-brand-purple")}>
-            <UserCheck size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-brand-purple uppercase tracking-wide">Kepemilikan</h4>
-            <p className={cn("text-sm font-semibold truncate", filterKepemilikan || activeFilterPanel === 'kepemilikan' ? "text-emerald-800" : "text-brand-purple")}>
-              {filterKepemilikan ? (filterKepemilikan === 'unassigned' ? 'Tanpa Kepemilikan' : kepemilikanList.find(k => k.id === filterKepemilikan)?.nama_pemilik || 'Terpilih') : 'Semua Kepemilikan'}
-            </p>
-          </div>
-          {filterKepemilikan ? (
-            <X size={16} onClick={(e) => { e.stopPropagation(); setFilterKepemilikan(''); setActiveFilterPanel(''); }} className="text-brand-purple hover:text-red-600 shrink-0" />
-          ) : (
-            <ChevronDown size={16} className={cn("text-brand-purple shrink-0 transition-transform", activeFilterPanel === 'kepemilikan' && "rotate-180")} />
-          )}
-        </button>
-      </div>
-
-      {/* Row 3: Grid kartu nilai untuk dimensi yang sedang dibuka (hitungannya otomatis mengikuti 2 filter lain yang aktif) */}
-      {activeFilterPanel && (
-        <div className={cn(
-          "p-4 rounded-2xl border animate-in fade-in slide-in-from-top-2 duration-200",
-          activeFilterPanel === 'kategori' && "bg-orange-50/50 border-orange-100",
-          activeFilterPanel === 'lokasi' && "bg-blue-50/50 border-blue-100",
-          activeFilterPanel === 'kepemilikan' && "bg-emerald-50/50 border-emerald-100"
-        )}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-brand-purple">
-              Pilih {activeFilterPanel === 'kategori' ? 'Kategori' : activeFilterPanel === 'lokasi' ? 'Lokasi' : 'Kepemilikan'}
-            </h3>
-            <button onClick={() => setActiveFilterPanel('')} className="text-brand-purple hover:text-brand-purple">
-              <X size={16} />
-            </button>
-          </div>
-
-          {loadingDimensionStats ? (
-            <div className="py-6 text-center">
-              <Loader2 className="animate-spin mx-auto text-brand-purple" size={24} />
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              <div
-                onClick={() => {
-                  if (activeFilterPanel === 'kategori') setFilterKategori('');
-                  if (activeFilterPanel === 'lokasi') setFilterLokasi('');
-                  if (activeFilterPanel === 'kepemilikan') setFilterKepemilikan('');
-                  setPage(1);
-                  setActiveFilterPanel('');
+        {(profile?.role === 'admin' || profile?.role === 'spv') && (
+          <div className="shrink-0 flex items-center gap-2">
+            <div>
+              <button
+                onClick={(e) => {
+                  if (fileMenuPos) {
+                    setFileMenuPos(null);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setFileMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 224) });
+                  }
                 }}
-                className="bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                className="flex items-center justify-center gap-2 bg-white hover:bg-brand-purple/5 border border-brand-purple/25 text-brand-purple px-3 py-2 rounded-lg transition-all shadow-sm font-semibold text-sm"
               >
-                <h4 className="text-xs font-bold text-brand-purple">Semua</h4>
-              </div>
-              {dimensionStats.length === 0 ? (
-                <p className="text-xs text-brand-purple italic py-2">Tidak ada data</p>
-              ) : (
-                dimensionStats.map((stat) => (
+                <FileSpreadsheet size={16} />
+                <span>Excel &amp; PDF</span>
+                <ChevronDown size={14} className={cn("transition-transform", fileMenuPos && "rotate-180")} />
+              </button>
+              {fileMenuPos && createPortal(
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setFileMenuPos(null)} />
                   <div
-                    key={stat.id}
-                    onClick={() => {
-                      // stat.id tetap 'unassigned' apa adanya (BUKAN diubah jadi ''),
-                      // karena '' berarti "semua/gak ada filter" — kalau disamakan,
-                      // klik "Tanpa X" jadi gak ngefek sama sekali (filter di-skip).
-                      const val = stat.id;
-                      if (activeFilterPanel === 'kategori') setFilterKategori(val);
-                      if (activeFilterPanel === 'lokasi') setFilterLokasi(val);
-                      if (activeFilterPanel === 'kepemilikan') setFilterKepemilikan(val);
-                      setPage(1);
-                      setActiveFilterPanel('');
-                    }}
-                    className="bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                    className="fixed w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                    style={{ top: fileMenuPos.top, left: fileMenuPos.left }}
                   >
-                    <h4 className="text-xs font-bold text-brand-purple">{stat.name}</h4>
-                    <p className="text-[10px] text-brand-purple">{stat.count} Jenis • {stat.stock} Stok</p>
+                    <button
+                      onClick={() => { handleDownloadTemplate(); setFileMenuPos(null); }}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                    >
+                      <Download size={16} className="text-brand-purple" />
+                      <span>Download Template</span>
+                    </button>
+                    <label
+                      onClick={() => setFileMenuPos(null)}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
+                      <span>Import Excel</span>
+                      <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
+                    </label>
+                    <button
+                      onClick={() => { handlePrepareExport(); setFileMenuPos(null); }}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                    >
+                      <FileSpreadsheet size={16} className="text-emerald-600" />
+                      <span>Export Excel</span>
+                    </button>
+                    <button
+                      onClick={() => { handleExportPDF(); setFileMenuPos(null); }}
+                      disabled={isExportingPDF}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      {isExportingPDF ? <Loader2 size={16} className="animate-spin text-red-500" /> : <FileText size={16} className="text-red-500" />}
+                      <span>Export PDF</span>
+                    </button>
                   </div>
-                ))
+                </>,
+                document.body
               )}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Pemusnahan Filter Toggle & Actions */}
-      <div className="pt-4 border-t border-gray-100 space-y-3">
-        <div className="flex flex-wrap items-center justify-center gap-2.5">
-          {profile?.role !== 'auditor' && (
             <button
-              onClick={() => {
-                setFilterPemusnahan(!filterPemusnahan);
-                setPage(1);
-              }}
-              className={cn(
-                "flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm",
-                filterPemusnahan
-                  ? "bg-red-500 text-white border-red-600 shadow-red-500/20"
-                  : "bg-white text-brand-purple border-gray-200 hover:bg-gray-50"
-              )}
+              onClick={() => handleOpenModal()}
+              className="flex items-center justify-center gap-2 bg-brand-purple hover:bg-brand-purple-light text-white px-3 py-2 rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold text-sm whitespace-nowrap"
             >
-              <AlertTriangle size={18} />
-              <span>List Barang Pemusnahan (Rusak/Cukup Baik)</span>
-            </button>
-          )}
-
-          {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
-            <button
-              onClick={() => setIsApprovalListModalOpen(true)}
-              className="relative flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
-            >
-              <ClipboardList size={18} />
-              <span>Persetujuan Pemusnahan</span>
-              {pendingDisposalCount > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full border-2 border-white shadow-sm">
-                  {pendingDisposalCount > 99 ? '99+' : pendingDisposalCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {['admin', 'auditor', 'spv', 'direktur'].includes(profile?.role || '') && (
-            <button
-              onClick={() => setIsSPKApprovalListModalOpen(true)}
-              className="relative flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-            >
-              <ClipboardList size={18} />
-              <span>Persetujuan SPK</span>
-              {pendingSPKCount > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full border-2 border-white shadow-sm">
-                  {pendingSPKCount > 99 ? '99+' : pendingSPKCount}
-                </span>
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* Aksi utama (Ajukan Pemusnahan) dipisah ke baris sendiri supaya tidak
-            berebut tempat dengan tombol toggle di atas, sekaligus menegaskan ini
-            aksi utama/CTA, bukan sekadar toggle. */}
-        {selectedItems.length > 0 && filterPemusnahan && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
-            <button
-              onClick={() => {
-                setIsDisposalModalOpen(true);
-              }}
-              className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-xl shadow-md shadow-red-500/20 transition-all text-sm font-semibold"
-            >
-              <FileWarning size={18} />
-              <span>Ajukan Pemusnahan ({selectedItems.length} Barang)</span>
+              <Plus size={18} />
+              <span>Tambah Barang</span>
             </button>
           </div>
         )}
       </div>
       </div>
 
-      {/* Top Scrollbar */}
-      <div 
-        className="overflow-x-auto overflow-y-hidden mb-2 rounded-xl bg-white/40 backdrop-blur-sm border border-white/50 shadow-sm custom-scrollbar"
-        ref={topScrollbarRef}
-        onScroll={handleTopScroll}
-      >
-        <div style={{ width: tableContentWidth, height: '1px' }} />
-      </div>
+      {/* List Barang Pemusnahan sekarang tampil sebagai modal (bukan inline
+          menggantikan tabel utama) — dipicu dari tombol "Perlu Pemusnahan" di
+          bar Menunggu Persetujuan. Tabel & pagination di bawah ini dipakai
+          bersama (sama persis) untuk mode biasa maupun mode pemusnahan,
+          cuma dibungkus tampilan modal kalau isPemusnahanModalOpen aktif. */}
+      <div className={cn(isPemusnahanModalOpen && "fixed inset-0 z-[70] bg-brand-purple/50 backdrop-blur-sm flex items-center justify-center p-4")}>
+      <div className={cn(isPemusnahanModalOpen && "bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90dvh] overflow-y-auto flex flex-col p-4")}>
+      {isPemusnahanModalOpen && (
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <h3 className="text-lg font-bold text-brand-purple flex items-center gap-2">
+            <AlertTriangle className="text-red-500" size={20} />
+            <span>List Barang Pemusnahan (Rusak/Cukup Baik)</span>
+          </h3>
+          <button
+            onClick={() => {
+              setIsPemusnahanModalOpen(false);
+              setFilterPemusnahan(false);
+              setSelectedItems([]);
+              setPage(1);
+            }}
+            className="text-brand-purple hover:text-red-600"
+          >
+            <X size={22} />
+          </button>
+        </div>
+      )}
 
       {/* Table */}
-      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
         <div 
           className="overflow-x-auto custom-scrollbar"
           ref={tableContainerRef}
-          onScroll={handleBottomScroll}
         >
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
                 <th className="px-2 py-3 w-10">
-                  <button onClick={toggleSelectAll} className="text-brand-purple hover:text-blue-600 transition-colors">
-                    {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
+                  <button onClick={toggleSelectAll} className="text-white/80 hover:text-white transition-colors">
+                    {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={20} className="text-white" /> : <Square size={20} />}
                   </button>
                 </th>
                 <th className="px-3 py-3">Foto</th>
                 <th
-                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
+                  className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('kode_barang')}
                 >
                   <div className="flex items-center space-x-1">
@@ -2285,7 +2116,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </div>
                 </th>
                 <th
-                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
+                  className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('nama_barang')}
                 >
                   <div className="flex items-center space-x-1">
@@ -2299,7 +2130,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 </th>
                 <th className="px-3 py-3">Deskripsi</th>
                 <th
-                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
+                  className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('kode_lokasi')}
                 >
                   <div className="flex items-center space-x-1">
@@ -2317,7 +2148,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <th className="px-3 py-3">Kondisi</th>
                 <th className="px-3 py-3">Dokumen</th>
                 <th
-                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 transition-colors group"
+                  className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('jumlah_barang')}
                 >
                   <div className="flex items-center space-x-1">
@@ -2329,7 +2160,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-3 py-3 text-right">Aksi</th>
+                <th className="px-3 py-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -2350,8 +2181,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className={cn(
-                    "hover:bg-gray-50 transition-colors group cursor-pointer",
-                    selectedItems.includes(item.id) && "bg-blue-50/50"
+                    "hover:bg-brand-purple/5 transition-colors group cursor-pointer",
+                    selectedItems.includes(item.id) && "bg-brand-purple/10"
                   )} onClick={() => handleShowDetail(item)}>
                     <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => toggleSelectItem(item.id)} className="text-brand-purple hover:text-blue-600 transition-colors">
@@ -2477,7 +2308,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         {item.jumlah_barang}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
@@ -2598,7 +2429,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       onClick={() => setPage(pageNum)}
                       className={cn(
                         "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                        page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
+                        page === pageNum ? "bg-brand-purple text-white" : "text-brand-purple hover:bg-gray-100"
                       )}
                     >
                       {pageNum}
@@ -2616,6 +2447,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             </div>
           )}
         </div>
+      </div>
+
+      {isPemusnahanModalOpen && selectedItems.length > 0 && (
+        <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100 shrink-0">
+          <span className="text-sm font-medium text-brand-purple">{selectedItems.length} barang dipilih</span>
+          <button
+            onClick={() => setIsDisposalModalOpen(true)}
+            className="btn-confirm"
+          >
+            <FileWarning size={18} />
+            <span>Ajukan Pemusnahan ({selectedItems.length} Barang)</span>
+          </button>
+        </div>
+      )}
+      </div>
       </div>
 
       {/* Modal */}
@@ -3269,14 +3115,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg transition-colors"
+                  className="btn-cancel"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={formLoading || isProcessingImages}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
+                  className="btn-confirm"
                 >
                   {formLoading || isProcessingImages ? <Loader2 className="animate-spin" size={18} /> : null}
                   <span>{isProcessingImages ? 'Memproses Foto...' : formLoading ? (uploadingPhoto ? 'Mengunggah Foto...' : 'Menyimpan...') : (editingItem ? 'Simpan Perubahan' : 'Tambah Barang')}</span>
@@ -3375,14 +3221,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <button
                   type="button"
                   onClick={() => setIsBulkEditOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
+                  className="btn-cancel"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50"
+                  className="btn-confirm"
                 >
                   {formLoading ? 'Memproses...' : 'Terapkan Perubahan'}
                 </button>
@@ -3447,14 +3293,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsImportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
+                className="btn-cancel"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmImport}
                 disabled={importLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50 flex items-center space-x-2"
+                className="btn-confirm"
               >
                 {importLoading && <Loader2 className="animate-spin" size={18} />}
                 <span>Konfirmasi Import</span>
@@ -3467,7 +3313,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Image Carousel / Preview Modal */}
       {carouselImages.length > 0 && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
         >
           <div className="relative w-full max-w-5xl h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {/* Close Button */}
@@ -3823,7 +3669,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   setIsDetailModalOpen(false);
                   setSelectedItemForDetail(null);
                 }}
-                className="px-6 py-2 text-sm font-medium text-brand-purple hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
+                className="btn-cancel"
               >
                 Tutup
               </button>
@@ -3840,7 +3686,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     setIsDetailModalOpen(false);
                     handleOpenModal(selectedItemForDetail);
                   }}
-                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                  className="btn-confirm"
                 >
                   {profile?.role === 'auditor' ? 'Audit Barang' : 'Edit Barang'}
                 </button>
@@ -3980,14 +3826,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <button
                   type="button"
                   onClick={() => setIsTakeItemModalOpen(false)}
-                  className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="btn-cancel"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="px-4 py-2.5 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="btn-confirm"
                 >
                   {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
                   <span>Konfirmasi Ambil</span>
@@ -4094,14 +3940,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsStockOutModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                className="btn-cancel"
               >
                 Batal
               </button>
               <button
                 onClick={confirmStockOut}
                 disabled={formLoading}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
+                className="btn-confirm"
               >
                 {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
                 <span>Konfirmasi Pindah ke Riwayat</span>
@@ -4177,14 +4023,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <button
                 onClick={() => setIsDisposalModalOpen(false)}
                 disabled={isSubmittingDisposal}
-                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50"
+                className="btn-cancel"
               >
                 Batal
               </button>
               <button
                 onClick={submitDisposalRequest}
                 disabled={isSubmittingDisposal || !disposalData.keterangan.trim() || !disposalData.metode_pemusnahan}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
+                className="btn-confirm"
               >
                 {isSubmittingDisposal ? <Loader2 className="animate-spin" size={18} /> : <CheckSquare size={18} />}
                 <span>Ajukan Sekarang</span>
@@ -4260,14 +4106,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsBulkStockOutModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                className="btn-cancel"
               >
                 Batal
               </button>
               <button
                 onClick={confirmBulkStockOut}
                 disabled={formLoading}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
+                className="btn-confirm"
               >
                 {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
                 <span>Konfirmasi Keluarkan Massal</span>
@@ -4315,13 +4161,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
               <button
                 onClick={() => setIsExportPreviewOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-brand-purple hover:bg-gray-100 rounded-lg"
+                className="btn-cancel"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmExport}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium flex items-center space-x-2"
+                className="btn-confirm"
               >
                 <Download size={18} />
                 <span>Konfirmasi Download</span>
@@ -4330,24 +4176,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           </div>
         </div>
       )}
-      <DisposalApprovalModal
-        isOpen={isApprovalListModalOpen}
-        onClose={() => {
-          setIsApprovalListModalOpen(false);
-          fetchItems();
-          fetchPendingApprovalCounts();
-        }}
-        profile={profile}
-      />
-      <SPKApprovalModal
-        isOpen={isSPKApprovalListModalOpen}
-        onClose={() => {
-          setIsSPKApprovalListModalOpen(false);
-          fetchItems();
-          fetchPendingApprovalCounts();
-        }}
-        profile={profile}
-      />
     </div>
   );
 }

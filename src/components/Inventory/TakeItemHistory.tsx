@@ -172,113 +172,109 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="p-6 bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-brand-purple flex items-center space-x-2">
-          <History size={24} className="text-blue-600" />
-          <span>Take Item History</span>
-        </h2>
-        {profile?.role === 'admin' && (
-          <button
-            onClick={handlePrepareExport}
-            disabled={history.length === 0}
-            className="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
-          >
-            <Download size={20} />
-            <span>Export Excel</span>
-          </button>
-        )}
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Take Item History</h2>
+        <p className="text-brand-purple">Daftar barang yang telah diambil dari inventaris</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 text-red-700 p-4 mb-4" role="alert">
+        <div className="bg-red-50 border-l-4 border-red-400 text-red-700 p-4" role="alert">
           <p className="font-bold">Error</p>
           <p>{error}</p>
         </div>
       )}
 
-      {/* Advanced Search & Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-grow">
+      {/* Filters */}
+      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
+          <input
+            type="text"
+            placeholder="Cari berdasarkan nama, kode barang, atau lokasi..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm"
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex items-center space-x-2">
+            <Calendar size={18} className="text-brand-purple" />
             <input
-              type="text"
-              placeholder="Cari berdasarkan nama, kode barang, atau lokasi..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-white border border-brand-purple/20 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-purple outline-none"
             />
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" />
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
-            <div className="flex items-center gap-2">
-              <Calendar size={18} className="text-brand-purple shrink-0" />
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1 min-w-0">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-0"
-                />
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-0"
-                />
-              </div>
-            </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-brand-purple">-</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-white border border-brand-purple/20 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-purple outline-none"
+            />
+          </div>
+          {(startDate || endDate || searchTerm) && (
             <button
               onClick={handleClearSearch}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 backdrop-blur-md rounded-lg transition-all whitespace-nowrap shadow-sm w-full sm:w-auto"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 backdrop-blur-md rounded-lg transition-all whitespace-nowrap shadow-sm"
             >
-              <XCircle size={18} />
-              <span>Reset</span>
+              Reset
             </button>
-          </div>
+          )}
+          {profile?.role === 'admin' && (
+            <button
+              onClick={handlePrepareExport}
+              disabled={history.length === 0}
+              className="flex items-center justify-center space-x-2 bg-brand-purple hover:bg-brand-purple-light text-white px-4 py-2 rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold disabled:opacity-50"
+            >
+              <Download size={18} />
+              <span>Export Excel</span>
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-100">
-        <table className="min-w-full divide-y divide-gray-50">
-          <thead className="bg-gray-50">
-            <tr>
-              <th 
-                scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+      {/* Table */}
+      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
+              <th
+                className="px-6 py-4 cursor-pointer hover:bg-white/10 transition-colors group"
                 onClick={() => handleSort('created_at')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Tanggal</span>
-                  {sortColumn === 'created_at' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'created_at' && <ArrowUpDown size={16} className="text-brand-purple" />}
+                  {sortColumn === 'created_at' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                  {sortColumn !== 'created_at' && <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
                 </div>
               </th>
-              <th 
-                scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              <th
+                className="px-6 py-4 cursor-pointer hover:bg-white/10 transition-colors group"
                 onClick={() => handleSort('nama_barang')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Nama Barang</span>
-                  {sortColumn === 'nama_barang' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'nama_barang' && <ArrowUpDown size={16} className="text-brand-purple" />}
+                  {sortColumn === 'nama_barang' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                  {sortColumn !== 'nama_barang' && <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
                 </div>
               </th>
-              <th 
-                scope="col" 
-                className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              <th
+                className="px-6 py-4 cursor-pointer hover:bg-white/10 transition-colors group"
                 onClick={() => handleSort('jumlah')}
               >
                 <div className="flex items-center space-x-1">
                   <span>Jumlah</span>
-                  {sortColumn === 'jumlah' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  {sortColumn !== 'jumlah' && <ArrowUpDown size={16} className="text-brand-purple" />}
+                  {sortColumn === 'jumlah' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                  {sortColumn !== 'jumlah' && <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider">Pengambil</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-brand-purple uppercase tracking-wider">Alasan</th>
+              <th className="px-6 py-4">Pengambil</th>
+              <th className="px-6 py-4">Alasan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -298,7 +294,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
               </tr>
             ) : (
               history.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => handleOpenDetailModal(entry)}>
+                <tr key={entry.id} className="hover:bg-brand-purple/5 transition-colors cursor-pointer" onClick={() => handleOpenDetailModal(entry)}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-purple">
                     {new Date(entry.created_at).toLocaleString('id-ID')}
                   </td>
@@ -379,7 +375,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
                     onClick={() => setPage(pageNum)}
                     className={cn(
                       "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                      page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
+                      page === pageNum ? "bg-brand-purple text-white" : "text-brand-purple hover:bg-gray-100"
                     )}
                   >
                     {pageNum}
@@ -450,7 +446,7 @@ export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryP
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
               <button
                 onClick={() => setIsDetailModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-brand-purple bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 Tutup
               </button>

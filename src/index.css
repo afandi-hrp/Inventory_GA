@@ -10,6 +10,15 @@
   --color-brand-purple-light: #73507B;
 }
 
+/* Skala keseluruhan tampilan ~90% (mirip browser zoom-out ke 90%) — semua
+   ukuran Tailwind (padding, gap, text, rounded, dst) berbasis rem, jadi
+   ngecilin root font-size di sini otomatis ngecilin semuanya secara
+   proporsional tanpa perlu ubah tiap komponen satu-satu. Diminta user supaya
+   halaman lebih pas/gak "kegedean" di layar laptop 14". */
+html {
+  font-size: 90%;
+}
+
 body {
   font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
   /* Default text color app-wide — any element with an explicit Tailwind
@@ -31,6 +40,50 @@ option {
 ::placeholder {
   color: var(--color-brand-purple);
   opacity: 0.55;
+}
+
+@layer components {
+  /* Tombol konfirmasi/batal standar untuk semua modal — pakai brand palette
+     (ungu solid utk aksi utama, netral utk batal) supaya konsisten di
+     seluruh aplikasi, bukan campuran biru/abu-abu ad-hoc per modal. */
+  .btn-confirm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    background-color: var(--color-brand-purple);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    transition: background-color 0.15s ease;
+  }
+  .btn-confirm:hover:not(:disabled) {
+    background-color: var(--color-brand-purple-light);
+  }
+  .btn-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-brand-purple);
+    background-color: #f3f4f6;
+    transition: background-color 0.15s ease;
+  }
+  .btn-cancel:hover:not(:disabled) {
+    background-color: #e5e7eb;
+  }
 }
 
 @layer utilities {

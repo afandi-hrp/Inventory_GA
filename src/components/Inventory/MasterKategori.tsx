@@ -157,36 +157,24 @@ export default function MasterKategori() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Kategori</h1>
-          <p className="text-sm text-brand-purple mt-1">Kelola data kategori klasifikasi barang</p>
-        </div>
-        
-        {isAdmin && (
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-colors shadow-md font-medium"
-          >
-            <Plus size={20} className="mr-2" />
-            Tambah Kategori
-          </button>
-        )}
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Kategori</h1>
+        <p className="text-sm text-brand-purple mt-1">Kelola data kategori klasifikasi barang</p>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50">
-        <div className="relative group max-w-md">
+      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative group w-full sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari kategori..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+            className="w-full pl-10 pr-10 py-2 bg-white border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm"
           />
           {search && (
-            <button 
+            <button
               onClick={() => setSearch('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-purple hover:text-brand-purple"
             >
@@ -194,13 +182,23 @@ export default function MasterKategori() {
             </button>
           )}
         </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto shrink-0 flex items-center justify-center px-4 py-2 bg-brand-purple hover:bg-brand-purple-light text-white rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold"
+          >
+            <Plus size={20} className="mr-2" />
+            Tambah Kategori
+          </button>
+        )}
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
                 <th className="px-6 py-4">Nama Kategori</th>
                 <th className="px-6 py-4">Sub Dari</th>
                 <th className="px-6 py-4">Deskripsi</th>
@@ -225,7 +223,7 @@ export default function MasterKategori() {
                 </tr>
               ) : (
                 categories.map((category) => (
-                  <tr key={category.id} className="hover:bg-orange-50/50 transition-colors">
+                  <tr key={category.id} className="hover:bg-brand-purple/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="text-sm font-semibold text-brand-purple">{category.nama_kategori}</div>
                     </td>

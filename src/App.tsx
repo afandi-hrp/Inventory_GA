@@ -14,6 +14,7 @@ import OfficeItemsRequester from './components/Inventory/OfficeItemsRequester';
 import TakeItemHistory from './components/Inventory/TakeItemHistory';
 import LogItemChange from './components/Inventory/LogItemChange';
 import StockOutHistory from './components/Inventory/StockOutHistory';
+import Approval from './components/Inventory/Approval';
 import ManageUsers from './components/Admin/ManageUsers';
 import { ToastProvider } from './components/UI/Toast';
 
@@ -51,6 +52,7 @@ export default function App() {
             {!isRequester && (
               <>
                 <Route path="/barang" element={<MasterBarang setHistorySearch={setHistorySearch} />} />
+                <Route path="/approval" element={<Approval />} />
                 <Route path="/lokasi" element={<MasterLokasi setHistorySearch={setHistorySearch} />} />
                 <Route path="/kategori" element={<MasterKategori />} />
                 <Route path="/kepemilikan" element={<MasterKepemilikan />} />

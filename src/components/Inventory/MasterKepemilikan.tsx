@@ -150,33 +150,21 @@ export default function MasterKepemilikan() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Kepemilikan</h1>
-          <p className="text-sm text-brand-purple mt-1">Kelola daftar penanggung jawab (PIC) barang</p>
-        </div>
-
-        {isAdmin && (
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-colors shadow-md font-medium"
-          >
-            <Plus size={20} className="mr-2" />
-            Tambah Kepemilikan
-          </button>
-        )}
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Kepemilikan</h1>
+        <p className="text-sm text-brand-purple mt-1">Kelola daftar penanggung jawab (PIC) barang</p>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50">
-        <div className="relative group max-w-md">
+      <div className="bg-white/60 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative group w-full sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
           <input
             type="text"
             placeholder="Cari nama pemilik..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+            className="w-full pl-10 pr-10 py-2 bg-white border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm"
           />
           {search && (
             <button
@@ -187,13 +175,23 @@ export default function MasterKepemilikan() {
             </button>
           )}
         </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto shrink-0 flex items-center justify-center px-4 py-2 bg-brand-purple hover:bg-brand-purple-light text-white rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold"
+          >
+            <Plus size={20} className="mr-2" />
+            Tambah Kepemilikan
+          </button>
+        )}
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
                 <th className="px-6 py-4">Nama Pemilik</th>
                 <th className="px-6 py-4">Keterangan</th>
                 <th className="px-6 py-4">Tgl Dibuat</th>
@@ -217,7 +215,7 @@ export default function MasterKepemilikan() {
                 </tr>
               ) : (
                 items.map((item) => (
-                  <tr key={item.id} className="hover:bg-orange-50/50 transition-colors">
+                  <tr key={item.id} className="hover:bg-brand-purple/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <UserCheck size={16} className="text-orange-500" />

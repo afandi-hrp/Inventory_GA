@@ -591,7 +591,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
                     placeholder="Cari nomor pengajuan atau nama pemohon..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm"
+                    className="w-full pl-10 pr-4 py-2.5 border border-brand-purple/20 rounded-xl focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm bg-white shadow-sm"
                   />
                 </div>
               </div>
@@ -884,7 +884,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 shrink-0">
               <button
                 onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })}
-                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+                className="btn-cancel w-full sm:w-auto"
               >
                 Kembali
               </button>
@@ -929,7 +929,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 shrink-0">
               <button
                 onClick={() => setRejectFullModal({ isOpen: false, reason: '' })}
-                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+                className="btn-cancel w-full sm:w-auto"
               >
                 Kembali
               </button>

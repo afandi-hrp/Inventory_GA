@@ -274,22 +274,10 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-brand-purple">Stock Out History</h2>
-          <p className="text-brand-purple">Daftar barang yang telah dikeluarkan dari inventaris</p>
-        </div>
-        {profile?.role === 'admin' && (
-          <button
-            onClick={handlePrepareExport}
-            disabled={history.length === 0}
-            className="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
-          >
-            <Download size={20} />
-            <span>Export Excel</span>
-          </button>
-        )}
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Stock Out History</h2>
+        <p className="text-brand-purple">Daftar barang yang telah dikeluarkan dari inventaris</p>
       </div>
 
       {/* Filters */}
@@ -301,7 +289,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
             placeholder="Cari nama, kode, lokasi, atau deskripsi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm"
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
@@ -311,7 +299,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="bg-white border border-brand-purple/20 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-purple outline-none"
             />
           </div>
           <div className="flex items-center space-x-2">
@@ -320,11 +308,11 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="bg-white border border-brand-purple/20 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-purple outline-none"
             />
           </div>
           {(startDate || endDate || search) && (
-            <button 
+            <button
               onClick={() => {
                 setStartDate('');
                 setEndDate('');
@@ -335,17 +323,27 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
               Reset
             </button>
           )}
+          {profile?.role === 'admin' && (
+            <button
+              onClick={handlePrepareExport}
+              disabled={history.length === 0}
+              className="flex items-center justify-center space-x-2 bg-brand-purple hover:bg-brand-purple-light text-white px-4 py-2 rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold disabled:opacity-50"
+            >
+              <Download size={18} />
+              <span>Export Excel</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+      <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+              <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
+                  className="px-6 py-4 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('tanggal_keluar')}
                 >
                   <div className="flex items-center space-x-1">
@@ -385,7 +383,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                 history.map((entry) => (
                   <tr 
                     key={entry.id} 
-                    className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                    className="hover:bg-brand-purple/5 transition-colors group cursor-pointer"
                     onClick={() => {
                       setSelectedEntry(entry);
                       setIsDetailModalOpen(true);
@@ -506,7 +504,7 @@ export default function StockOutHistory({ setHistorySearch }: StockOutHistoryPro
                       onClick={() => setPage(pageNum)}
                       className={cn(
                         "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
-                        page === pageNum ? "bg-blue-600 text-white" : "text-brand-purple hover:bg-gray-100"
+                        page === pageNum ? "bg-brand-purple text-white" : "text-brand-purple hover:bg-gray-100"
                       )}
                     >
                       {pageNum}

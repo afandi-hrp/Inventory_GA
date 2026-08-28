@@ -534,7 +534,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
                     placeholder="Cari nomor SPK atau nama pemohon..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm bg-white shadow-sm"
+                    className="w-full pl-10 pr-4 py-2.5 border border-brand-purple/20 rounded-xl focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm bg-white shadow-sm"
                   />
                 </div>
               </div>
@@ -826,7 +826,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
               <button
                 onClick={() => setRejectItemModal({ isOpen: false, itemId: '', reason: '' })}
-                className="px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+                className="btn-cancel"
               >
                 Kembali
               </button>
@@ -871,7 +871,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
               <button
                 onClick={() => setRejectFullModal({ isOpen: false, reason: '' })}
-                className="px-4 py-2 text-sm font-medium text-brand-purple bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+                className="btn-cancel"
               >
                 Kembali
               </button>

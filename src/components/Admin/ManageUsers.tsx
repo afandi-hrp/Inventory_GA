@@ -214,7 +214,7 @@ export default function ManageUsers() {
     <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-brand-purple">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
           <p className="text-brand-purple">
             {profile?.role === 'admin' 
               ? 'Kelola hak akses dan profil seluruh pengguna aplikasi' 
@@ -286,7 +286,7 @@ export default function ManageUsers() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="btn-confirm w-full"
                 >
                   {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                   <span>Simpan Profil</span>
@@ -328,7 +328,7 @@ export default function ManageUsers() {
               <button
                 type="submit"
                 disabled={passwordLoading}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-orange-200 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                className="btn-confirm w-full"
               >
                 {passwordLoading ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
                 <span>Update Password</span>
@@ -495,14 +495,14 @@ export default function ManageUsers() {
                 <button
                   type="button"
                   onClick={() => setIsAddUserModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 text-sm font-bold text-brand-purple hover:bg-gray-100 rounded-xl transition-colors"
+                  className="btn-cancel flex-1"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="btn-confirm flex-1"
                 >
                   {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
                   <span>Daftarkan User</span>

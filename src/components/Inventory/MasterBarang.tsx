@@ -109,6 +109,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<Item | null>(null);
   const [isItemHistoryModalOpen, setIsItemHistoryModalOpen] = useState(false);
+  const [isAuditHistoryModalOpen, setIsAuditHistoryModalOpen] = useState(false);
   const [itemHistoryLogs, setItemHistoryLogs] = useState<{ id: string; action: string; old_values: Record<string, any> | null; new_values: Record<string, any> | null; created_at: string; profiles: { full_name: string } | null }[]>([]);
   const [loadingItemHistory, setLoadingItemHistory] = useState(false);
   const [selectedItemForTake, setSelectedItemForTake] = useState<Item | null>(null);
@@ -836,6 +837,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       console.error('Error generating next kode_barang:', err);
       return `BRG-${Math.floor(10000 + Math.random() * 90000)}`;
     }
+  };
+
+  const handleOpenAuditHistory = (item: Item) => {
+    setIsAuditHistoryModalOpen(true);
+    fetchAuditHistory(item.id);
   };
 
   const fetchAuditHistory = async (itemId: string) => {
@@ -3680,6 +3686,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <History size={15} />
                 <span>Riwayat</span>
               </button>
+              <button
+                onClick={() => handleOpenAuditHistory(selectedItemForDetail)}
+                className="px-6 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 bg-blue-50 rounded-lg transition-colors flex items-center space-x-1.5"
+              >
+                <ClipboardList size={15} />
+                <span>Riwayat Audit</span>
+              </button>
               {profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv' ? (
                 <button
                   onClick={() => {
@@ -3768,6 +3781,62 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                           ))}
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Audit History Modal — seluruh riwayat hasil audit (item_audit_history)
+          untuk barang ini, dipicu dari tombol "Riwayat Audit" di Detail Barang */}
+      {isAuditHistoryModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[80dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h3 className="text-base font-bold text-brand-purple flex items-center gap-2">
+                <ClipboardList size={18} className="text-blue-600" />
+                Riwayat Audit
+              </h3>
+              <button
+                onClick={() => setIsAuditHistoryModalOpen(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={18} className="text-brand-purple" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              {loadingAuditHistory ? (
+                <div className="flex items-center justify-center text-sm text-brand-purple py-8">
+                  <Loader2 size={18} className="animate-spin mr-2" />
+                  Memuat riwayat...
+                </div>
+              ) : auditHistory.length === 0 ? (
+                <p className="text-sm text-brand-purple text-center py-8">Belum ada riwayat audit untuk barang ini.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {auditHistory.map((h) => (
+                    <div key={h.id} className="flex items-center justify-between text-xs bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded-full font-semibold border shrink-0",
+                          h.note_audit === 'ADA' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
+                        )}>
+                          {h.note_audit || '-'}
+                        </span>
+                        <span className="text-brand-purple truncate">{h.audited_by || 'Auditor'}</span>
+                      </div>
+                      <span className="text-brand-purple shrink-0 ml-2">
+                        {new Date(h.tanggal_audit || h.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
                     </div>
                   ))}
                 </div>

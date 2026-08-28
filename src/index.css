@@ -10,13 +10,31 @@
   --color-brand-purple-light: #73507B;
 }
 
-/* Skala keseluruhan tampilan ~90% (mirip browser zoom-out ke 90%) — semua
-   ukuran Tailwind (padding, gap, text, rounded, dst) berbasis rem, jadi
-   ngecilin root font-size di sini otomatis ngecilin semuanya secara
-   proporsional tanpa perlu ubah tiap komponen satu-satu. Diminta user supaya
-   halaman lebih pas/gak "kegedean" di layar laptop 14". */
+/* Skala keseluruhan tampilan berbasis root font-size (rem) — Tailwind pakai
+   rem buat hampir semua ukuran (padding, gap, text, rounded, dst), jadi
+   ngubah ini di sini otomatis nyesuain semuanya secara proporsional tanpa
+   perlu ubah tiap komponen satu-satu.
+   - 90% = default (diminta user supaya gak "kegedean" di layar laptop 14").
+   - Di monitor lebar/resolusi tinggi (~24" ke atas, viewport >= 1800px),
+     90% itu kekecilan — user manual zoom ke 125% buat dapet ukuran yang
+     pas, jadi di breakpoint itu kita naikkan ke 112.5% (90% x 1.25) biar
+     otomatis pas tanpa perlu zoom manual. */
 html {
   font-size: 90%;
+}
+
+@media (min-width: 1800px) {
+  html {
+    font-size: 112.5%;
+  }
+
+  /* Ikon sidebar di-set pakai ukuran piksel tetap (lucide-react `size` prop),
+     jadi gak ikut membesar otomatis lewat root font-size di atas — perlu
+     diskalakan manual di sini biar tetap proporsional sama teks & padding
+     yang udah membesar. */
+  aside svg {
+    transform: scale(1.2);
+  }
 }
 
 body {

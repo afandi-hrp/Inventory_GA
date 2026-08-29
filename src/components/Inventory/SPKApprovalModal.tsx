@@ -504,7 +504,7 @@ export function SPKApprovalModal({ isOpen, onClose, profile }: SPKApprovalModalP
       className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-sky-50/50 shrink-0">

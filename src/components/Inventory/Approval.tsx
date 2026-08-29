@@ -84,7 +84,7 @@ export default function Approval() {
           </div>
           <h3 className="mt-4 text-lg font-bold text-brand-purple">Persetujuan Pemusnahan</h3>
           <p className="mt-1 text-sm text-brand-purple/70">Tinjau pengajuan pemusnahan barang rusak/cukup baik yang menunggu persetujuan Anda.</p>
-          <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-indigo-700 group-hover:gap-2 transition-all">
+          <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-purple text-white text-sm font-semibold shadow-sm group-hover:bg-brand-purple-light transition-colors">
             Buka daftar pengajuan <ChevronRight size={16} />
           </span>
         </button>
@@ -105,7 +105,7 @@ export default function Approval() {
           </div>
           <h3 className="mt-4 text-lg font-bold text-brand-purple">Persetujuan SPK</h3>
           <p className="mt-1 text-sm text-brand-purple/70">Tinjau pengajuan SPK pengambilan barang reusable yang menunggu persetujuan Anda.</p>
-          <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 group-hover:gap-2 transition-all">
+          <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-purple text-white text-sm font-semibold shadow-sm group-hover:bg-brand-purple-light transition-colors">
             Buka daftar pengajuan <ChevronRight size={16} />
           </span>
         </button>

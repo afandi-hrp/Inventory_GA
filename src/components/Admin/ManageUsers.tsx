@@ -211,19 +211,17 @@ export default function ManageUsers() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
-          <p className="text-brand-purple">
-            {profile?.role === 'admin' 
-              ? 'Kelola hak akses dan profil seluruh pengguna aplikasi' 
-              : 'Kelola informasi profil dan keamanan akun Anda'}
-          </p>
-        </div>
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">{profile?.role === 'admin' ? 'Manage Users & Profile' : 'Akun Saya'}</h1>
+        <p className="text-brand-purple">
+          {profile?.role === 'admin'
+            ? 'Kelola hak akses dan profil seluruh pengguna aplikasi'
+            : 'Kelola informasi profil dan keamanan akun Anda'}
+        </p>
       </div>
 
-      <div className={cn("grid grid-cols-1 gap-8", profile?.role === 'requester' ? "max-w-4xl mx-auto" : "lg:grid-cols-3")}>
+      <div className={cn("grid grid-cols-1 gap-4", profile?.role === 'requester' ? "max-w-4xl mx-auto" : "lg:grid-cols-3")}>
         {/* Profile Section */}
         <div className={cn(profile?.role === 'requester' ? "grid grid-cols-1 sm:grid-cols-2 gap-6" : "lg:col-span-1 space-y-6")}>
           <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">

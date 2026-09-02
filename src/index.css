@@ -14,6 +14,12 @@
    rem buat hampir semua ukuran (padding, gap, text, rounded, dst), jadi
    ngubah ini di sini otomatis nyesuain semuanya secara proporsional tanpa
    perlu ubah tiap komponen satu-satu.
+   CATATAN: sempat dicoba ganti ke CSS `zoom` supaya gak perlu manual zoom
+   browser buat liat kolom tabel yang kepotong, TAPI `zoom`/`transform` gak
+   pernah bisa memperluas viewport CSS-piksel yang tersedia (beda dari zoom
+   asli browser Ctrl -), jadi gak nolong buat masalah tabel kepotong — balik
+   ke font-size. Solusi masalah tabel kepotong ada di pemadatan kolom
+   tabelnya sendiri (lihat MasterBarang.tsx), bukan di sini.
    - 90% = default (diminta user supaya gak "kegedean" di layar laptop 14").
    - Di monitor lebar/resolusi tinggi (~24" ke atas, viewport >= 1800px),
      90% itu kekecilan — user manual zoom ke 125% buat dapet ukuran yang

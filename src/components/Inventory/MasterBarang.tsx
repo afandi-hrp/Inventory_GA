@@ -974,6 +974,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Tutup dropdown "Excel & PDF" di sini (bukan di onClick label) — kalau
+    // dropdown ditutup pas label diklik, portal-nya (termasuk <input type="file">
+    // di dalamnya) langsung ke-unmount SEBELUM dialog pilih file native selesai,
+    // jadi event "change" dari file yang dipilih gak pernah nyampe (input-nya
+    // udah gak ada di DOM). Makanya import kelihatan "gak masuk apa-apa".
+    setFileMenuPos(null);
     setImportLoading(true);
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -2027,7 +2033,6 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       <span>Download Template</span>
                     </button>
                     <label
-                      onClick={() => setFileMenuPos(null)}
                       className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors cursor-pointer"
                     >
                       {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
@@ -2095,16 +2100,16 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       {/* Table */}
       <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
-        <div 
+        <div
           className="overflow-x-auto custom-scrollbar"
           ref={tableContainerRef}
         >
           <table className="w-full text-left">
             <thead>
               <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
-                <th className="px-2 py-3 w-10">
+                <th className="pl-3 pr-1 py-3 w-8 rounded-tl-3xl">
                   <button onClick={toggleSelectAll} className="text-white/80 hover:text-white transition-colors">
-                    {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={20} className="text-white" /> : <Square size={20} />}
+                    {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={17} className="text-white" /> : <Square size={17} />}
                   </button>
                 </th>
                 <th className="px-3 py-3">Foto</th>
@@ -2154,10 +2159,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <th className="px-3 py-3">Kondisi</th>
                 <th className="px-3 py-3">Dokumen</th>
                 <th
-                  className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
+                  className="px-1.5 py-3 w-12 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('jumlah_barang')}
                 >
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-0.5">
                     <span>Stok</span>
                     {sortColumn === 'jumlah_barang' ? (
                       sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
@@ -2166,7 +2171,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-3 py-3 text-center">Aksi</th>
+                <th className="pl-2 pr-5 py-3 text-center rounded-tr-3xl">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -2190,13 +2195,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     "hover:bg-brand-purple/5 transition-colors group cursor-pointer",
                     selectedItems.includes(item.id) && "bg-brand-purple/10"
                   )} onClick={() => handleShowDetail(item)}>
-                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="pl-3 pr-1 py-3" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => toggleSelectItem(item.id)} className="text-brand-purple hover:text-blue-600 transition-colors">
-                        {selectedItems.includes(item.id) ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
+                        {selectedItems.includes(item.id) ? <CheckSquare size={17} className="text-blue-600" /> : <Square size={17} />}
                       </button>
                     </td>
                     <td className="px-3 py-3">
-                      <div className="flex -space-x-5 overflow-hidden py-1">
+                      <div className="flex -space-x-4 overflow-hidden py-1">
                         {item.foto_urls && item.foto_urls.length > 0 ? (
                           <>
                             {item.foto_urls.slice(0, 2).map((url, idx) => (
@@ -2205,7 +2210,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                                 bucket="item-photos"
                                 path={url}
                                 alt={`${item.nama_barang} ${idx + 1}`}
-                                className="w-16 h-16 shrink-0 rounded-lg object-cover border-2 border-white shadow-md cursor-zoom-in hover:z-10 transition-transform hover:scale-110"
+                                className="w-14 h-14 shrink-0 rounded-lg object-cover border-2 border-white shadow-md cursor-zoom-in hover:z-10 transition-transform hover:scale-110"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenCarousel(item.foto_urls, idx);
@@ -2213,13 +2218,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               />
                             ))}
                             {item.foto_urls.length > 2 && (
-                              <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-bold text-brand-purple shadow-md">
+                              <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-bold text-brand-purple shadow-md">
                                 +{item.foto_urls.length - 2}
                               </div>
                             )}
                           </>
                         ) : (
-                          <div className="w-16 h-16 shrink-0 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-200 shadow-sm" title="Belum ada foto">
+                          <div className="w-14 h-14 shrink-0 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-200 shadow-sm" title="Belum ada foto">
                             <AlertTriangle size={18} />
                           </div>
                         )}
@@ -2306,7 +2311,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         <span className="text-xs text-brand-purple">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-1.5 py-3">
                       <div className={cn(
                         "text-sm font-bold",
                         item.jumlah_barang <= 5 ? "text-red-600" : "text-brand-purple"
@@ -2314,7 +2319,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         {item.jumlah_barang}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="pl-2 pr-5 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();

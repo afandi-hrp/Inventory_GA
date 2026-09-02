@@ -197,7 +197,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
       )}
 
       {/* Desktop Sidebar Placeholder */}
-      <div className="hidden lg:block w-20 shrink-0 m-4" />
+      <div className="hidden lg:block w-20 shrink-0 my-4 ml-4 mr-2" />
 
       {/* Sidebar */}
       <aside
@@ -328,7 +328,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
         </div>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-5 pt-16 lg:pt-5">
+        <main className="flex-1 overflow-y-auto p-4 pl-2 lg:pl-3 pt-16 lg:pt-5">
           <div className="max-w-none">
             {children}
           </div>

@@ -27,6 +27,88 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Smart list continuation for the description textarea: pressing Enter after a
+// "- " or "1. " line keeps the list going (and pressing Enter on an empty
+// marker line ends the list), similar to Notion/Word behavior.
+function getSmartListContinuation(text: string, cursorPos: number): { newText: string; newCursorPos: number } | null {
+  const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+  const lineEnd = (() => {
+    const idx = text.indexOf('\n', cursorPos);
+    return idx === -1 ? text.length : idx;
+  })();
+  const fullLine = text.slice(lineStart, lineEnd);
+
+  const bulletMatch = fullLine.match(/^(\s*)-\s+(.*)$/);
+  const numberedMatch = fullLine.match(/^(\s*)(\d+)([.)])\s+(.*)$/);
+
+  if (bulletMatch) {
+    const [, indent, content] = bulletMatch;
+    if (content.trim() === '') {
+      const newText = text.slice(0, lineStart) + indent + text.slice(lineEnd);
+      return { newText, newCursorPos: lineStart + indent.length };
+    }
+    const insert = `\n${indent}- `;
+    return { newText: text.slice(0, cursorPos) + insert + text.slice(cursorPos), newCursorPos: cursorPos + insert.length };
+  }
+
+  if (numberedMatch) {
+    const [, indent, num, punct, content] = numberedMatch;
+    if (content.trim() === '') {
+      const newText = text.slice(0, lineStart) + indent + text.slice(lineEnd);
+      return { newText, newCursorPos: lineStart + indent.length };
+    }
+    const nextNum = parseInt(num, 10) + 1;
+    const insert = `\n${indent}${nextNum}${punct} `;
+    return { newText: text.slice(0, cursorPos) + insert + text.slice(cursorPos), newCursorPos: cursorPos + insert.length };
+  }
+
+  return null;
+}
+
+// Renders a description with "- " / "1. " lines as proper bullet/numbered lists
+// instead of a squished single paragraph.
+function renderDeskripsi(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const blocks: React.ReactNode[] = [];
+  let currentList: { type: 'ul' | 'ol'; items: string[] } | null = null;
+
+  const flushList = (key: string) => {
+    if (!currentList) return;
+    const { type, items } = currentList;
+    blocks.push(
+      type === 'ul' ? (
+        <ul key={key} className="list-disc pl-5 space-y-0.5">
+          {items.map((item, i) => <li key={i}>{item}</li>)}
+        </ul>
+      ) : (
+        <ol key={key} className="list-decimal pl-5 space-y-0.5">
+          {items.map((item, i) => <li key={i}>{item}</li>)}
+        </ol>
+      )
+    );
+    currentList = null;
+  };
+
+  lines.forEach((line, idx) => {
+    const bulletMatch = line.match(/^\s*-\s+(.*)$/);
+    const numberedMatch = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bulletMatch) {
+      if (currentList?.type !== 'ul') { flushList(`f-${idx}`); currentList = { type: 'ul', items: [] }; }
+      currentList.items.push(bulletMatch[1]);
+    } else if (numberedMatch) {
+      if (currentList?.type !== 'ol') { flushList(`f-${idx}`); currentList = { type: 'ol', items: [] }; }
+      currentList.items.push(numberedMatch[1]);
+    } else {
+      flushList(`f-${idx}`);
+      if (line.trim() !== '') {
+        blocks.push(<p key={`p-${idx}`}>{line}</p>);
+      }
+    }
+  });
+  flushList('final');
+  return <>{blocks}</>;
+}
+
 const FLAG_COLOR_STYLES: Record<string, string> = {
   teal: 'bg-teal-50 text-teal-700 border-teal-200',
   sky: 'bg-sky-50 text-sky-700 border-sky-200',
@@ -2235,7 +2317,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       <div className="text-sm font-medium text-brand-purple">{item.nama_barang}</div>
                     </td>
                     <td className="px-3 py-3">
-                      <div className="text-xs text-brand-purple">{item.deskripsi || '-'}</div>
+                      <div className="text-xs text-brand-purple whitespace-pre-line line-clamp-3 max-w-xs">{item.deskripsi || '-'}</div>
                     </td>
                     <td className="px-3 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
@@ -2953,8 +3035,19 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       disabled={profile?.role === 'auditor'}
                       value={formData.deskripsi}
                       onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' || e.shiftKey) return;
+                        const textarea = e.currentTarget;
+                        const result = getSmartListContinuation(textarea.value, textarea.selectionStart);
+                        if (!result) return;
+                        e.preventDefault();
+                        setFormData((prev) => ({ ...prev, deskripsi: result.newText }));
+                        setTimeout(() => {
+                          textarea.selectionStart = textarea.selectionEnd = result.newCursorPos;
+                        }, 0);
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-60 disabled:bg-gray-50"
-                      placeholder="Keterangan tambahan..."
+                      placeholder='Keterangan tambahan... (ketik "- " atau "1. " untuk mulai list)'
                     />
                   </div>
                 </div>
@@ -3582,9 +3675,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   <div>
                     <h4 className="text-sm font-semibold text-brand-purple uppercase tracking-wider mb-1">Deskripsi</h4>
                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <p className="text-sm text-brand-purple leading-relaxed">
-                        {selectedItemForDetail.deskripsi || 'Tidak ada deskripsi tambahan untuk barang ini.'}
-                      </p>
+                      {selectedItemForDetail.deskripsi ? (
+                        <div className="text-sm text-brand-purple leading-relaxed space-y-1">
+                          {renderDeskripsi(selectedItemForDetail.deskripsi)}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-brand-purple leading-relaxed">
+                          Tidak ada deskripsi tambahan untuk barang ini.
+                        </p>
+                      )}
                     </div>
                   </div>
 

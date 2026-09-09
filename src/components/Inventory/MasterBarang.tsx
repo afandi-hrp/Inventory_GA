@@ -258,6 +258,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [filterKategori, setFilterKategori] = useState('');
   const [filterKepemilikan, setFilterKepemilikan] = useState('');
   const [filterSifat, setFilterSifat] = useState<'' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'>('');
+  const [filterAudit, setFilterAudit] = useState<'' | 'SUDAH' | 'BELUM'>('');
   const [flagInput, setFlagInput] = useState('');
   const [flagCatalog, setFlagCatalog] = useState<FlagDef[]>([]);
   const [newFlagColorKey, setNewFlagColorKey] = useState('teal');
@@ -321,7 +322,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     fetchCategories();
     fetchKepemilikan();
     fetchFlagCatalog();
-  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
+  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterAudit, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
 
   async function fetchFlagCatalog() {
     try {
@@ -562,6 +563,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
       if (filterSifat) {
         query = query.eq('sifat_barang', filterSifat);
+      }
+
+      if (filterAudit === 'SUDAH') {
+        query = query.not('note_audit', 'is', null);
+      } else if (filterAudit === 'BELUM') {
+        query = query.is('note_audit', null);
       }
 
       const from = (page - 1) * itemsPerPage;
@@ -1937,14 +1944,33 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         </div>
 
         <select
-          value={filterSifat}
-          onChange={(e) => { setFilterSifat(e.target.value as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'); setPage(1); }}
+          value={filterSifat ? `SIFAT:${filterSifat}` : filterAudit ? `AUDIT:${filterAudit}` : ''}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.startsWith('SIFAT:')) {
+              setFilterSifat(v.slice(6) as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE');
+              setFilterAudit('');
+            } else if (v.startsWith('AUDIT:')) {
+              setFilterAudit(v.slice(6) as '' | 'SUDAH' | 'BELUM');
+              setFilterSifat('');
+            } else {
+              setFilterSifat('');
+              setFilterAudit('');
+            }
+            setPage(1);
+          }}
           className="shrink-0 px-3 py-2 border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm appearance-none bg-white font-medium"
         >
           <option value="">Semua Status</option>
-          <option value="OFFICE">OFFICE</option>
-          <option value="PRIVATE">PRIVATE</option>
-          <option value="REUSABLE">REUSABLE</option>
+          <optgroup label="Status Barang">
+            <option value="SIFAT:OFFICE">OFFICE</option>
+            <option value="SIFAT:PRIVATE">PRIVATE</option>
+            <option value="SIFAT:REUSABLE">REUSABLE</option>
+          </optgroup>
+          <optgroup label="Status Audit">
+            <option value="AUDIT:SUDAH">Sudah Diaudit</option>
+            <option value="AUDIT:BELUM">Belum Diaudit</option>
+          </optgroup>
         </select>
 
         {/* Kategori/Lokasi/Kepemilikan digabung jadi SATU tombol dropdown
@@ -2070,6 +2096,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             setFilterKategori('');
             setFilterKepemilikan('');
             setFilterSifat('');
+            setFilterAudit('');
             setFilterPemusnahan(false);
             setActiveFilterPanel('');
             setDimensionMenuPos(null);

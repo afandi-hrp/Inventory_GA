@@ -455,6 +455,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           ? query.is('kepemilikan_id', null)
           : query.eq('kepemilikan_id', filterKepemilikan);
       }
+      if (filterSifat) {
+        query = query.eq('sifat_barang', filterSifat);
+      }
+      if (filterAudit === 'SUDAH') {
+        query = query.not('note_audit', 'is', null);
+      } else if (filterAudit === 'BELUM') {
+        query = query.is('note_audit', null);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -510,7 +518,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     if (activeFilterPanel) {
       fetchDimensionStats(activeFilterPanel);
     }
-  }, [activeFilterPanel, filterKategori, filterLokasi, filterKepemilikan, categories, availableLocations, kepemilikanList]);
+  }, [activeFilterPanel, filterKategori, filterLokasi, filterKepemilikan, filterSifat, filterAudit, categories, availableLocations, kepemilikanList]);
 
   async function fetchItems() {
     setLoading(true);

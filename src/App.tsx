@@ -92,7 +92,11 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <div className={isLocked ? 'pointer-events-none select-none blur-sm brightness-95' : undefined}>
+      {/* `inert` (bukan cuma pointer-events-none) sengaja dipasang pas locked —
+          pointer-events-none doang cuma blokir mouse, tab-order keyboard
+          tetap bisa nembus ke tombol/link di baliknya. `inert` mematikan
+          fokus & klik (mouse maupun keyboard) sekaligus. */}
+      <div className={isLocked ? 'pointer-events-none select-none blur-sm brightness-95' : undefined} inert={isLocked}>
         <Layout setHistorySearch={setHistorySearch}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

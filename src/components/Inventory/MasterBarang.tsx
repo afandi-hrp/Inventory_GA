@@ -9,7 +9,7 @@ import {
   FileSpreadsheet, CheckSquare, Square, MoreHorizontal,
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
   LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning,
-  UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText
+  UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText, RefreshCw
 } from 'lucide-react';
 import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -186,6 +186,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [isTakeItemModalOpen, setIsTakeItemModalOpen] = useState(false);
   const [isStockOutModalOpen, setIsStockOutModalOpen] = useState(false);
   const [isBulkStockOutModalOpen, setIsBulkStockOutModalOpen] = useState(false);
+  const [isResetAuditModalOpen, setIsResetAuditModalOpen] = useState(false);
   const [isDisposalModalOpen, setIsDisposalModalOpen] = useState(false);
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
@@ -459,9 +460,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.eq('sifat_barang', filterSifat);
       }
       if (filterAudit === 'SUDAH') {
-        query = query.not('tanggal_audit', 'is', null).neq('tanggal_audit', '');
+        query = query.not('tanggal_audit', 'is', null);
       } else if (filterAudit === 'BELUM') {
-        query = query.or('tanggal_audit.is.null,tanggal_audit.eq.');
+        query = query.is('tanggal_audit', null);
       }
 
       const { data, error } = await query;
@@ -574,9 +575,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       }
 
       if (filterAudit === 'SUDAH') {
-        query = query.not('tanggal_audit', 'is', null).neq('tanggal_audit', '');
+        query = query.not('tanggal_audit', 'is', null);
       } else if (filterAudit === 'BELUM') {
-        query = query.or('tanggal_audit.is.null,tanggal_audit.eq.');
+        query = query.is('tanggal_audit', null);
       }
 
       const from = (page - 1) * itemsPerPage;
@@ -1881,6 +1882,32 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }
   };
 
+  // Reset siklus audit: kosongkan note_audit/tanggal_audit barang terpilih
+  // (status balik "Belum Diaudit") tanpa menyentuh item_audit_history sama
+  // sekali — riwayat audit periode-periode sebelumnya tetap utuh.
+  const confirmResetAuditCycle = async () => {
+    if (!selectedItems.length) return;
+
+    setFormLoading(true);
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ note_audit: null, tanggal_audit: null })
+        .in('id', selectedItems);
+
+      if (error) throw error;
+
+      showToast(`${selectedItems.length} barang berhasil direset ke status Belum Diaudit`, 'success');
+      setIsResetAuditModalOpen(false);
+      setSelectedItems([]);
+      fetchItems();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mereset siklus audit', 'error');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
@@ -1911,6 +1938,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             >
               <LogOut size={16} className="text-brand-coral" /> Keluarkan Massal
             </button>
+            {profile?.role === 'admin' && (
+              <button
+                onClick={() => setIsResetAuditModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-brand-cream text-brand-purple border border-brand-purple/20 text-sm font-semibold rounded-lg shadow-sm transition-colors"
+              >
+                <RefreshCw size={16} className="text-brand-purple" /> Reset Siklus Audit
+              </button>
+            )}
           </div>
           <button onClick={() => setSelectedItems([])} className="text-brand-purple/60 hover:text-brand-purple">
             <X size={20} />
@@ -4325,6 +4360,58 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               >
                 {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
                 <span>Konfirmasi Keluarkan Massal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Siklus Audit Modal */}
+      {isResetAuditModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
+              <h3 className="text-lg font-bold text-brand-purple">Reset Siklus Audit ({selectedItems.length} barang)</h3>
+              <button
+                onClick={() => setIsResetAuditModalOpen(false)}
+                className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
+              <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-start space-x-3">
+                <AlertCircle className="text-orange-600 mt-0.5" size={20} />
+                <div>
+                  <p className="text-sm font-medium text-orange-800">Peringatan</p>
+                  <p className="text-xs text-orange-700">
+                    Status audit (hasil & tanggal) dari <span className="font-bold">{selectedItems.length} barang</span> yang dipilih akan dikosongkan, statusnya balik jadi <span className="font-bold">"Belum Diaudit"</span> — siap buat siklus audit berikutnya.
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-brand-purple/70">
+                Riwayat audit yang sudah tercatat sebelumnya (bisa dibuka lewat "Riwayat Audit" di Detail Barang) <span className="font-semibold">tidak akan terhapus</span> — cuma status yang lagi aktif aja yang dikosongkan.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+              <button
+                onClick={() => setIsResetAuditModalOpen(false)}
+                className="btn-cancel"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmResetAuditCycle}
+                disabled={formLoading}
+                className="btn-confirm"
+              >
+                {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
+                <span>Konfirmasi Reset</span>
               </button>
             </div>
           </div>

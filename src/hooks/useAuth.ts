@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { Profile } from '../types';
+import { IDLE_TIMEOUT_MS, LAST_ACTIVITY_KEY, markActivity } from './useIdleTimeout';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -11,7 +12,7 @@ export function useAuth() {
 
   useEffect(() => {
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         console.warn('Session check error:', error.message);
         // If there's an error (like invalid refresh token), ensure we clear the state
@@ -21,6 +22,31 @@ export function useAuth() {
         setLoading(false);
         return;
       }
+
+      if (session?.user) {
+        // Sesi valid secara token gak berarti user-nya masih "aktif" — kalau
+        // tab ditutup lalu dibuka lagi setelah lebih dari 30 menit tanpa
+        // aktivitas (timestamp ini di-update tiap aktivitas oleh
+        // useIdleTimeout), paksa logout di sini juga, sebelum konten
+        // ter-autentikasi sempat dirender (halaman masih nampilin loader).
+        let lastActivity = 0;
+        try {
+          lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+        } catch {
+          // localStorage gak tersedia - lewati pengecekan ini, tetap andalkan timer in-memory
+        }
+        const idleFor = lastActivity ? Date.now() - lastActivity : 0;
+        if (lastActivity && idleFor > IDLE_TIMEOUT_MS) {
+          await supabase.auth.signOut();
+          currentUserIdRef.current = null;
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        markActivity();
+      }
+
       currentUserIdRef.current = session?.user?.id ?? null;
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id, session.user);

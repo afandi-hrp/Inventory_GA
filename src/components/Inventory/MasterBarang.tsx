@@ -459,9 +459,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.eq('sifat_barang', filterSifat);
       }
       if (filterAudit === 'SUDAH') {
-        query = query.not('note_audit', 'is', null).neq('note_audit', '');
+        query = query.not('tanggal_audit', 'is', null).neq('tanggal_audit', '');
       } else if (filterAudit === 'BELUM') {
-        query = query.or('note_audit.is.null,note_audit.eq.');
+        query = query.or('tanggal_audit.is.null,tanggal_audit.eq.');
       }
 
       const { data, error } = await query;
@@ -574,9 +574,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       }
 
       if (filterAudit === 'SUDAH') {
-        query = query.not('note_audit', 'is', null).neq('note_audit', '');
+        query = query.not('tanggal_audit', 'is', null).neq('tanggal_audit', '');
       } else if (filterAudit === 'BELUM') {
-        query = query.or('note_audit.is.null,note_audit.eq.');
+        query = query.or('tanggal_audit.is.null,tanggal_audit.eq.');
       }
 
       const from = (page - 1) * itemsPerPage;

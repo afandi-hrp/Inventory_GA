@@ -459,9 +459,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         query = query.eq('sifat_barang', filterSifat);
       }
       if (filterAudit === 'SUDAH') {
-        query = query.not('note_audit', 'is', null);
+        query = query.not('note_audit', 'is', null).neq('note_audit', '');
       } else if (filterAudit === 'BELUM') {
-        query = query.is('note_audit', null);
+        query = query.or('note_audit.is.null,note_audit.eq.');
       }
 
       const { data, error } = await query;
@@ -574,9 +574,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       }
 
       if (filterAudit === 'SUDAH') {
-        query = query.not('note_audit', 'is', null);
+        query = query.not('note_audit', 'is', null).neq('note_audit', '');
       } else if (filterAudit === 'BELUM') {
-        query = query.is('note_audit', null);
+        query = query.or('note_audit.is.null,note_audit.eq.');
       }
 
       const from = (page - 1) * itemsPerPage;
@@ -2193,8 +2193,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           bar Menunggu Persetujuan. Tabel & pagination di bawah ini dipakai
           bersama (sama persis) untuk mode biasa maupun mode pemusnahan,
           cuma dibungkus tampilan modal kalau isPemusnahanModalOpen aktif. */}
-      <div className={cn(isPemusnahanModalOpen && "fixed inset-0 z-[70] bg-brand-purple/50 backdrop-blur-sm flex items-center justify-center p-4")}>
-      <div className={cn(isPemusnahanModalOpen && "bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90dvh] overflow-y-auto flex flex-col p-4")}>
+      <div className={cn(isPemusnahanModalOpen && "fixed inset-0 z-[70] bg-brand-purple/50 backdrop-blur-sm flex items-center justify-center p-2")}>
+      <div className={cn(isPemusnahanModalOpen && "bg-white rounded-2xl shadow-2xl w-full max-w-[99vw] max-h-[90dvh] overflow-y-auto flex flex-col p-4")}>
       {isPemusnahanModalOpen && (
         <div className="flex items-center justify-between mb-4 shrink-0">
           <h3 className="text-lg font-bold text-brand-purple flex items-center gap-2">

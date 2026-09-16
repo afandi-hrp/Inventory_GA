@@ -9,7 +9,8 @@ import {
   FileSpreadsheet, CheckSquare, Square, MoreHorizontal,
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
   LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning,
-  UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText, RefreshCw
+  UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText, RefreshCw,
+  Nfc, ScanLine, CheckCircle
 } from 'lucide-react';
 import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -19,6 +20,8 @@ import SignedImage from '../UI/SignedImage';
 import { getSignedUrl, getSignedUrls, extractPath } from '../../lib/signedStorage';
 import { generateDailyDocNumber } from '../../lib/utils';
 import { useModalBackButton } from '../../hooks/useModalBackButton';
+import { useRfidScanner } from '../../hooks/useRfidScanner';
+import { playScanBeep } from '../../lib/beep';
 import * as XLSX from 'xlsx';
 import * as XLSXStyle from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
@@ -187,6 +190,17 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [isStockOutModalOpen, setIsStockOutModalOpen] = useState(false);
   const [isBulkStockOutModalOpen, setIsBulkStockOutModalOpen] = useState(false);
   const [isResetAuditModalOpen, setIsResetAuditModalOpen] = useState(false);
+
+  // RFID: pendaftaran tag di form Tambah/Edit Barang
+  const [isScanningRegister, setIsScanningRegister] = useState(false);
+
+  // RFID: Mode Verifikasi (cocokkan barang yang lagi dibuka di Detail Barang)
+  const [isVerifyScanOpen, setIsVerifyScanOpen] = useState(false);
+  const [isScanningVerify, setIsScanningVerify] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{ status: 'match' | 'mismatch' | 'unknown'; matchedName?: string } | null>(null);
+
+  // RFID: Mode Pencarian Cepat (scan tag dari toolbar, langsung buka Detail Barang)
+  const [isSearchScanning, setIsSearchScanning] = useState(false);
   const [isDisposalModalOpen, setIsDisposalModalOpen] = useState(false);
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
@@ -236,6 +250,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     dokumen_manual_url: '' as string | null,
     note_audit: '' as '' | 'ADA' | 'TIDAK ADA',
     tanggal_audit: '' as string,
+    rfid_tag: '' as string,
     foto_urls: [] as string[],
     flags: [] as string[],
   });
@@ -989,6 +1004,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         dokumen_manual_url: item.dokumen_manual_url || null,
         note_audit: item.note_audit || '',
         tanggal_audit: item.tanggal_audit || '',
+        rfid_tag: item.rfid_tag || '',
         foto_urls: item.foto_urls || [],
         flags: item.flags || [],
       });
@@ -1022,6 +1038,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         dokumen_manual_url: null,
         note_audit: '',
         tanggal_audit: '',
+        rfid_tag: '',
         foto_urls: [],
         flags: [],
       });
@@ -1639,7 +1656,17 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       if (profile?.role !== 'admin' && profile?.role !== 'auditor' && profile?.role !== 'spv') {
         throw new Error('Akses Ditolak: Anda tidak memiliki izin untuk menyimpan perubahan');
       }
-      
+
+      if (formData.rfid_tag) {
+        let tagQuery = supabase.from('items').select('id, nama_barang').eq('rfid_tag', formData.rfid_tag);
+        if (editingItem) tagQuery = tagQuery.neq('id', editingItem.id);
+        const { data: existingTag, error: tagCheckError } = await tagQuery.maybeSingle();
+        if (tagCheckError) throw tagCheckError;
+        if (existingTag) {
+          throw new Error(`Tag RFID ini sudah terdaftar di barang "${existingTag.nama_barang}"`);
+        }
+      }
+
       let finalFotoUrls = [...formData.foto_urls];
       let finalDocGaransiUrl = formData.dokumen_garansi_url;
       let finalDocSertifikatUrl = formData.dokumen_sertifikat_url;
@@ -1718,6 +1745,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         kondisi_barang: formData.kondisi_barang || null,
         note_audit: formData.note_audit || null,
         tanggal_audit: formData.tanggal_audit || null,
+        rfid_tag: formData.rfid_tag || null,
         dokumen_garansi_url: finalDocGaransiUrl,
         dokumen_sertifikat_url: finalDocSertifikatUrl,
         dokumen_manual_url: finalDocManualUrl,
@@ -1751,6 +1779,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             formData.kelengkapan_manual !== (editingItem.kelengkapan_manual || false) ||
             formData.kondisi_barang !== (editingItem.kondisi_barang || '') ||
             formData.note_audit !== (editingItem.note_audit || '') ||
+            formData.rfid_tag !== (editingItem.rfid_tag || '') ||
             JSON.stringify(formData.flags) !== JSON.stringify(editingItem.flags || []) ||
             selectedFiles.length > 0 ||
             docGaransiFile !== null ||
@@ -1908,6 +1937,84 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }
   };
 
+  // RFID: tag berhasil discan pas registrasi (form Tambah/Edit Barang) —
+  // dicek dulu belum kepakai barang lain sebelum ngisi field-nya.
+  const handleRegisterScan = async (tag: string) => {
+    setIsScanningRegister(false);
+    try {
+      let tagQuery = supabase.from('items').select('id, nama_barang').eq('rfid_tag', tag);
+      if (editingItem) tagQuery = tagQuery.neq('id', editingItem.id);
+      const { data: existingTag, error } = await tagQuery.maybeSingle();
+      if (error) throw error;
+      if (existingTag) {
+        playScanBeep('mismatch');
+        showToast(`Tag ini sudah terdaftar di barang "${existingTag.nama_barang}"`, 'error');
+        return;
+      }
+      playScanBeep('match');
+      setFormData(prev => ({ ...prev, rfid_tag: tag }));
+      showToast('Tag RFID berhasil dibaca', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal memeriksa tag RFID', 'error');
+    }
+  };
+  useRfidScanner(isScanningRegister, handleRegisterScan);
+
+  // RFID: Mode Verifikasi — cocokkan tag yang discan dengan barang yang lagi
+  // dibuka di Detail Barang (buat stock opname/audit fisik).
+  const handleVerifyScan = async (tag: string) => {
+    setIsScanningVerify(false);
+    if (!selectedItemForDetail) return;
+    try {
+      if (selectedItemForDetail.rfid_tag && tag === selectedItemForDetail.rfid_tag) {
+        playScanBeep('match');
+        setVerifyResult({ status: 'match' });
+        return;
+      }
+      const { data: owner, error } = await supabase
+        .from('items')
+        .select('nama_barang')
+        .eq('rfid_tag', tag)
+        .maybeSingle();
+      if (error) throw error;
+      if (owner) {
+        playScanBeep('mismatch');
+        setVerifyResult({ status: 'mismatch', matchedName: owner.nama_barang });
+      } else {
+        playScanBeep('unknown');
+        setVerifyResult({ status: 'unknown' });
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gagal memeriksa tag RFID', 'error');
+    }
+  };
+  useRfidScanner(isScanningVerify, handleVerifyScan);
+
+  // RFID: Mode Pencarian Cepat — scan tag apapun dari toolbar, langsung buka
+  // Detail Barang punya tag itu tanpa perlu pilih/cari manual dulu.
+  const handleSearchScan = async (tag: string) => {
+    setIsSearchScanning(false);
+    try {
+      const { data: found, error } = await supabase
+        .from('items')
+        .select('*, categories (nama_kategori), master_kepemilikan (nama_pemilik)')
+        .eq('rfid_tag', tag)
+        .maybeSingle();
+      if (error) throw error;
+      if (found) {
+        playScanBeep('match');
+        setSelectedItemForDetail(found as Item);
+        setIsDetailModalOpen(true);
+      } else {
+        playScanBeep('unknown');
+        showToast('Tag RFID tidak terdaftar di barang manapun', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mencari barang lewat RFID', 'error');
+    }
+  };
+  useRfidScanner(isSearchScanning, handleSearchScan);
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
@@ -1985,6 +2092,22 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             </button>
           )}
         </div>
+
+        {(profile?.role === 'admin' || profile?.role === 'spv' || profile?.role === 'auditor') && (
+          <button
+            onClick={() => setIsSearchScanning((v) => !v)}
+            title="Cari barang dengan scan tag RFID"
+            className={cn(
+              "shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+              isSearchScanning
+                ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
+                : "bg-white text-brand-purple border-brand-purple/20 hover:border-brand-purple/40"
+            )}
+          >
+            <Nfc size={15} />
+            <span>{isSearchScanning ? 'Menunggu scan...' : 'Cari via RFID'}</span>
+          </button>
+        )}
 
         <select
           value={filterSifat ? `SIFAT:${filterSifat}` : filterAudit ? `AUDIT:${filterAudit}` : ''}
@@ -2264,7 +2387,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={17} className="text-white" /> : <Square size={17} />}
                   </button>
                 </th>
-                <th className="px-3 py-3">Foto</th>
+                <th className="px-1.5 py-3">Foto</th>
                 <th
                   className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('kode_barang')}
@@ -2291,7 +2414,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
-                <th className="px-3 py-3">Deskripsi</th>
+                <th className="px-3 py-3 w-36 min-w-36">Deskripsi</th>
                 <th
                   className="px-3 py-3 cursor-pointer hover:bg-white/10 transition-colors group"
                   onClick={() => handleSort('kode_lokasi')}
@@ -2352,7 +2475,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         {selectedItems.includes(item.id) ? <CheckSquare size={17} className="text-blue-600" /> : <Square size={17} />}
                       </button>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-1.5 py-3">
                       <div className="flex -space-x-4 overflow-hidden py-1">
                         {item.foto_urls && item.foto_urls.length > 0 ? (
                           <>
@@ -2386,8 +2509,8 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     <td className="px-3 py-3">
                       <div className="text-sm font-medium text-brand-purple">{item.nama_barang}</div>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="text-xs text-brand-purple whitespace-pre-line line-clamp-3 max-w-xs">{item.deskripsi || '-'}</div>
+                    <td className="px-3 py-3 w-36 min-w-36 max-w-36">
+                      <div className="text-xs text-brand-purple whitespace-pre-line line-clamp-3 break-words">{item.deskripsi || '-'}</div>
                     </td>
                     <td className="px-3 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
@@ -3120,6 +3243,50 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       placeholder='Keterangan tambahan... (ketik "- " atau "1. " untuk mulai list)'
                     />
                   </div>
+
+                  {profile?.role !== 'auditor' && (
+                    <div>
+                      <label className="block text-sm font-medium text-brand-purple mb-1">Tag RFID</label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 relative">
+                          <Nfc className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple/50" size={16} />
+                          <input
+                            type="text"
+                            readOnly
+                            value={formData.rfid_tag}
+                            placeholder={isScanningRegister ? 'Menunggu scan...' : 'Belum ada tag terdaftar'}
+                            className={cn(
+                              "w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-gray-50",
+                              isScanningRegister ? "border-brand-purple animate-pulse text-brand-purple" : "border-gray-300 text-brand-purple"
+                            )}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsScanningRegister((v) => !v)}
+                          className={cn(
+                            "shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors",
+                            isScanningRegister
+                              ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                              : "bg-white text-brand-purple border-brand-purple/20 hover:bg-brand-cream"
+                          )}
+                        >
+                          <ScanLine size={15} />
+                          {isScanningRegister ? 'Batal' : 'Scan untuk Daftarkan'}
+                        </button>
+                        {formData.rfid_tag && !isScanningRegister && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, rfid_tag: '' }))}
+                            title="Lepas tag"
+                            className="shrink-0 p-2 text-brand-purple/50 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column: Photo Upload */}
@@ -3867,6 +4034,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 <ClipboardList size={15} />
                 <span>Riwayat Audit</span>
               </button>
+              {(profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv') && (
+                <button
+                  disabled={!selectedItemForDetail.rfid_tag}
+                  title={!selectedItemForDetail.rfid_tag ? 'Barang ini belum punya tag RFID terdaftar' : undefined}
+                  onClick={() => {
+                    setVerifyResult(null);
+                    setIsScanningVerify(false);
+                    setIsVerifyScanOpen(true);
+                  }}
+                  className="px-6 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 bg-emerald-50 rounded-lg transition-colors flex items-center space-x-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-50"
+                >
+                  <Nfc size={15} />
+                  <span>Mode Scan RFID</span>
+                </button>
+              )}
               {profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv' ? (
                 <button
                   onClick={() => {
@@ -3886,6 +4068,95 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   <span>Mode Lihat Saja</span>
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RFID Mode Verifikasi — cocokkan tag fisik dengan barang yang lagi dibuka */}
+      {isVerifyScanOpen && selectedItemForDetail && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-base font-bold text-brand-purple flex items-center gap-2">
+                <Nfc size={18} className="text-emerald-600" />
+                Mode Scan RFID
+              </h3>
+              <button
+                onClick={() => {
+                  setIsVerifyScanOpen(false);
+                  setIsScanningVerify(false);
+                  setVerifyResult(null);
+                }}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={18} className="text-brand-purple" />
+              </button>
+            </div>
+
+            <div className="px-6 py-6 space-y-4">
+              <p className="text-sm text-brand-purple/70 text-center">
+                Barang: <span className="font-semibold text-brand-purple">{selectedItemForDetail.nama_barang}</span>
+              </p>
+
+              {verifyResult ? (
+                <div className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-xl border",
+                  verifyResult.status === 'match' && "bg-emerald-50 border-emerald-100",
+                  verifyResult.status === 'mismatch' && "bg-red-50 border-red-100",
+                  verifyResult.status === 'unknown' && "bg-amber-50 border-amber-100"
+                )}>
+                  {verifyResult.status === 'match' && (
+                    <>
+                      <CheckCircle className="text-emerald-600" size={32} />
+                      <p className="text-sm font-bold text-emerald-800">Tag Cocok</p>
+                    </>
+                  )}
+                  {verifyResult.status === 'mismatch' && (
+                    <>
+                      <XCircle className="text-red-600" size={32} />
+                      <p className="text-sm font-bold text-red-800">Tag Tidak Cocok</p>
+                      <p className="text-xs text-red-700 text-center">Tag ini terdaftar untuk: {verifyResult.matchedName}</p>
+                    </>
+                  )}
+                  {verifyResult.status === 'unknown' && (
+                    <>
+                      <AlertTriangle className="text-amber-600" size={32} />
+                      <p className="text-sm font-bold text-amber-800">Tag Tidak Dikenal</p>
+                      <p className="text-xs text-amber-700 text-center">Tag ini belum terdaftar di barang manapun</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className={cn(
+                  "flex flex-col items-center gap-2 p-6 rounded-xl border border-dashed",
+                  isScanningVerify ? "border-brand-purple bg-brand-cream/50 animate-pulse" : "border-gray-200"
+                )}>
+                  <ScanLine className="text-brand-purple" size={28} />
+                  <p className="text-xs text-brand-purple/70 text-center">
+                    {isScanningVerify ? 'Arahkan gun ke tag barang ini...' : 'Tekan tombol di bawah lalu scan tag-nya'}
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setVerifyResult(null);
+                  setIsScanningVerify((v) => !v);
+                }}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors",
+                  isScanningVerify ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" : "btn-confirm"
+                )}
+              >
+                <ScanLine size={16} />
+                {isScanningVerify ? 'Batal' : verifyResult ? 'Scan Lagi' : 'Mulai Scan'}
+              </button>
             </div>
           </div>
         </div>

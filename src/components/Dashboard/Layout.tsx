@@ -187,7 +187,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-brand-cream to-brand-coral flex">
+    <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-brand-cream to-brand-coral flex">
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div
@@ -316,19 +316,21 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
           <Menu size={24} />
         </button>
 
-        {/* Sapaan — pojok kanan atas, tampil di semua halaman */}
-        <div className="hidden sm:flex flex-col items-end absolute top-4 right-4 lg:top-5 lg:right-8 z-20">
-          <div className="flex items-center gap-2 text-lg font-bold text-brand-purple">
-            <span>{greeting.text}, {profile?.full_name || 'User'}</span>
-            <greeting.Icon className={cn(greeting.color)} size={22} />
-          </div>
-          <span className="text-sm text-brand-purple/60">
-            {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </span>
-        </div>
-
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 pl-2 lg:pl-3 pt-16 lg:pt-5">
+        <main className="flex-1 overflow-y-auto scrollbar-hide p-4 pl-2 lg:pl-3 pt-16 lg:pt-5 relative">
+          {/* Sapaan — absolute relatif ke <main> (bukan ke wrapper luar yang
+              diam), jadi tetap numpuk sejajar di pojok kanan atas judul
+              halaman TAPI ikut ke-scroll bareng, karena posisinya dihitung
+              relatif terhadap kontainer yang scroll ini sendiri. */}
+          <div className="hidden sm:flex flex-col items-end absolute top-4 right-4 lg:top-5 lg:right-8 z-20">
+            <div className="flex items-center gap-2 text-lg font-bold text-brand-purple">
+              <span>{greeting.text}, {profile?.full_name || 'User'}</span>
+              <greeting.Icon className={cn(greeting.color)} size={22} />
+            </div>
+            <span className="text-sm text-brand-purple/60">
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          </div>
           <div className="max-w-none">
             {children}
           </div>

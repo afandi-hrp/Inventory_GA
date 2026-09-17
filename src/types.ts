@@ -52,6 +52,7 @@ export interface Item {
   note_audit?: 'ADA' | 'TIDAK ADA' | null;
   tanggal_audit?: string | null;
   rfid_tag?: string | null;
+  rfid_tag_2?: string | null;
   flags?: string[];
   created_at: string;
   updated_at: string;

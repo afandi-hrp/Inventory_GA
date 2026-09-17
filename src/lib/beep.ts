@@ -31,7 +31,12 @@ export type ScanBeepResult = 'match' | 'mismatch' | 'unknown';
 export function playScanBeep(result: ScanBeepResult) {
   try {
     if (result === 'match') {
-      tone(880, 0.14); // 1 beep tinggi = cocok
+      // 3 beep tinggi cepat berturut-turut = cocok - satu-satunya kasus yang
+      // bener-bener bunyi keras/jelas, biar kerasa positif & gak ketuker
+      // sama nada mismatch/unknown yang sengaja lebih pelan.
+      tone(880, 0.1);
+      tone(880, 0.1, 0.13);
+      tone(880, 0.1, 0.26);
     } else if (result === 'mismatch') {
       tone(220, 0.22); // 1 beep rendah panjang = ketemu tapi beda barang
     } else {

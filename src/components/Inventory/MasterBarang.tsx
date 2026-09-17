@@ -22,6 +22,7 @@ import { generateDailyDocNumber } from '../../lib/utils';
 import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { useRfidScanner } from '../../hooks/useRfidScanner';
 import { playScanBeep } from '../../lib/beep';
+import { isNativeShell, saveViaNativeShell } from '../../lib/nativeDownload';
 import * as XLSX from 'xlsx';
 import * as XLSXStyle from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
@@ -149,6 +150,18 @@ interface MasterBarangProps {
   setHistorySearch?: (search: string) => void;
 }
 
+// Simpen workbook xlsx: lewat jembatan native kalau lagi jalan di dalam shell
+// Android (WebView di situ gak nangkep download blob: URL sama sekali), atau
+// lewat cara browser normal (writeFile) kalau di luar shell.
+function saveXlsxWorkbook(wb: XLSX.WorkBook, fileName: string) {
+  if (isNativeShell()) {
+    const base64 = XLSXStyle.write(wb, { type: 'base64', bookType: 'xlsx' });
+    saveViaNativeShell(base64, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  } else {
+    XLSXStyle.writeFile(wb, fileName);
+  }
+}
+
 export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -193,14 +206,22 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
   // RFID: pendaftaran tag di form Tambah/Edit Barang
   const [isScanningRegister, setIsScanningRegister] = useState(false);
+  const [registerScanSlot, setRegisterScanSlot] = useState<1 | 2>(1);
 
   // RFID: Mode Verifikasi (cocokkan barang yang lagi dibuka di Detail Barang)
   const [isVerifyScanOpen, setIsVerifyScanOpen] = useState(false);
   const [isScanningVerify, setIsScanningVerify] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<{ status: 'match' | 'mismatch' | 'unknown'; matchedName?: string } | null>(null);
+  const [verifyMatched, setVerifyMatched] = useState(false);
 
   // RFID: Mode Pencarian Cepat (scan tag dari toolbar, langsung buka Detail Barang)
   const [isSearchScanning, setIsSearchScanning] = useState(false);
+
+  // RFID: Mode Scan Massal — scan berkali-kali (beda tag), kumpulin barang
+  // yang ketemu jadi 1 daftar, lalu export sekaligus ke Excel.
+  const [isBulkScanOpen, setIsBulkScanOpen] = useState(false);
+  const [isScanningBulk, setIsScanningBulk] = useState(false);
+  const [bulkScannedItems, setBulkScannedItems] = useState<Item[]>([]);
+  const bulkScannedIdsRef = useRef<Set<string>>(new Set());
   const [isDisposalModalOpen, setIsDisposalModalOpen] = useState(false);
   const [disposalData, setDisposalData] = useState({ keterangan: '', metode_pemusnahan: '' });
   const [isSubmittingDisposal, setIsSubmittingDisposal] = useState(false);
@@ -251,6 +272,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     note_audit: '' as '' | 'ADA' | 'TIDAK ADA',
     tanggal_audit: '' as string,
     rfid_tag: '' as string,
+    rfid_tag_2: '' as string,
     foto_urls: [] as string[],
     flags: [] as string[],
   });
@@ -281,6 +303,9 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [newFlagIconKey, setNewFlagIconKey] = useState('tag');
   const [savingNewFlag, setSavingNewFlag] = useState(false);
   const [activeFilterPanel, setActiveFilterPanel] = useState<'' | 'kategori' | 'lokasi' | 'kepemilikan'>('');
+  // Cuma dipakai di layar HP (di bawah breakpoint sm) - panel filter bisa
+  // diciutkan/dilebarkan biar gak makan tempat pas gak lagi dipakai.
+  const [isMobileFilterExpanded, setIsMobileFilterExpanded] = useState(true);
   // Posisi dropdown dihitung manual (bukan cuma absolute+relative) & dirender
   // lewat portal ke document.body, karena baris filter sekarang overflow-x-auto
   // (biar muat 1 baris) — overflow-x-auto otomatis ikut meng-clip overflow-y,
@@ -290,6 +315,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [filterPemusnahan, setFilterPemusnahan] = useState(false);
   const [isPemusnahanModalOpen, setIsPemusnahanModalOpen] = useState(false);
   const [fileMenuPos, setFileMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [rfidMenuPos, setRfidMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   const [bulkEditData, setBulkEditData] = useState({
     kode_lokasi: '',
@@ -1005,6 +1031,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         note_audit: item.note_audit || '',
         tanggal_audit: item.tanggal_audit || '',
         rfid_tag: item.rfid_tag || '',
+        rfid_tag_2: item.rfid_tag_2 || '',
         foto_urls: item.foto_urls || [],
         flags: item.flags || [],
       });
@@ -1039,6 +1066,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         note_audit: '',
         tanggal_audit: '',
         rfid_tag: '',
+        rfid_tag_2: '',
         foto_urls: [],
         flags: [],
       });
@@ -1082,7 +1110,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     ws['!cols'] = headers.map((h) => ({ wch: Math.min(Math.max(h.length + 3, 14), 40) }));
     const wb = XLSXStyle.utils.book_new();
     XLSXStyle.utils.book_append_sheet(wb, ws, 'Template Import');
-    XLSXStyle.writeFile(wb, 'Template_Import_Master_Barang.xlsx');
+    saveXlsxWorkbook(wb, 'Template_Import_Master_Barang.xlsx');
   };
 
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1304,7 +1332,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       XLSXStyle.utils.book_append_sheet(wb, ws, 'Master Barang');
 
       // Save file
-      XLSXStyle.writeFile(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
+      saveXlsxWorkbook(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
 
       setIsExportPreviewOpen(false);
       showToast('Data berhasil diexport ke Excel', 'success');
@@ -1475,7 +1503,13 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         doc.setTextColor(0);
       }
 
-      doc.save(`Katalog_Master_Barang_${new Date().toISOString().split('T')[0]}.pdf`);
+      const pdfFileName = `Katalog_Master_Barang_${new Date().toISOString().split('T')[0]}.pdf`;
+      if (isNativeShell()) {
+        const base64 = doc.output('datauristring').split(',')[1];
+        saveViaNativeShell(base64, pdfFileName, 'application/pdf');
+      } else {
+        doc.save(pdfFileName);
+      }
       showToast('PDF berhasil dibuat', 'success');
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat PDF', 'error');
@@ -1657,8 +1691,16 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         throw new Error('Akses Ditolak: Anda tidak memiliki izin untuk menyimpan perubahan');
       }
 
-      if (formData.rfid_tag) {
-        let tagQuery = supabase.from('items').select('id, nama_barang').eq('rfid_tag', formData.rfid_tag);
+      if (formData.rfid_tag && formData.rfid_tag_2 && formData.rfid_tag === formData.rfid_tag_2) {
+        throw new Error('Tag RFID 1 dan Tag RFID 2 tidak boleh sama');
+      }
+
+      for (const tag of [formData.rfid_tag, formData.rfid_tag_2]) {
+        if (!tag) continue;
+        // Dicek ke KEDUA kolom tag (rfid_tag & rfid_tag_2) milik SEMUA barang -
+        // 1 tag fisik gak boleh nyangkut di lebih dari 1 barang, gak peduli
+        // dia kepasang di slot tag 1 atau 2.
+        let tagQuery = supabase.from('items').select('id, nama_barang').or(`rfid_tag.eq.${tag},rfid_tag_2.eq.${tag}`);
         if (editingItem) tagQuery = tagQuery.neq('id', editingItem.id);
         const { data: existingTag, error: tagCheckError } = await tagQuery.maybeSingle();
         if (tagCheckError) throw tagCheckError;
@@ -1746,6 +1788,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         note_audit: formData.note_audit || null,
         tanggal_audit: formData.tanggal_audit || null,
         rfid_tag: formData.rfid_tag || null,
+        rfid_tag_2: formData.rfid_tag_2 || null,
         dokumen_garansi_url: finalDocGaransiUrl,
         dokumen_sertifikat_url: finalDocSertifikatUrl,
         dokumen_manual_url: finalDocManualUrl,
@@ -1780,6 +1823,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             formData.kondisi_barang !== (editingItem.kondisi_barang || '') ||
             formData.note_audit !== (editingItem.note_audit || '') ||
             formData.rfid_tag !== (editingItem.rfid_tag || '') ||
+            formData.rfid_tag_2 !== (editingItem.rfid_tag_2 || '') ||
             JSON.stringify(formData.flags) !== JSON.stringify(editingItem.flags || []) ||
             selectedFiles.length > 0 ||
             docGaransiFile !== null ||
@@ -1938,11 +1982,18 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   };
 
   // RFID: tag berhasil discan pas registrasi (form Tambah/Edit Barang) —
-  // dicek dulu belum kepakai barang lain sebelum ngisi field-nya.
+  // dicek dulu belum kepakai barang lain (di slot tag manapun) sebelum ngisi
+  // slot yang lagi aktif (registerScanSlot: 1 atau 2).
   const handleRegisterScan = async (tag: string) => {
     setIsScanningRegister(false);
     try {
-      let tagQuery = supabase.from('items').select('id, nama_barang').eq('rfid_tag', tag);
+      const otherSlotValue = registerScanSlot === 1 ? formData.rfid_tag_2 : formData.rfid_tag;
+      if (otherSlotValue && tag === otherSlotValue) {
+        playScanBeep('mismatch');
+        showToast('Tag ini sudah dipakai di slot tag lain barang ini', 'error');
+        return;
+      }
+      let tagQuery = supabase.from('items').select('id, nama_barang').or(`rfid_tag.eq.${tag},rfid_tag_2.eq.${tag}`);
       if (editingItem) tagQuery = tagQuery.neq('id', editingItem.id);
       const { data: existingTag, error } = await tagQuery.maybeSingle();
       if (error) throw error;
@@ -1952,7 +2003,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         return;
       }
       playScanBeep('match');
-      setFormData(prev => ({ ...prev, rfid_tag: tag }));
+      if (registerScanSlot === 1) {
+        setFormData(prev => ({ ...prev, rfid_tag: tag }));
+      } else {
+        setFormData(prev => ({ ...prev, rfid_tag_2: tag }));
+      }
       showToast('Tag RFID berhasil dibaca', 'success');
     } catch (err: any) {
       showToast(err.message || 'Gagal memeriksa tag RFID', 'error');
@@ -1961,31 +2016,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   useRfidScanner(isScanningRegister, handleRegisterScan);
 
   // RFID: Mode Verifikasi — cocokkan tag yang discan dengan barang yang lagi
-  // dibuka di Detail Barang (buat stock opname/audit fisik).
-  const handleVerifyScan = async (tag: string) => {
-    setIsScanningVerify(false);
+  // dibuka di Detail Barang (buat stock opname/audit fisik). Cocok kalau sama
+  // salah satu dari 2 slot tag barang itu. Tag lain/gak dikenal sengaja
+  // diamkan (gak beep, gak nampilin apa-apa). Scan SENGAJA tetap nyala terus
+  // walau udah cocok (gak di-setIsScanningVerify(false) di sini) - beep bakal
+  // terus berbunyi selama tag masih kedeteksi, dan baru berhenti kalau trigger
+  // fisik gun dilepas (native app yang matiin scan-nya lewat window.__rfidTriggerUp)
+  // atau user pencet "Batal" manual.
+  const handleVerifyScan = (tag: string) => {
     if (!selectedItemForDetail) return;
-    try {
-      if (selectedItemForDetail.rfid_tag && tag === selectedItemForDetail.rfid_tag) {
-        playScanBeep('match');
-        setVerifyResult({ status: 'match' });
-        return;
-      }
-      const { data: owner, error } = await supabase
-        .from('items')
-        .select('nama_barang')
-        .eq('rfid_tag', tag)
-        .maybeSingle();
-      if (error) throw error;
-      if (owner) {
-        playScanBeep('mismatch');
-        setVerifyResult({ status: 'mismatch', matchedName: owner.nama_barang });
-      } else {
-        playScanBeep('unknown');
-        setVerifyResult({ status: 'unknown' });
-      }
-    } catch (err: any) {
-      showToast(err.message || 'Gagal memeriksa tag RFID', 'error');
+    const isMatch =
+      (!!selectedItemForDetail.rfid_tag && tag === selectedItemForDetail.rfid_tag) ||
+      (!!selectedItemForDetail.rfid_tag_2 && tag === selectedItemForDetail.rfid_tag_2);
+    if (isMatch) {
+      playScanBeep('match');
+      setVerifyMatched(true);
     }
   };
   useRfidScanner(isScanningVerify, handleVerifyScan);
@@ -1998,7 +2043,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       const { data: found, error } = await supabase
         .from('items')
         .select('*, categories (nama_kategori), master_kepemilikan (nama_pemilik)')
-        .eq('rfid_tag', tag)
+        .or(`rfid_tag.eq.${tag},rfid_tag_2.eq.${tag}`)
         .maybeSingle();
       if (error) throw error;
       if (found) {
@@ -2014,6 +2059,59 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }
   };
   useRfidScanner(isSearchScanning, handleSearchScan);
+
+  // RFID: Mode Scan Massal — tiap tag yang cocok & BELUM ada di daftar
+  // ditambahin + beep; tag asing atau yang udah ada di daftar diamkan aja
+  // (gak dobel, gak beep berulang). Scan SENGAJA tetap nyala terus (gak
+  // di-setIsScanningBulk(false) di sini) biar bisa scan banyak tag
+  // berturut-turut selama trigger ditahan/dipencet ulang.
+  const handleBulkScan = async (tag: string) => {
+    try {
+      const { data: found, error } = await supabase
+        .from('items')
+        .select('*, categories (nama_kategori), master_kepemilikan (nama_pemilik)')
+        .or(`rfid_tag.eq.${tag},rfid_tag_2.eq.${tag}`)
+        .maybeSingle();
+      if (error) throw error;
+      if (!found || bulkScannedIdsRef.current.has(found.id)) return;
+      bulkScannedIdsRef.current.add(found.id);
+      playScanBeep('match');
+      setBulkScannedItems((prev) => [...prev, found as Item]);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal memeriksa tag RFID', 'error');
+    }
+  };
+  useRfidScanner(isScanningBulk, handleBulkScan);
+
+  // Jembatan buat pemicu fisik gun RFID (dipanggil dari shell Android lewat
+  // window.__rfidTriggerDown()/Up() pas trigger ditekan/dilepas) - user gak
+  // perlu tap "Mulai Scan" di layar dulu, tinggal arahkan & tembak. Prioritas:
+  // modal Mode Verifikasi > modal Scan Massal > form Tambah/Edit Barang >
+  // pencarian cepat dari toolbar sebagai default.
+  useEffect(() => {
+    (window as any).__rfidTriggerDown = () => {
+      if (isVerifyScanOpen) {
+        setVerifyMatched(false);
+        setIsScanningVerify(true);
+      } else if (isBulkScanOpen) {
+        setIsScanningBulk(true);
+      } else if (isModalOpen && profile?.role !== 'auditor') {
+        setIsScanningRegister(true);
+      } else if (profile?.role === 'admin' || profile?.role === 'spv' || profile?.role === 'auditor') {
+        setIsSearchScanning(true);
+      }
+    };
+    (window as any).__rfidTriggerUp = () => {
+      setIsScanningVerify(false);
+      setIsScanningBulk(false);
+      setIsScanningRegister(false);
+      setIsSearchScanning(false);
+    };
+    return () => {
+      delete (window as any).__rfidTriggerDown;
+      delete (window as any).__rfidTriggerUp;
+    };
+  }, [isVerifyScanOpen, isBulkScanOpen, isModalOpen, profile]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
@@ -2064,16 +2162,38 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           Dipadatkan (padding & tinggi dikecilkan, semua filter jadi 1 baris)
           supaya tabel barang di bawahnya gak keteken terlalu jauh. */}
       <div className="bg-white/60 backdrop-blur-xl p-3 rounded-2xl shadow-lg border border-white/50 space-y-2.5">
+      {/* Tombol ciutkan/lebarkan panel filter - CUMA muncul di layar HP
+          (sm:hidden), biar panel bisa diringkas kalau gak lagi dipakai supaya
+          gak makan tempat layar yang kecil. Di layar sm+ gak relevan (panel
+          udah ringkas 1 baris), jadi tombolnya disembunyikan total. */}
+      <button
+        type="button"
+        onClick={() => setIsMobileFilterExpanded((v) => !v)}
+        className="sm:hidden w-full flex items-center justify-between px-1 py-0.5 text-sm font-semibold text-brand-purple"
+      >
+        <span className="flex items-center gap-1.5">
+          <Filter size={14} />
+          Filter &amp; Aksi
+        </span>
+        <ChevronDown size={16} className={cn("transition-transform", isMobileFilterExpanded && "rotate-180")} />
+      </button>
       {/* Search + semua filter cepat (Status, Kategori/Lokasi/Kepemilikan,
           Perlu Pemusnahan, Reset, Excel & PDF, Tambah Barang) dipaksa jadi
-          SATU baris (flex-nowrap) — kalau layar sempit, baris ini scroll
-          horizontal sendiri (overflow-x-auto) alih-alih pindah ke baris baru. */}
-      <div className="flex items-center gap-2">
-      {/* Cuma bagian filter yang scroll horizontal kalau kepanjangan — tombol
-          aksi utama (Excel & PDF, Tambah Barang) sengaja ditaruh DI LUAR area
-          scroll ini supaya selalu keliatan penuh, gak ikut ke-scroll/terpotong
+          SATU baris (flex-nowrap) di layar laptop/desktop — kalau agak sempit
+          (mis. laptop 14"), baris itu scroll horizontal sendiri (overflow-x-auto).
+          Di layar HP (di bawah breakpoint sm), semuanya dibiarkan WRAP ke
+          beberapa baris alih-alih di-scroll horizontal, dan bisa disembunyikan
+          total lewat tombol ciutkan di atas (selalu tampil penuh di sm+,
+          gak peduli status ciutkan-nya). */}
+      <div className={cn(
+        isMobileFilterExpanded ? "flex" : "hidden",
+        "flex-col gap-2 sm:flex sm:flex-row sm:items-center"
+      )}>
+      {/* Cuma bagian filter yang scroll horizontal kalau kepanjangan (sm+) —
+          tombol aksi utama (Excel & PDF, Tambah Barang) sengaja ditaruh DI LUAR
+          area scroll ini supaya selalu keliatan penuh, gak ikut ke-scroll/terpotong
           di layar sempit (mis. laptop 14"). */}
-      <div className="flex-1 min-w-0 flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+      <div className="flex-1 min-w-0 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:overflow-x-auto scrollbar-hide pb-0.5">
         <div className="relative group shrink-0 w-44">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={16} />
           <input
@@ -2094,19 +2214,57 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         </div>
 
         {(profile?.role === 'admin' || profile?.role === 'spv' || profile?.role === 'auditor') && (
-          <button
-            onClick={() => setIsSearchScanning((v) => !v)}
-            title="Cari barang dengan scan tag RFID"
-            className={cn(
-              "shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
-              isSearchScanning
-                ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
-                : "bg-white text-brand-purple border-brand-purple/20 hover:border-brand-purple/40"
+          <div>
+            <button
+              onClick={(e) => {
+                if (rfidMenuPos) {
+                  setRfidMenuPos(null);
+                } else if (isSearchScanning) {
+                  // Lagi nunggu scan (Cari via RFID aktif) - klik buat batalin, bukan buka menu
+                  setIsSearchScanning(false);
+                } else {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setRfidMenuPos({ top: rect.bottom + 8, left: rect.left });
+                }
+              }}
+              title="Fitur RFID"
+              className={cn(
+                "shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+                isSearchScanning
+                  ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
+                  : "bg-white text-brand-purple border-brand-purple/20 hover:border-brand-purple/40"
+              )}
+            >
+              <Nfc size={15} />
+              <span>{isSearchScanning ? 'Menunggu scan...' : 'RFID'}</span>
+              {!isSearchScanning && <ChevronDown size={14} className={cn("transition-transform", rfidMenuPos && "rotate-180")} />}
+            </button>
+            {rfidMenuPos && createPortal(
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setRfidMenuPos(null)} />
+                <div
+                  className="fixed w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                  style={{ top: rfidMenuPos.top, left: rfidMenuPos.left }}
+                >
+                  <button
+                    onClick={() => { setRfidMenuPos(null); setIsSearchScanning(true); }}
+                    className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                  >
+                    <Nfc size={16} className="text-brand-purple" />
+                    <span>Cari via RFID</span>
+                  </button>
+                  <button
+                    onClick={() => { setRfidMenuPos(null); setIsBulkScanOpen(true); }}
+                    className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                  >
+                    <ClipboardList size={16} className="text-brand-purple" />
+                    <span>Scan Massal RFID</span>
+                  </button>
+                </div>
+              </>,
+              document.body
             )}
-          >
-            <Nfc size={15} />
-            <span>{isSearchScanning ? 'Menunggu scan...' : 'Cari via RFID'}</span>
-          </button>
+          </div>
         )}
 
         <select
@@ -3245,46 +3403,61 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                   </div>
 
                   {profile?.role !== 'auditor' && (
-                    <div>
-                      <label className="block text-sm font-medium text-brand-purple mb-1">Tag RFID</label>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 relative">
-                          <Nfc className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple/50" size={16} />
-                          <input
-                            type="text"
-                            readOnly
-                            value={formData.rfid_tag}
-                            placeholder={isScanningRegister ? 'Menunggu scan...' : 'Belum ada tag terdaftar'}
-                            className={cn(
-                              "w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-gray-50",
-                              isScanningRegister ? "border-brand-purple animate-pulse text-brand-purple" : "border-gray-300 text-brand-purple"
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-brand-purple mb-1">Tag RFID (maks. 2 tag per barang)</label>
+                      {([1, 2] as const).map((slot) => {
+                        const value = slot === 1 ? formData.rfid_tag : formData.rfid_tag_2;
+                        const isActiveSlotScanning = isScanningRegister && registerScanSlot === slot;
+                        return (
+                          <div key={slot} className="flex items-center gap-2">
+                            <div className="flex-1 relative">
+                              <Nfc className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple/50" size={16} />
+                              <input
+                                type="text"
+                                readOnly
+                                value={value}
+                                placeholder={isActiveSlotScanning ? 'Menunggu scan...' : `Tag ${slot} - belum ada`}
+                                className={cn(
+                                  "w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-gray-50",
+                                  isActiveSlotScanning ? "border-brand-purple animate-pulse text-brand-purple" : "border-gray-300 text-brand-purple"
+                                )}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isActiveSlotScanning) {
+                                  setIsScanningRegister(false);
+                                } else {
+                                  setRegisterScanSlot(slot);
+                                  setIsScanningRegister(true);
+                                }
+                              }}
+                              className={cn(
+                                "shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors",
+                                isActiveSlotScanning
+                                  ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                                  : "bg-white text-brand-purple border-brand-purple/20 hover:bg-brand-cream"
+                              )}
+                            >
+                              <ScanLine size={15} />
+                              {isActiveSlotScanning ? 'Batal' : `Scan Tag ${slot}`}
+                            </button>
+                            {value && !isActiveSlotScanning && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData((prev) => (
+                                  slot === 1 ? { ...prev, rfid_tag: '' } : { ...prev, rfid_tag_2: '' }
+                                ))}
+                                title="Hapus tag"
+                                className="shrink-0 p-2 text-brand-purple/50 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <X size={16} />
+                              </button>
                             )}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setIsScanningRegister((v) => !v)}
-                          className={cn(
-                            "shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors",
-                            isScanningRegister
-                              ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-                              : "bg-white text-brand-purple border-brand-purple/20 hover:bg-brand-cream"
-                          )}
-                        >
-                          <ScanLine size={15} />
-                          {isScanningRegister ? 'Batal' : 'Scan untuk Daftarkan'}
-                        </button>
-                        {formData.rfid_tag && !isScanningRegister && (
-                          <button
-                            type="button"
-                            onClick={() => setFormData((prev) => ({ ...prev, rfid_tag: '' }))}
-                            title="Lepas tag"
-                            className="shrink-0 p-2 text-brand-purple/50 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -4036,10 +4209,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               </button>
               {(profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv') && (
                 <button
-                  disabled={!selectedItemForDetail.rfid_tag}
-                  title={!selectedItemForDetail.rfid_tag ? 'Barang ini belum punya tag RFID terdaftar' : undefined}
+                  disabled={!selectedItemForDetail.rfid_tag && !selectedItemForDetail.rfid_tag_2}
+                  title={(!selectedItemForDetail.rfid_tag && !selectedItemForDetail.rfid_tag_2) ? 'Barang ini belum punya tag RFID terdaftar' : undefined}
                   onClick={() => {
-                    setVerifyResult(null);
+                    setVerifyMatched(false);
                     setIsScanningVerify(false);
                     setIsVerifyScanOpen(true);
                   }}
@@ -4091,7 +4264,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 onClick={() => {
                   setIsVerifyScanOpen(false);
                   setIsScanningVerify(false);
-                  setVerifyResult(null);
+                  setVerifyMatched(false);
                 }}
                 className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -4104,33 +4277,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 Barang: <span className="font-semibold text-brand-purple">{selectedItemForDetail.nama_barang}</span>
               </p>
 
-              {verifyResult ? (
-                <div className={cn(
-                  "flex flex-col items-center gap-2 p-4 rounded-xl border",
-                  verifyResult.status === 'match' && "bg-emerald-50 border-emerald-100",
-                  verifyResult.status === 'mismatch' && "bg-red-50 border-red-100",
-                  verifyResult.status === 'unknown' && "bg-amber-50 border-amber-100"
-                )}>
-                  {verifyResult.status === 'match' && (
-                    <>
-                      <CheckCircle className="text-emerald-600" size={32} />
-                      <p className="text-sm font-bold text-emerald-800">Tag Cocok</p>
-                    </>
-                  )}
-                  {verifyResult.status === 'mismatch' && (
-                    <>
-                      <XCircle className="text-red-600" size={32} />
-                      <p className="text-sm font-bold text-red-800">Tag Tidak Cocok</p>
-                      <p className="text-xs text-red-700 text-center">Tag ini terdaftar untuk: {verifyResult.matchedName}</p>
-                    </>
-                  )}
-                  {verifyResult.status === 'unknown' && (
-                    <>
-                      <AlertTriangle className="text-amber-600" size={32} />
-                      <p className="text-sm font-bold text-amber-800">Tag Tidak Dikenal</p>
-                      <p className="text-xs text-amber-700 text-center">Tag ini belum terdaftar di barang manapun</p>
-                    </>
-                  )}
+              {verifyMatched ? (
+                <div className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-emerald-50 border-emerald-100">
+                  <CheckCircle className="text-emerald-600" size={32} />
+                  <p className="text-sm font-bold text-emerald-800">Tag Cocok</p>
                 </div>
               ) : (
                 <div className={cn(
@@ -4139,14 +4289,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 )}>
                   <ScanLine className="text-brand-purple" size={28} />
                   <p className="text-xs text-brand-purple/70 text-center">
-                    {isScanningVerify ? 'Arahkan gun ke tag barang ini...' : 'Tekan tombol di bawah lalu scan tag-nya'}
+                    {isScanningVerify ? 'Arahkan gun ke tag barang ini... (tag lain diabaikan)' : 'Tekan tombol di bawah / tarik pemicu gun lalu scan tag-nya'}
                   </p>
                 </div>
               )}
 
               <button
                 onClick={() => {
-                  setVerifyResult(null);
+                  setVerifyMatched(false);
                   setIsScanningVerify((v) => !v);
                 }}
                 className={cn(
@@ -4155,7 +4305,132 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                 )}
               >
                 <ScanLine size={16} />
-                {isScanningVerify ? 'Batal' : verifyResult ? 'Scan Lagi' : 'Mulai Scan'}
+                {isScanningVerify ? 'Batal' : verifyMatched ? 'Scan Lagi' : 'Mulai Scan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RFID Mode Scan Massal — kumpulin banyak barang lewat scan berkali-kali,
+          lalu export daftarnya jadi 1 laporan Excel sekaligus. */}
+      {isBulkScanOpen && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h3 className="text-base font-bold text-brand-purple flex items-center gap-2">
+                <ClipboardList size={18} className="text-emerald-600" />
+                Scan Massal RFID
+              </h3>
+              <button
+                onClick={() => {
+                  setIsBulkScanOpen(false);
+                  setIsScanningBulk(false);
+                }}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={18} className="text-brand-purple" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
+              <div className={cn(
+                "flex flex-col items-center gap-2 p-4 rounded-xl border border-dashed",
+                isScanningBulk ? "border-brand-purple bg-brand-cream/50 animate-pulse" : "border-gray-200"
+              )}>
+                <ScanLine className="text-brand-purple" size={26} />
+                <p className="text-xs text-brand-purple/70 text-center">
+                  {isScanningBulk ? 'Arahkan gun ke tag-tag barang...' : 'Tekan tombol di bawah / tarik pemicu gun buat mulai scan'}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsScanningBulk((v) => !v)}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors",
+                  isScanningBulk ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" : "btn-confirm"
+                )}
+              >
+                <ScanLine size={16} />
+                {isScanningBulk ? 'Berhenti Scan' : 'Mulai Scan'}
+              </button>
+
+              <div className="pt-1">
+                <p className="text-xs font-semibold text-brand-purple mb-1.5">
+                  {bulkScannedItems.length} barang terdeteksi
+                </p>
+                {bulkScannedItems.length === 0 ? (
+                  <p className="text-xs text-brand-purple/50 italic px-1">Belum ada barang ke-scan.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                    {bulkScannedItems.map((it) => (
+                      <div key={it.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-brand-purple truncate">{it.nama_barang}</p>
+                          <p className="text-[11px] text-brand-purple/60 font-mono">{it.kode_barang}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            bulkScannedIdsRef.current.delete(it.id);
+                            setBulkScannedItems((prev) => prev.filter((x) => x.id !== it.id));
+                          }}
+                          title="Hapus dari daftar"
+                          className="shrink-0 p-1 text-brand-purple/40 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-between items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  bulkScannedIdsRef.current.clear();
+                  setBulkScannedItems([]);
+                }}
+                disabled={bulkScannedItems.length === 0}
+                className="text-xs font-medium text-brand-purple/60 hover:text-red-600 disabled:opacity-40 disabled:hover:text-brand-purple/60 transition-colors"
+              >
+                Kosongkan Daftar
+              </button>
+              <button
+                onClick={() => {
+                  const dataToExport = bulkScannedItems.map(item => ({
+                    'Jumlah Foto': (item.foto_urls || []).length,
+                    'Kode Barang': item.kode_barang,
+                    'Nama Barang': item.nama_barang,
+                    'Deskripsi': item.deskripsi || '-',
+                    'Lokasi': (item as any).master_lokasi?.nama_lokasi || 'Unassigned',
+                    'Kategori': (item as any).categories?.nama_kategori || 'Tanpa Kategori',
+                    'Kepemilikan': (item as any).master_kepemilikan?.nama_pemilik || '-',
+                    'Flags': (item.flags && item.flags.length > 0) ? item.flags.join(', ') : '-',
+                    'Status Barang': item.sifat_barang || 'PRIVATE',
+                    'Kondisi Barang': item.kondisi_barang || '-',
+                    'Kelengkapan Garansi': item.kelengkapan_garansi ? 'Ya' : 'Tidak',
+                    'Kelengkapan Sertifikat': item.kelengkapan_sertifikat ? 'Ya' : 'Tidak',
+                    'Kelengkapan Manual Book': item.kelengkapan_manual ? 'Ya' : 'Tidak',
+                    'Stok': item.jumlah_barang,
+                    'Hasil Audit': item.note_audit || '-',
+                    'Tanggal Audit': item.tanggal_audit ? new Date(item.tanggal_audit).toLocaleDateString('id-ID') : '-',
+                    'Tanggal Dibuat': new Date(item.created_at).toLocaleDateString('id-ID'),
+                  }));
+                  setExportData(dataToExport);
+                  setIsExportPreviewOpen(true);
+                }}
+                disabled={bulkScannedItems.length === 0}
+                className="btn-confirm disabled:opacity-40"
+              >
+                <FileSpreadsheet size={16} />
+                <span>Export ke Excel</span>
               </button>
             </div>
           </div>

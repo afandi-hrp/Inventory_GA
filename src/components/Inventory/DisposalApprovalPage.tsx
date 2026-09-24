@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../UI/Toast';
 import { Profile, DisposalRequest, DisposalRequestItem } from '../../types';
-import { X, Loader2, CheckSquare, XCircle, FileWarning, Search, User, Calendar, MapPin, Eye, FileText, Download, Package, ClipboardList, AlertTriangle } from 'lucide-react';
+import { X, Loader2, CheckSquare, XCircle, FileWarning, Search, User, Calendar, MapPin, Eye, FileText, Download, Package, ClipboardList, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import SignedImage from '../UI/SignedImage';
 import { getSignedUrl } from '../../lib/signedStorage';
-import { useModalBackButton } from '../../hooks/useModalBackButton';
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
-interface DisposalApprovalModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface DisposalApprovalPageProps {
   profile: Profile | null;
 }
 
-export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalApprovalModalProps) {
+export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [requests, setRequests] = useState<DisposalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,13 +24,12 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
   const [isDetailView, setIsDetailView] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [rejectItemModal, setRejectItemModal] = useState<{ isOpen: boolean, itemId: string, reason: string }>({ isOpen: false, itemId: '', reason: '' });
   const [rejectFullModal, setRejectFullModal] = useState<{ isOpen: boolean, reason: string }>({ isOpen: false, reason: '' });
-
-  // DIMATIKAN SEMENTARA: lihat catatan di MasterBarang.tsx
-  // useModalBackButton(isOpen, onClose);
-  // useModalBackButton(rejectItemModal.isOpen, () => setRejectItemModal({ isOpen: false, itemId: '', reason: '' }));
-  // useModalBackButton(rejectFullModal.isOpen, () => setRejectFullModal({ isOpen: false, reason: '' }));
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewFileName, setPdfPreviewFileName] = useState('');
 
   const parseRejectionReason = (reasonStr: string | null) => {
     if (!reasonStr) return { alasan: '-', rejectedBy: 'Sistem', role: '' };
@@ -49,13 +46,12 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
   };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchRequests();
-    } else {
-      setSelectedRequest(null);
-      setIsDetailView(false);
-    }
-  }, [isOpen]);
+    fetchRequests();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   async function fetchRequests() {
     setLoading(true);
@@ -175,7 +171,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
         // If final approval, we should deduct stock and add to history (StockOut).
         // For items that are not REJECTED.
         const approvedItems = requestItems.filter(i => i.status_item !== 'REJECTED');
-        
+
         for (const item of approvedItems) {
           // Fetch full item to get foto_urls and deskripsi
           const { data: fullItem } = await supabase.from('items').select('*').eq('id', item.item_id).single();
@@ -215,14 +211,14 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
             // Delete original item via backend to bypass RLS for non-admins
             const session = await supabase.auth.getSession();
             const token = session.data.session?.access_token;
-            
+
             const delRes = await fetch(`/api/inventory/delete-item/${item.item_id}`, {
               method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${token}`
               }
             });
-            
+
             if (!delRes.ok) {
               const errData = await delRes.json().catch(() => ({}));
               console.error('Error deleting item from items table via API:', errData);
@@ -279,7 +275,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
           .from('disposal_request_items')
           .update({ status_item: 'REJECTED', alasan_rejection: rejectionData })
           .in('id', pendingItems.map(i => i.id));
-        
+
         if (itemsError) console.error("Failed to update items to rejected:", itemsError);
       }
 
@@ -310,15 +306,15 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
     }
   };
 
-  const downloadPDF = async () => {
+  const generatePDFPreview = async () => {
     if (!selectedRequest) return;
-    
+
     setIsSubmitting(true);
     showToast('Sedang menyiapkan dokumen...', 'info');
 
     try {
       const doc = new jsPDF();
-      
+
       const itemsToPrint = requestItems.filter(i => i.status_item !== 'REJECTED');
 
       if (itemsToPrint.length === 0) {
@@ -332,12 +328,12 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
       let auditData: any[] = [];
       let categoriesMap = new Map();
       let locationsMap = new Map();
-      
+
       const [{ data: cats }, { data: locs }] = await Promise.all([
         supabase.from('categories').select('id, nama_kategori'),
         supabase.from('master_lokasi').select('kode_lokasi, nama_lokasi')
       ]);
-      
+
       (cats || []).forEach(c => categoriesMap.set(c.id, c.nama_kategori));
       (locs || []).forEach(l => locationsMap.set(l.kode_lokasi, l.nama_lokasi));
 
@@ -347,10 +343,10 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
           .select('old_values')
           .eq('action', 'DELETE')
           .in('old_values->>kode_barang', missingItemCodes);
-          
+
         auditData = auditLogs || [];
       }
-      
+
       const addLogo = async (doc: jsPDF, x: number, y: number) => {
         return new Promise<void>((resolve) => {
           const img = new Image();
@@ -366,11 +362,11 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
               ctx.fillRect(0, 0, imgWidth, imgHeight);
               ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
               const dataUrl = canvas.toDataURL('image/png', 1.0);
-              
+
               // Sesuaikan ukuran proporsional di PDF (misal tinggi 16)
               const pdfHeight = 16;
               const pdfWidth = (imgWidth / imgHeight) * pdfHeight;
-              
+
               doc.addImage(dataUrl, 'PNG', x, y, pdfWidth, pdfHeight);
             }
             resolve();
@@ -378,14 +374,14 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
           img.onerror = () => {
             resolve(); // Lanjutkan tanpa logo jika file tidak ditemukan
           };
-          img.src = '/logo.png'; // Mengambil gambar asli dari folder public
+          img.src = '/logo-full.png'; // Logo lengkap Waruna Shipyard - Shipping
         });
       };
 
       let currentY = 20;
       const lineSpacing = 8;
       const pageHeight = doc.internal.pageSize.getHeight();
-      
+
       const checkPageBreak = (neededHeight: number) => {
         if (currentY + neededHeight > pageHeight - 20) {
           doc.addPage();
@@ -399,14 +395,14 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
         if (i > 0) {
           doc.addPage();
         }
-        
+
         currentY = 20;
-        
+
         const item = itemsToPrint[i];
-        
+
         await addLogo(doc, 14, 14);
         currentY = 50;
-        
+
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text('BERITA ACARA PEMUSNAHAN BARANG', 105, currentY, { align: 'center' });
@@ -415,18 +411,18 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
         doc.setFont('helvetica', 'normal');
         doc.text(`Nomor Pengajuan: ${selectedRequest.nomor_pengajuan}`, 105, currentY, { align: 'center' });
         currentY += 15;
-        
+
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        
+
         doc.text('Kode Barang', 14, currentY);
         doc.text(`: ${item.kode_barang}`, 60, currentY);
         currentY += lineSpacing;
-        
+
         doc.text('Kategori Barang', 14, currentY);
         let categoryName = (item as any).items?.categories?.nama_kategori;
         let locationName = (item as any).items?.master_lokasi?.nama_lokasi || locationsMap.get(item.kode_lokasi);
-        
+
         const auditLog = auditData.find(log => log.old_values?.kode_barang === item.kode_barang);
         if (auditLog && auditLog.old_values) {
            if (!categoryName && auditLog.old_values.kategori_id) {
@@ -436,48 +432,48 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
                locationName = locationsMap.get(auditLog.old_values.kode_lokasi);
            }
         }
-        
+
         categoryName = categoryName || '-';
         locationName = locationName || item.kode_lokasi || 'Tanpa Lokasi';
-        
+
         doc.text(`: ${categoryName}`, 60, currentY);
         currentY += lineSpacing;
-        
+
         doc.text('Lokasi Barang', 14, currentY);
         doc.text(`: ${locationName}`, 60, currentY);
         currentY += lineSpacing;
-        
+
         doc.text('Nama Barang', 14, currentY);
         doc.text(`: ${item.nama_barang}`, 60, currentY);
         currentY += lineSpacing * 2;
-        
+
         doc.text('Tanggal Pemusnahan', 14, currentY);
-        const tglPemusnahan = selectedRequest.tanggal_approved_l2 
+        const tglPemusnahan = selectedRequest.tanggal_approved_l2
           ? new Date(selectedRequest.tanggal_approved_l2).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
           : '-';
         doc.text(`: ${tglPemusnahan}`, 60, currentY);
         currentY += lineSpacing;
-        
+
         doc.text('Kondisi Pemusnahan', 14, currentY);
         doc.text(`: ${item.kondisi_barang || '-'}`, 60, currentY);
         currentY += lineSpacing;
-        
+
         doc.text('Metode Pemusnahan', 14, currentY);
         doc.text(`: ${selectedRequest.metode_pemusnahan || '-'}`, 60, currentY);
         currentY += lineSpacing * 2;
-        
+
         doc.text('Dokumentasi Barang', 14, currentY);
         doc.text(':', 60, currentY);
-        
+
         currentY += lineSpacing;
-        
+
         // Grab photos directly from item.foto_urls, fallback to joined data
         const photoUrls = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : ((item as any).items?.foto_urls || []);
         if (photoUrls && photoUrls.length > 0) {
           try {
             let photoSize = 40;
             let maxPerRow = 3;
-            
+
             if (photoUrls.length > 8) {
               photoSize = 20;
               maxPerRow = 6;
@@ -488,7 +484,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
 
             const photoGap = 5;
             let currentPhotoX = 65;
-            
+
             currentY -= 5; // adjust for first photo row
 
             for (let i = 0; i < photoUrls.length; i++) {
@@ -518,12 +514,12 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
         // Signatures at the end of the item details
         checkPageBreak(60);
         currentY += 20;
-        
+
         const currentDate = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
         doc.text(`Medan, ${currentDate}`, 14, currentY);
-        
+
         currentY += 20;
-        
+
         doc.setFontSize(9);
         doc.text('Yang Mengajukan', 14, currentY);
         doc.text('Diketahui Auditor,', 62, currentY);
@@ -540,8 +536,10 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
         doc.text(`(${selectedRequest.approved_by_l2 || '..................'})`, 155, currentY, { maxWidth: 40 });
         doc.setFontSize(11);
       }
-      
-      doc.save(`BA_Pemusnahan_${selectedRequest.nomor_pengajuan}.pdf`);
+
+      const fileName = `BA_Pemusnahan_${selectedRequest.nomor_pengajuan}.pdf`;
+      setPdfPreviewFileName(fileName);
+      setPdfPreviewUrl(doc.output('bloburl') as unknown as string);
     } catch (e) {
       showToast('Terjadi kesalahan saat membuat PDF', 'error');
     } finally {
@@ -549,54 +547,51 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
     }
   };
 
-  const filteredRequests = requests.filter(req => 
-    req.nomor_pengajuan.toLowerCase().includes(search.toLowerCase()) || 
+  function closePdfPreview() {
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    setPdfPreviewUrl(null);
+  }
+
+  const filteredRequests = requests.filter(req =>
+    req.nomor_pengajuan.toLowerCase().includes(search.toLowerCase()) ||
     req.diajukan_oleh.toLowerCase().includes(search.toLowerCase())
   );
-
-  if (!isOpen) return null;
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / itemsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div 
-      className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
-    >
-      <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92dvh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-indigo-50/50 shrink-0">
-          <div className="flex items-center space-x-3 text-indigo-700">
-            <div className="p-2 bg-indigo-100 rounded-xl">
-              <ClipboardList size={22} />
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Persetujuan Pemusnahan Barang</h2>
+        <p className="text-brand-purple">Tinjau &amp; proses pengajuan pemusnahan barang rusak/cukup baik yang menunggu persetujuan Anda</p>
+      </div>
+
+      {!isDetailView && (
+        <>
+          {/* Panel Filter */}
+          <div className="bg-white/60 backdrop-blur-xl p-3 rounded-2xl shadow-lg border border-white/50 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={16} />
+              <input
+                type="text"
+                placeholder="Cari nomor pengajuan atau nama pemohon..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm bg-white shadow-sm"
+              />
             </div>
-            <h3 className="text-xl font-bold">Persetujuan Pemusnahan Barang</h3>
+            <button
+              onClick={() => navigate('/approval')}
+              className="sm:ml-auto flex items-center justify-center gap-2 px-4 py-2 bg-brand-purple hover:bg-brand-purple-light text-white rounded-lg text-sm font-semibold shadow-sm transition-colors shrink-0"
+            >
+              <ArrowLeft size={16} /> Kembali ke Approval
+            </button>
           </div>
-          <button 
-            onClick={() => !isSubmitting && onClose()} 
-            className="p-2 text-brand-purple hover:text-brand-purple hover:bg-gray-100 rounded-full transition-colors"
-            disabled={isSubmitting}
-          >
-            <X size={24} />
-          </button>
-        </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-gray-50/30">
-          {!isDetailView ? (
-            <div className="p-6 h-full min-h-0 flex flex-col">
-              <div className="flex justify-between items-center mb-6">
-                <div className="relative w-full max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Cari nomor pengajuan atau nama pemohon..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-brand-purple/20 rounded-xl focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm bg-white shadow-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-auto bg-white rounded-2xl border shadow-sm">
+          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="overflow-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50/80 sticky top-0 backdrop-blur-sm z-10">
                     <tr className="text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
@@ -623,7 +618,7 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
                         </td>
                       </tr>
                     ) : (
-                      filteredRequests.map((req) => (
+                      paginatedRequests.map((req) => (
                         <tr key={req.id} className="hover:bg-indigo-50/30 transition-colors group">
                           <td className="px-6 py-4">
                             <span className="font-semibold text-brand-purple">{req.nomor_pengajuan}</span>
@@ -670,195 +665,258 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
                   </tbody>
                 </table>
               </div>
-            </div>
-          ) : selectedRequest ? (
-            <div className="flex flex-col h-full min-h-0 bg-white">
-              {/* Detail Header */}
-              <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-gray-50/50">
-                <div>
-                  <button
-                    onClick={() => setIsDetailView(false)}
-                    className="flex items-center text-sm text-brand-purple hover:text-indigo-600 transition-colors mb-3"
-                  >
-                    <X size={16} className="mr-1" /> Kembali ke Daftar
-                  </button>
-                  <h4 className="text-xl font-bold text-brand-purple mb-2">Detail Pengajuan: {selectedRequest.nomor_pengajuan}</h4>
-                  <div className="flex flex-wrap gap-4 text-sm text-brand-purple">
-                    <span className="flex items-center"><User size={14} className="mr-1.5 text-brand-purple" /> Pemohon: {selectedRequest.diajukan_oleh}</span>
-                    <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-brand-purple" /> Tanggal: {new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
-                  </div>
-                  <div className="mt-4 p-3 bg-white border rounded-xl shadow-sm">
-                    <span className="text-xs font-semibold text-brand-purple uppercase">Keterangan</span>
-                    <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.keterangan || 'Tidak ada keterangan'}</p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col items-end gap-3">
-                  <span className={cn(
-                    "inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold border shadow-sm",
-                    selectedRequest.status === 'PENDING_AUDITOR' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                    selectedRequest.status === 'PENDING_SPV' ? "bg-blue-50 text-blue-700 border-blue-200" :
-                    selectedRequest.status === 'PENDING_DIREKTUR' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                    selectedRequest.status === 'APPROVED' ? "bg-green-50 text-green-700 border-green-200" :
-                    "bg-red-50 text-red-700 border-red-200"
-                  )}>
-                    {selectedRequest.status === 'PENDING_AUDITOR' ? 'Status: Menunggu Diketahui Auditor' :
-                     selectedRequest.status === 'PENDING_SPV' ? 'Status: Menunggu Persetujuan SPV' :
-                     selectedRequest.status === 'PENDING_DIREKTUR' ? 'Status: Menunggu Persetujuan Direktur' :
-                     selectedRequest.status === 'APPROVED' ? 'Status: Selesai Disetujui' : 'Status: Ditolak'}
-                  </span>
 
-                  {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'PENDING_DIREKTUR') && (
+              {!loading && filteredRequests.length > 0 && (
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm text-brand-purple">
+                      Menampilkan <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredRequests.length)}</span> dari <span className="font-medium">{filteredRequests.length}</span> pengajuan
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-brand-purple">Per halaman:</span>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(1); }}
+                        className="text-sm border border-gray-200 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-brand-purple outline-none"
+                      >
+                        {[10, 20, 50, 100].map(size => (
+                          <option key={size} value={size}>{size}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={downloadPDF}
-                      className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-brand-purple rounded-xl shadow-sm text-sm font-semibold transition-all"
+                      disabled={currentPage === 1}
+                      onClick={() => setPage(p => p - 1)}
+                      className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
                     >
-                      <Download size={16} />
-                      <span>Download Berita Acara</span>
+                      <ChevronLeft size={18} />
                     </button>
-                  )}
-                </div>
-              </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) pageNum = i + 1;
+                        else if (currentPage <= 3) pageNum = i + 1;
+                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                        else pageNum = currentPage - 2 + i;
 
-              {/* Items List */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-white">
-                <h5 className="font-bold text-brand-purple mb-4 flex items-center">
-                  <Package className="mr-2 text-indigo-500" size={18} />
-                  Daftar Barang ({requestItems.length})
-                </h5>
-                
-                {loadingItems ? (
-                  <div className="py-12 text-center">
-                    <Loader2 className="animate-spin mx-auto text-indigo-600 mb-2" size={32} />
-                    <p className="text-brand-purple">Memuat barang...</p>
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setPage(pageNum)}
+                            className={cn(
+                              "w-8 h-8 text-sm font-medium rounded-lg transition-colors",
+                              currentPage === pageNum ? "bg-brand-purple text-white" : "text-brand-purple hover:bg-gray-100"
+                            )}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage(p => p + 1)}
+                      className="p-2 rounded-lg border border-gray-200 bg-white text-brand-purple hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {requestItems.map(item => (
-                      <div key={item.id} className="border border-gray-200 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                        {item.foto_urls && item.foto_urls.length > 0 ? (
-                          <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
-                            <SignedImage bucket="item-photos" path={item.foto_urls[0]} alt={item.nama_barang} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                            <Package className="text-brand-purple" size={24} />
-                          </div>
-                        )}
-                        
-                        <div className="flex-1">
-                          <h6 className="font-bold text-brand-purple text-base">{item.nama_barang}</h6>
-                          <div className="text-sm text-brand-purple font-mono mt-0.5">{item.kode_barang}</div>
-                          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium">
-                            <span className="flex items-center bg-gray-100 text-brand-purple px-2 py-1 rounded-md">
-                              <MapPin size={12} className="mr-1" />
-                              {(item as any).items?.master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi'}
-                            </span>
-                            <span className="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-1 rounded-md">
-                              Kondisi: {item.kondisi_barang || '-'}
-                            </span>
-                          </div>
-                        </div>
+                </div>
+              )}
+          </div>
+        </>
+      )}
 
-                        <div className="flex flex-col items-end gap-2 shrink-0 w-full md:w-auto">
-                          {item.status_item === 'REJECTED' ? (
-                            <div className="flex flex-col items-end text-right">
-                              <div className="bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center mb-1">
-                                <XCircle size={14} className="mr-1.5" />
-                                Item Ditolak
-                              </div>
-                              <div className="text-[11px] text-brand-purple max-w-[200px]">
-                                <span className="font-semibold text-brand-purple block mb-0.5">Oleh: {parseRejectionReason(item.alasan_rejection).rejectedBy} {parseRejectionReason(item.alasan_rejection).role ? `(${parseRejectionReason(item.alasan_rejection).role})` : ''}</span>
-                                "{parseRejectionReason(item.alasan_rejection).alasan}"
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-green-600 font-semibold text-sm flex items-center">
-                              <CheckSquare size={14} className="mr-1" />
-                              Termasuk
-                            </span>
-                          )}
+      {isDetailView && selectedRequest && (
+        <div className="space-y-6">
+          {/* Detail Header */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 p-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div>
+              <button
+                onClick={() => setIsDetailView(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-lg shadow-sm transition-colors mb-3"
+              >
+                <ArrowLeft size={16} /> Kembali ke Daftar
+              </button>
+              <h4 className="text-xl font-bold text-brand-purple mb-2">Detail Pengajuan: {selectedRequest.nomor_pengajuan}</h4>
+              <div className="flex flex-wrap gap-4 text-sm text-brand-purple">
+                <span className="flex items-center"><User size={14} className="mr-1.5 text-brand-purple" /> Pemohon: {selectedRequest.diajukan_oleh}</span>
+                <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-brand-purple" /> Tanggal: {new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
+              </div>
+              <div className="mt-4 p-3 bg-white border rounded-xl shadow-sm">
+                <span className="text-xs font-semibold text-brand-purple uppercase">Keterangan</span>
+                <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.keterangan || 'Tidak ada keterangan'}</p>
+              </div>
+            </div>
 
-                          {/* Reject Item button — cuma di tahap approval (SPV/Direktur), tidak di tahap "diketahui" Auditor */}
-                          {((selectedRequest.status === 'PENDING_SPV' && (profile?.role === 'spv' || profile?.role === 'direktur')) ||
-                            (selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur')) &&
-                           item.status_item !== 'REJECTED' && (
-                            <button
-                              onClick={() => {
-                                setRejectItemModal({ isOpen: true, itemId: item.id, reason: '' });
-                              }}
-                              className="px-3 py-1.5 mt-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 rounded-lg transition-colors"
-                            >
-                              Batalkan Item
-                            </button>
-                          )}
-                        </div>
+            <div className="flex flex-col items-end gap-3">
+              <span className={cn(
+                "inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold border shadow-sm",
+                selectedRequest.status === 'PENDING_AUDITOR' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                selectedRequest.status === 'PENDING_SPV' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                selectedRequest.status === 'PENDING_DIREKTUR' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                selectedRequest.status === 'APPROVED' ? "bg-green-50 text-green-700 border-green-200" :
+                "bg-red-50 text-red-700 border-red-200"
+              )}>
+                {selectedRequest.status === 'PENDING_AUDITOR' ? 'Status: Menunggu Diketahui Auditor' :
+                 selectedRequest.status === 'PENDING_SPV' ? 'Status: Menunggu Persetujuan SPV' :
+                 selectedRequest.status === 'PENDING_DIREKTUR' ? 'Status: Menunggu Persetujuan Direktur' :
+                 selectedRequest.status === 'APPROVED' ? 'Status: Selesai Disetujui' : 'Status: Ditolak'}
+              </span>
+
+              {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'PENDING_DIREKTUR') && (
+                <button
+                  onClick={generatePDFPreview}
+                  disabled={isSubmitting}
+                  className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-brand-purple rounded-xl shadow-sm text-sm font-semibold transition-all disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
+                  <span>Preview Berita Acara (PDF)</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Items List */}
+          <div className="bg-white border rounded-2xl p-5 shadow-sm">
+            <h5 className="font-bold text-brand-purple mb-4 flex items-center">
+              <Package className="mr-2 text-indigo-500" size={18} />
+              Daftar Barang ({requestItems.length})
+            </h5>
+
+            {loadingItems ? (
+              <div className="py-12 text-center">
+                <Loader2 className="animate-spin mx-auto text-indigo-600 mb-2" size={32} />
+                <p className="text-brand-purple">Memuat barang...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {requestItems.map(item => (
+                  <div key={item.id} className="border border-gray-200 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center bg-white shadow-sm hover:shadow-md transition-shadow">
+                    {item.foto_urls && item.foto_urls.length > 0 ? (
+                      <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                        <SignedImage bucket="item-photos" path={item.foto_urls[0]} alt={item.nama_barang} className="w-full h-full object-cover" />
                       </div>
-                    ))}
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                        <Package className="text-brand-purple" size={24} />
+                      </div>
+                    )}
+
+                    <div className="flex-1">
+                      <h6 className="font-bold text-brand-purple text-base">{item.nama_barang}</h6>
+                      <div className="text-sm text-brand-purple font-mono mt-0.5">{item.kode_barang}</div>
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium">
+                        <span className="flex items-center bg-gray-100 text-brand-purple px-2 py-1 rounded-md">
+                          <MapPin size={12} className="mr-1" />
+                          {(item as any).items?.master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi'}
+                        </span>
+                        <span className="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-1 rounded-md">
+                          Kondisi: {item.kondisi_barang || '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0 w-full md:w-auto">
+                      {item.status_item === 'REJECTED' ? (
+                        <div className="flex flex-col items-end text-right">
+                          <div className="bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center mb-1">
+                            <XCircle size={14} className="mr-1.5" />
+                            Item Ditolak
+                          </div>
+                          <div className="text-[11px] text-brand-purple max-w-[200px]">
+                            <span className="font-semibold text-brand-purple block mb-0.5">Oleh: {parseRejectionReason(item.alasan_rejection).rejectedBy} {parseRejectionReason(item.alasan_rejection).role ? `(${parseRejectionReason(item.alasan_rejection).role})` : ''}</span>
+                            "{parseRejectionReason(item.alasan_rejection).alasan}"
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-green-600 font-semibold text-sm flex items-center">
+                          <CheckSquare size={14} className="mr-1" />
+                          Termasuk
+                        </span>
+                      )}
+
+                      {/* Reject Item button — cuma di tahap approval (SPV/Direktur), tidak di tahap "diketahui" Auditor */}
+                      {((selectedRequest.status === 'PENDING_SPV' && (profile?.role === 'spv' || profile?.role === 'direktur')) ||
+                        (selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur')) &&
+                       item.status_item !== 'REJECTED' && (
+                        <button
+                          onClick={() => {
+                            setRejectItemModal({ isOpen: true, itemId: item.id, reason: '' });
+                          }}
+                          className="px-3 py-1.5 mt-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 rounded-lg transition-colors"
+                        >
+                          Batalkan Item
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
+            )}
+          </div>
 
-              {/* Action Footer */}
-              <div className="shrink-0 p-6 border-t border-gray-100 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-brand-purple">
-                  {selectedRequest.status === 'PENDING_AUDITOR' && 'Perlu ditandai diketahui oleh Auditor.'}
-                  {selectedRequest.status === 'PENDING_SPV' && 'Persetujuan SPV diperlukan.'}
-                  {selectedRequest.status === 'PENDING_DIREKTUR' && 'Persetujuan Direktur (Final) diperlukan.'}
-                  {selectedRequest.status === 'APPROVED' && 'Pengajuan telah selesai.'}
-                  {selectedRequest.status === 'REJECTED' && 'Pengajuan telah ditolak.'}
-                </div>
-
-                <div className="flex items-center space-x-3 w-full sm:w-auto">
-                  {((selectedRequest.status === 'PENDING_SPV' && (profile?.role === 'spv' || profile?.role === 'direktur')) ||
-                    (selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur')) && (
-                    <button
-                      onClick={() => setRejectFullModal({ isOpen: true, reason: '' })}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
-                    >
-                      Tolak Semua
-                    </button>
-                  )}
-
-                  {selectedRequest.status === 'PENDING_AUDITOR' && profile?.role === 'auditor' && (
-                    <button
-                      onClick={() => advanceStage('AUDITOR')}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
-                    >
-                      {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
-                      <span>Tandai Diketahui</span>
-                    </button>
-                  )}
-
-                  {selectedRequest.status === 'PENDING_SPV' && profile?.role === 'spv' && (
-                    <button
-                      onClick={() => advanceStage('SPV')}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
-                    >
-                      {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
-                      <span>Setujui (SPV)</span>
-                    </button>
-                  )}
-
-                  {selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur' && (
-                    <button
-                      onClick={() => advanceStage('DIREKTUR')}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
-                    >
-                      {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
-                      <span>Setujui Final (Direktur)</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+          {/* Action Footer */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-lg border border-white/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-brand-purple">
+              {selectedRequest.status === 'PENDING_AUDITOR' && 'Perlu ditandai diketahui oleh Auditor.'}
+              {selectedRequest.status === 'PENDING_SPV' && 'Persetujuan SPV diperlukan.'}
+              {selectedRequest.status === 'PENDING_DIREKTUR' && 'Persetujuan Direktur (Final) diperlukan.'}
+              {selectedRequest.status === 'APPROVED' && 'Pengajuan telah selesai.'}
+              {selectedRequest.status === 'REJECTED' && 'Pengajuan telah ditolak.'}
             </div>
-          ) : null}
+
+            <div className="flex items-center space-x-3 w-full sm:w-auto">
+              {((selectedRequest.status === 'PENDING_SPV' && (profile?.role === 'spv' || profile?.role === 'direktur')) ||
+                (selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur')) && (
+                <button
+                  onClick={() => setRejectFullModal({ isOpen: true, reason: '' })}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Tolak Semua
+                </button>
+              )}
+
+              {selectedRequest.status === 'PENDING_AUDITOR' && profile?.role === 'auditor' && (
+                <button
+                  onClick={() => advanceStage('AUDITOR')}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
+                  <span>Tandai Diketahui</span>
+                </button>
+              )}
+
+              {selectedRequest.status === 'PENDING_SPV' && profile?.role === 'spv' && (
+                <button
+                  onClick={() => advanceStage('SPV')}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
+                  <span>Setujui (SPV)</span>
+                </button>
+              )}
+
+              {selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur' && (
+                <button
+                  onClick={() => advanceStage('DIREKTUR')}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
+                  <span>Setujui Final (Direktur)</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Reject Item Modal */}
       {rejectItemModal.isOpen && (
@@ -946,6 +1004,39 @@ export function DisposalApprovalModal({ isOpen, onClose, profile }: DisposalAppr
                 Konfirmasi Tolak Semua
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {pdfPreviewUrl && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-purple/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={closePdfPreview}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[92dvh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h3 className="font-bold text-brand-purple">Preview Berita Acara Pemusnahan</h3>
+              <div className="flex items-center gap-2">
+                <a
+                  href={pdfPreviewUrl}
+                  download={pdfPreviewFileName}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-brand-purple bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                >
+                  <Download size={15} /> Unduh
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const win = window.open(pdfPreviewUrl, '_blank');
+                    win?.addEventListener('load', () => win.print());
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-lg transition-colors"
+                >
+                  <Printer size={15} /> Cetak
+                </button>
+                <button onClick={closePdfPreview} className="p-2 text-brand-purple hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <iframe src={pdfPreviewUrl} title="Preview PDF" className="flex-1 w-full" />
           </div>
         </div>
       )}

@@ -16,6 +16,9 @@ import TakeItemHistory from './components/Inventory/TakeItemHistory';
 import LogItemChange from './components/Inventory/LogItemChange';
 import StockOutHistory from './components/Inventory/StockOutHistory';
 import Approval from './components/Inventory/Approval';
+import { GudangBerkasPage } from './components/Inventory/GudangBerkasPage';
+import { DisposalApprovalPage } from './components/Inventory/DisposalApprovalPage';
+import { SPKApprovalPage } from './components/Inventory/SPKApprovalPage';
 import ManageUsers from './components/Admin/ManageUsers';
 import { ToastProvider } from './components/UI/Toast';
 import { supabase } from './lib/supabase';
@@ -24,12 +27,14 @@ interface LockedIdentity {
   email: string;
   fullName?: string;
   wasRequester: boolean;
+  wasGudangBerkasStaff: boolean;
 }
 
 export default function App() {
   const { user, profile, loading } = useAuth();
   const [historySearch, setHistorySearch] = useState('');
   const isRequester = profile?.role === 'requester';
+  const isGudangBerkasStaff = profile?.role === 'gudang_berkas';
 
   // Selagi masih authenticated, ref ini selalu nyimpen identitas terbaru —
   // dipakai begitu idle-timeout kepicu (sesi udah di-signOut beneran duluan),
@@ -37,8 +42,8 @@ export default function App() {
   // `user`/`profile` dari useAuth() udah null saat itu.
   const identityRef = useRef<LockedIdentity | null>(null);
   useEffect(() => {
-    identityRef.current = user ? { email: user.email || '', fullName: profile?.full_name, wasRequester: isRequester } : null;
-  }, [user, profile, isRequester]);
+    identityRef.current = user ? { email: user.email || '', fullName: profile?.full_name, wasRequester: isRequester, wasGudangBerkasStaff: isGudangBerkasStaff } : null;
+  }, [user, profile, isRequester, isGudangBerkasStaff]);
 
   const [isLocked, setIsLocked] = useState(false);
   const [lockedIdentity, setLockedIdentity] = useState<LockedIdentity | null>(null);
@@ -89,6 +94,7 @@ export default function App() {
   }
 
   const effectiveIsRequester = isLocked ? !!lockedIdentity?.wasRequester : isRequester;
+  const effectiveIsGudangBerkasStaff = isLocked ? !!lockedIdentity?.wasGudangBerkasStaff : isGudangBerkasStaff;
 
   return (
     <ToastProvider>
@@ -103,10 +109,16 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/office-items" element={<OfficeItemsRequester />} />
             <Route path="/manage-users" element={<ManageUsers />} />
-            {!effectiveIsRequester && (
+            {effectiveIsGudangBerkasStaff && (
+              <Route path="/gudang-berkas" element={<GudangBerkasPage profile={profile} />} />
+            )}
+            {!effectiveIsRequester && !effectiveIsGudangBerkasStaff && (
               <>
                 <Route path="/barang" element={<MasterBarang setHistorySearch={setHistorySearch} />} />
                 <Route path="/approval" element={<Approval />} />
+                <Route path="/approval/pemusnahan" element={<DisposalApprovalPage profile={profile} />} />
+                <Route path="/approval/spk" element={<SPKApprovalPage profile={profile} />} />
+                <Route path="/gudang-berkas" element={<GudangBerkasPage profile={profile} />} />
                 <Route path="/lokasi" element={<MasterLokasi setHistorySearch={setHistorySearch} />} />
                 <Route path="/kategori" element={<MasterKategori />} />
                 <Route path="/kepemilikan" element={<MasterKepemilikan />} />
@@ -115,7 +127,7 @@ export default function App() {
                 <Route path="/stock-out-history" element={<StockOutHistory setHistorySearch={setHistorySearch} />} />
               </>
             )}
-            <Route path="*" element={<Navigate to={effectiveIsRequester ? "/office-items" : "/dashboard"} replace />} />
+            <Route path="*" element={<Navigate to={effectiveIsRequester ? "/office-items" : effectiveIsGudangBerkasStaff ? "/gudang-berkas" : "/dashboard"} replace />} />
           </Routes>
         </Layout>
       </div>

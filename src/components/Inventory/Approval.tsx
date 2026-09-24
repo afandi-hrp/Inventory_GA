@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { ClipboardList, FileWarning, ChevronRight } from 'lucide-react';
-import { DisposalApprovalModal } from './DisposalApprovalModal';
-import { SPKApprovalModal } from './SPKApprovalModal';
+import { ClipboardList, FileWarning, ChevronRight, Warehouse } from 'lucide-react';
 
 export default function Approval() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [pendingDisposalCount, setPendingDisposalCount] = useState(0);
   const [pendingSPKCount, setPendingSPKCount] = useState(0);
-  const [isDisposalModalOpen, setIsDisposalModalOpen] = useState(false);
-  const [isSPKModalOpen, setIsSPKModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPendingApprovalCounts();
@@ -68,8 +66,26 @@ export default function Approval() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {profile?.role === 'admin' && (
+          <button
+            onClick={() => navigate('/gudang-berkas')}
+            className="text-left bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 hover:shadow-xl hover:border-orange-200 transition-all group"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-3 bg-orange-100 text-orange-700 rounded-2xl">
+                <Warehouse size={24} />
+              </div>
+            </div>
+            <h3 className="mt-4 text-lg font-bold text-brand-purple">Form Akses Gudang Berkas</h3>
+            <p className="mt-1 text-sm text-brand-purple/70">Input permohonan kunjungan gudang berkas &amp; verifikasi logbook dokumen yang dicari/diambil.</p>
+            <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-purple text-white text-sm font-semibold shadow-sm group-hover:bg-brand-purple-light transition-colors">
+              Buka daftar &amp; logbook <ChevronRight size={16} />
+            </span>
+          </button>
+        )}
+
         <button
-          onClick={() => setIsDisposalModalOpen(true)}
+          onClick={() => navigate('/approval/pemusnahan')}
           className="text-left bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 hover:shadow-xl hover:border-indigo-200 transition-all group"
         >
           <div className="flex items-start justify-between">
@@ -90,7 +106,7 @@ export default function Approval() {
         </button>
 
         <button
-          onClick={() => setIsSPKModalOpen(true)}
+          onClick={() => navigate('/approval/spk')}
           className="text-left bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 hover:shadow-xl hover:border-emerald-200 transition-all group"
         >
           <div className="flex items-start justify-between">
@@ -110,23 +126,6 @@ export default function Approval() {
           </span>
         </button>
       </div>
-
-      <DisposalApprovalModal
-        isOpen={isDisposalModalOpen}
-        onClose={() => {
-          setIsDisposalModalOpen(false);
-          fetchPendingApprovalCounts();
-        }}
-        profile={profile}
-      />
-      <SPKApprovalModal
-        isOpen={isSPKModalOpen}
-        onClose={() => {
-          setIsSPKModalOpen(false);
-          fetchPendingApprovalCounts();
-        }}
-        profile={profile}
-      />
     </div>
   );
 }

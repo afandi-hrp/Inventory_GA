@@ -303,7 +303,7 @@ export default function OfficeItemsRequester() {
             resolve();
           };
           img.onerror = () => resolve();
-          img.src = '/logo.png';
+          img.src = '/logo-full.png';
         });
       };
 

@@ -6,7 +6,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, MapPin, LogOut, Menu, X,
   Bell, User as UserIcon, ChevronRight, ChevronLeft, ChevronDown, History, ClipboardList, Archive,
-  Settings, Users, Layers, UserCheck, ShoppingCart, CheckSquare, Sunrise, Sun, Sunset, Moon
+  Settings, Users, Layers, UserCheck, ShoppingCart, CheckSquare, Sunrise, Sun, Sunset, Moon, Warehouse
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import SignedImage from '../UI/SignedImage';
@@ -56,7 +56,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
   useEffect(() => {
     async function fetchPendingApprovalCount() {
       const role = profile?.role;
-      if (!role || role === 'requester') return;
+      if (!role || role === 'requester' || role === 'gudang_berkas') return;
 
       const disposalStageByRole: Record<string, string> = {
         auditor: 'PENDING_AUDITOR',
@@ -96,6 +96,10 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
   const menuItems: MenuEntry[] = profile?.role === 'requester' ? [
     { type: 'item', id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { type: 'item', id: 'office-items', label: 'Barang Reusable', icon: <ShoppingCart size={20} /> },
+    { type: 'item', id: 'manage-users', label: 'Akun Saya', icon: <Settings size={20} /> },
+  ] : profile?.role === 'gudang_berkas' ? [
+    { type: 'item', id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { type: 'item', id: 'gudang-berkas', label: 'Form Akses Gudang Berkas', icon: <Warehouse size={20} /> },
     { type: 'item', id: 'manage-users', label: 'Akun Saya', icon: <Settings size={20} /> },
   ] : [
     { type: 'item', id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },

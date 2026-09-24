@@ -6,10 +6,10 @@ import { useModalBackButton } from '../../hooks/useModalBackButton';
 import {
   Package, MapPin, Users, TrendingUp, Clock, Layers, ArrowDownRight, ArrowUpRight, BarChart2,
   ShoppingCart, ClipboardList, ArrowRight, X, Hash, Info, Calendar, Image as ImageIcon, UserCheck,
-  AlertTriangle
+  AlertTriangle, Warehouse, Plus
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Item } from '../../types';
+import { Item, GudangBerkasRequest } from '../../types';
 import SignedImage from '../UI/SignedImage';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -21,6 +21,7 @@ function cn(...inputs: ClassValue[]) {
 export default function DashboardHome() {
   const { user, profile } = useAuth();
   const isRequester = profile?.role === 'requester';
+  const isGudangBerkasStaff = profile?.role === 'gudang_berkas';
   const [stats, setStats] = useState({
     totalItems: 0,
     totalLocations: 0,
@@ -45,8 +46,39 @@ export default function DashboardHome() {
   const [kepemilikanData, setKepemilikanData] = useState<any[]>([]);
   const [lokasiData, setLokasiData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myGudangBerkasStats, setMyGudangBerkasStats] = useState({ total: 0, diajukan: 0, selesai: 0 });
+  const [myRecentGudangBerkasRequests, setMyRecentGudangBerkasRequests] = useState<GudangBerkasRequest[]>([]);
+
+  // Role gudang_berkas gak boleh lihat data inventaris perusahaan sama sekali
+  // (Item Master, kategori, lokasi, dst) — jadi dashboard-nya diganti total,
+  // gak numpang di query besar buat role lain di bawah ini.
+  useEffect(() => {
+    if (!isGudangBerkasStaff || !user) return;
+    async function fetchMyGudangBerkasStats() {
+      try {
+        const { data, error } = await supabase
+          .from('gudang_berkas_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        const rows = data || [];
+        setMyGudangBerkasStats({
+          total: rows.length,
+          diajukan: rows.filter(r => r.status === 'DIAJUKAN').length,
+          selesai: rows.filter(r => r.status === 'SELESAI').length,
+        });
+        setMyRecentGudangBerkasRequests(rows.slice(0, 10));
+      } catch (err) {
+        console.error('Error fetching my gudang berkas stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMyGudangBerkasStats();
+  }, [isGudangBerkasStaff, user]);
 
   useEffect(() => {
+    if (isGudangBerkasStaff) return;
     async function fetchDashboardData() {
       try {
         const sixMonthsAgo = new Date();
@@ -207,7 +239,7 @@ export default function DashboardHome() {
   useEffect(() => {
     async function fetchPendingApprovalCounts() {
       const role = profile?.role;
-      if (!role || isRequester) return;
+      if (!role || isRequester || isGudangBerkasStaff) return;
 
       // Setiap role cuma "punya" satu tahap yang bisa dia proses di masing-masing
       // alur — hitung berapa pengajuan yang lagi nunggu tahap itu.
@@ -253,6 +285,88 @@ export default function DashboardHome() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
+
+  // Dashboard terpisah total untuk role gudang_berkas — cuma nunjukin ringkasan
+  // form miliknya sendiri, gak numpang tampilan/statistik inventaris perusahaan
+  // sama sekali (role ini memang gak boleh lihat data itu).
+  if (isGudangBerkasStaff) {
+    return (
+      <div className="space-y-4 animate-in fade-in duration-500">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">
+            Dashboard Form Akses Gudang Berkas
+          </h1>
+          <p className="text-brand-purple mt-1">Ringkasan form permohonan akses gudang berkas yang Anda ajukan</p>
+        </div>
+
+        <Link
+          to="/gudang-berkas"
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-orange-600 to-orange-500 p-6 rounded-3xl shadow-lg shadow-orange-500/20 text-white hover:shadow-xl transition-all group"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <Warehouse size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">Mau minta izin akses gudang berkas?</h3>
+              <p className="text-sm text-orange-50">Buat form permohonan baru atau lihat form yang sudah Anda ajukan</p>
+            </div>
+          </div>
+          <span className="flex items-center space-x-2 bg-white/20 group-hover:bg-white/30 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0">
+            <Plus size={16} />
+            <span>Buat / Lihat Form</span>
+          </span>
+        </Link>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard title="Total Form Diajukan" value={myGudangBerkasStats.total} icon={<Warehouse className="text-orange-600" size={22} />} color="bg-orange-500/10 border border-orange-500/20" />
+          <StatCard title="Menunggu Verifikasi" value={myGudangBerkasStats.diajukan} subtitle="Status: Diajukan" icon={<Clock className="text-amber-600" size={22} />} color="bg-amber-500/10 border border-amber-500/20" />
+          <StatCard title="Selesai Diverifikasi" value={myGudangBerkasStats.selesai} icon={<ClipboardList className="text-emerald-600" size={22} />} color="bg-emerald-500/10 border border-emerald-500/20" />
+        </div>
+
+        <div className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 flex flex-col">
+          <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0 text-brand-purple">
+            <Clock className="mr-2 text-blue-600" size={20} />
+            Form Terbaru Saya
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left relative">
+              <thead className="bg-gray-50/50">
+                <tr className="text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+                  <th className="py-3 px-4 rounded-tl-lg">No. Kunjungan</th>
+                  <th className="py-3 px-4">Tanggal</th>
+                  <th className="py-3 px-4">Lokasi Gudang</th>
+                  <th className="py-3 px-4 rounded-tr-lg">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100/50">
+                {myRecentGudangBerkasRequests.map((req) => (
+                  <tr key={req.id} className="text-sm hover:bg-white/50 transition-colors">
+                    <td className="py-3 px-4 font-semibold text-brand-purple">{req.no_kunjungan}</td>
+                    <td className="py-3 px-4 text-brand-purple">{new Date(req.tanggal_kunjungan).toLocaleDateString('id-ID')}</td>
+                    <td className="py-3 px-4 text-brand-purple">{req.lokasi_gudang || '-'}</td>
+                    <td className="py-3 px-4">
+                      <span className={cn(
+                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border",
+                        req.status === 'SELESAI' ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      )}>
+                        {req.status === 'SELESAI' ? 'Selesai Diverifikasi' : 'Diajukan'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {myRecentGudangBerkasRequests.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-brand-purple italic">Belum ada form yang Anda ajukan</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   }

@@ -32,7 +32,7 @@ export default function ManageUsers() {
     email: '',
     password: '',
     full_name: '',
-    role: 'user' as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester'
+    role: 'user' as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' | 'gudang_berkas'
   });
 
   // Profile Edit State
@@ -477,7 +477,7 @@ export default function ManageUsers() {
                 <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Role</label>
                 <select
                   value={newUserForm.role}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' })}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' | 'gudang_berkas' })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
                 >
                   <option value="user">User (View Only)</option>
@@ -486,6 +486,7 @@ export default function ManageUsers() {
                   <option value="spv">SPV (Level 1 Approval)</option>
                   <option value="direktur">Direktur (Level 2 Approval)</option>
                   <option value="requester">Requester (Ambil Barang Reusable)</option>
+                  <option value="gudang_berkas">Pemohon Akses Gudang Berkas (Form Akses Gudang Berkas)</option>
                 </select>
               </div>
 

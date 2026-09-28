@@ -147,3 +147,98 @@ option {
     -webkit-backdrop-filter: blur(16px);
   }
 }
+
+/* ── Animasi halaman login "Gudang Hidup" (src/components/Auth/LoginScene.tsx) ──
+   Tiap class ls-* punya state AKHIR sebagai style dasarnya; keyframe cuma
+   mendefinisikan state awal (fill-mode both). Jadi kalau animasi dimatikan
+   (prefers-reduced-motion), adegan langsung tampil dalam kondisi final. */
+.ls-grid {
+  background-image:
+    linear-gradient(to right, rgb(90 48 90 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(90 48 90 / 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at 65% 55%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at 65% 55%, #000 30%, transparent 80%);
+  animation: ls-wipe 0.9s ease-out both;
+}
+.ls-fade { animation: ls-fade-in 0.6s ease-out both; }
+.ls-grow {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ls-grow 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+.ls-drop { animation: ls-drop 0.5s cubic-bezier(0.3, 1.45, 0.5, 1) both; }
+.ls-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ls-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.ls-sign {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: ls-sign 0.55s cubic-bezier(0.3, 1.2, 0.5, 1) both;
+}
+.ls-person { animation: ls-walkin 0.6s ease-out both; }
+.ls-breathe {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ls-breathe 3.2s ease-in-out infinite alternate;
+}
+/* transform-origin lengan & kerucut sinar di-set inline (koordinat viewBox) */
+.ls-arm { transform-box: view-box; animation: ls-arm 0.35s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.ls-cone { transform-box: view-box; opacity: 0; animation: ls-cone 0.8s ease-in-out both; }
+.ls-cone-loop { transform-box: view-box; opacity: 0; animation: ls-cone-loop 6s ease-in-out infinite both; }
+.ls-scan { opacity: 0; animation: ls-sweep 0.8s ease-in-out both; }
+.ls-scan-loop { opacity: 0; animation: ls-sweep-loop 6s ease-in-out infinite both; }
+.ls-belt-box { animation: ls-belt 12s linear infinite; }
+.ls-float {
+  opacity: 0.14;
+  animation: ls-fade-in 0.8s ease-out both, ls-bob 7s ease-in-out infinite alternate;
+}
+
+@keyframes ls-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes ls-fade-in { from { opacity: 0; } }
+@keyframes ls-grow { from { transform: scaleY(0); opacity: 0; } }
+@keyframes ls-drop { from { transform: translateY(-70px); opacity: 0; } }
+@keyframes ls-pop { from { transform: scale(0); opacity: 0; } }
+@keyframes ls-sweep {
+  0% { transform: translateX(90px); opacity: 0; }
+  12%, 88% { opacity: 1; }
+  100% { transform: translateX(550px); opacity: 0; }
+}
+@keyframes ls-sweep-loop {
+  0% { transform: translateX(90px); opacity: 0; }
+  2%, 18% { opacity: 1; }
+  20% { transform: translateX(550px); opacity: 0; }
+  100% { transform: translateX(550px); opacity: 0; }
+}
+@keyframes ls-sign {
+  from { transform: scaleY(0.1); opacity: 0; }
+  60% { transform: scaleY(1.04); opacity: 1; }
+}
+@keyframes ls-walkin { from { transform: translateX(-40px); opacity: 0; } }
+@keyframes ls-breathe { to { transform: translateY(-2px); } }
+@keyframes ls-arm { from { transform: rotate(75deg); } }
+/* --ls-k = skala kerucut sinar supaya ujungnya sampai x=550 (dihitung di LoginScene.tsx) */
+@keyframes ls-cone {
+  0% { transform: scaleX(1); opacity: 0; }
+  12%, 88% { opacity: 1; }
+  100% { transform: scaleX(var(--ls-k)); opacity: 0; }
+}
+@keyframes ls-cone-loop {
+  0% { transform: scaleX(1); opacity: 0; }
+  2%, 18% { opacity: 1; }
+  20% { transform: scaleX(var(--ls-k)); opacity: 0; }
+  100% { transform: scaleX(var(--ls-k)); opacity: 0; }
+}
+@keyframes ls-belt { from { transform: translateX(-10px); } to { transform: translateX(630px); } }
+@keyframes ls-bob {
+  from { transform: translateY(0) rotate(-4deg); }
+  to { transform: translateY(-16px) rotate(4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-grid, .ls-fade, .ls-grow, .ls-drop, .ls-pop, .ls-sign,
+  .ls-person, .ls-breathe, .ls-arm, .ls-cone, .ls-cone-loop,
+  .ls-scan, .ls-scan-loop, .ls-belt-box, .ls-float { animation: none !important; }
+}

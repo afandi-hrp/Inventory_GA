@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../hooks/useSettings';
+import LoginScene from './LoginScene';
 import { Mail, Lock, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -18,9 +19,6 @@ const generateCaptcha = () => {
   return result;
 };
 
-// Breakpoint md Tailwind (768px) — dipakai buat pilih video mana yang diputar.
-const MOBILE_BREAKPOINT = 768;
-
 export default function Login() {
   const { settings, loading: settingsLoading } = useSettings();
   const [email, setEmail] = useState('');
@@ -30,30 +28,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false
-  );
-
-  // Kartu login baru fade-in tepat di detik ke-8 video motion logo (dicek
-  // langsung dari waktu putar videonya, bukan tebakan pakai timer) — video
-  // sendiri tetap loop terus-menerus dari awal, dan kartunya tidak pernah
-  // disembunyikan lagi begitu sudah muncul. Karena ini state React biasa,
-  // semuanya otomatis terulang dari awal tiap kali halaman dibuka/di-refresh.
-  const REVEAL_AT_SECOND = 8;
+  // Kartu login baru fade-in begitu intro adegan gudang (LoginScene) selesai,
+  // lalu tidak pernah disembunyikan lagi. Karena ini state React biasa, intro
+  // penuh otomatis terulang dari awal tiap kali halaman dibuka/di-refresh.
   const [mounted, setMounted] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const handleVideoTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    if (!mounted && e.currentTarget.currentTime >= REVEAL_AT_SECOND) {
-      setMounted(true);
-    }
-  };
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     setCaptchaText(generateCaptcha());
@@ -119,20 +97,10 @@ export default function Login() {
 
   return (
     <div className="min-h-[100dvh] relative overflow-hidden bg-gradient-to-br from-brand-cream to-brand-coral">
-      {/* Video motion logo — overlay latar penuh, loop terus-menerus, dan
-          tetap di lapisan paling belakang (z-0) supaya tidak pernah
-          menutupi/menyembunyikan kartu login yang ada di atasnya. */}
-      <video
-        ref={videoRef}
-        key={isMobile ? 'mobile' : 'desktop'}
-        src={isMobile ? '/motion-logo-mobile.mp4' : '/motion-logo-desktop.mp4'}
-        autoPlay
-        muted
-        loop
-        playsInline
-        onTimeUpdate={handleVideoTimeUpdate}
-        className="absolute inset-0 z-0 w-full h-full object-cover"
-      />
+      {/* Adegan gudang animasi — lapisan paling belakang (z-0) supaya tidak
+          pernah menutupi kartu login. Di mobile diredupkan begitu kartu
+          muncul karena posisinya bertumpuk di tengah. */}
+      <LoginScene onIntroDone={() => setMounted(true)} dimmed={mounted} />
 
       {/* Login Card — satu-satunya elemen yang di-fade-in (muncul dari
           "tenggelam": geser naik + membesar tipis + memudar masuk), sekali,

@@ -1,6 +1,9 @@
 import { supabase } from './supabase';
 
-const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+// Link foto/dokumen yang di-copy/dibagikan bisa dibuka siapa saja tanpa login
+// sampai kedaluwarsa — dibuat pendek. Aman karena signed URL selalu dibuat
+// baru tiap gambar/galeri dibuka (tidak di-cache lama).
+const SIGNED_URL_TTL_SECONDS = 10 * 60; // 10 menit
 
 /**
  * Storage columns historically store the full "public" object URL

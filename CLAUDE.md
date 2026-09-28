@@ -181,3 +181,12 @@ Layout global (`Layout.tsx`):
 - Setelah user bilang "silahkan eksekusi"/"oke lae, lakukan" — baru jalan, dan **selalu tutup dengan `npx tsc --noEmit -p tsconfig.json` + `npx vite build`** sebelum lapor selesai (project ini gak ada CI, jadi ini gate kualitas satu-satunya).
 - Perubahan SQL/RLS ke Supabase: **paste SQL lengkap di chat** (bukan cuma rujukan file), user jalanin manual di SQL Editor (gak ada koneksi Supabase MCP yang authenticated), minta user paste balik hasil verifikasi query.
 - User cukup sering kasih feedback visual lewat screenshot + minta revisi kecil (warna, margin, posisi) — biasanya butuh 1-3 putaran iterasi sebelum pas, itu normal buat project ini.
+
+## Keamanan (audit 2026-09-28)
+
+- Prod: `https://inventory.waruna-group.co.id` (Docker di belakang Cloudflare), Supabase **self-hosted** di `https://supabase.waruna-group.co.id` (juga di belakang Cloudflare). Signup publik mati. Pengunjung anonim terverifikasi tidak bisa baca tabel/bucket apa pun (selain `app_settings`).
+- SQL perbaikan RLS/storage dikasih di chat dalam 3 bagian (Bagian 1 = tutup celah tulis + helper `public.app_role()`, Bagian 2 = batasi akses baca per role, Bagian 3 = policy upload avatar). **Cek live `pg_policies` dulu** sebelum asumsi bagian mana yang sudah dijalankan user.
+- `DELETE /api/inventory/delete-item/:itemId` sekarang **wajib** `?type=disposal|spk&requestId=...`; server cek pengajuan `APPROVED`, item-nya `status_item = APPROVED` (dicocokkan via `kode_barang` karena `item_id` sudah di-null-kan klien sebelum call), dan role = approver final (direktur untuk disposal, spv untuk SPK).
+- `useAuth` TIDAK lagi bikin profil kalau hilang (dulu bikin role `admin`!) — sekarang logout paksa + pesan di Login via `sessionStorage['auth_notice']`.
+- Signed URL foto/dokumen TTL 10 menit (dibuat ulang tiap gambar dibuka, jangan di-cache lama).
+- File yang dulu di `public/` tapi gak boleh ikut ter-deploy dipindah ke `_arsip_public/`.

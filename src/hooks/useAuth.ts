@@ -4,6 +4,9 @@ import { User } from '@supabase/supabase-js';
 import { Profile } from '../types';
 import { IDLE_TIMEOUT_MS, LAST_ACTIVITY_KEY, markActivity } from './useIdleTimeout';
 
+// Pesan untuk halaman Login setelah logout paksa (dibaca & dihapus oleh Login.tsx).
+export const AUTH_NOTICE_KEY = 'auth_notice';
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -49,7 +52,7 @@ export function useAuth() {
 
       currentUserIdRef.current = session?.user?.id ?? null;
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id, session.user);
+      if (session?.user) fetchProfile(session.user.id);
       else setLoading(false);
     }).catch(err => {
       console.warn('Unexpected session error:', err);
@@ -71,7 +74,7 @@ export function useAuth() {
 
       currentUserIdRef.current = newUserId;
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id, session.user);
+      if (session?.user) fetchProfile(session.user.id);
       else {
         setProfile(null);
         setLoading(false);
@@ -81,7 +84,7 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchProfile(userId: string, currentUser?: User | null) {
+  async function fetchProfile(userId: string) {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -91,19 +94,20 @@ export function useAuth() {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          const { data: newProfile, error: insertError } = await supabase
-            .from('profiles')
-            .insert([{ 
-              id: userId, 
-              role: 'admin', 
-              full_name: (currentUser || user)?.email?.split('@')[0] || 'User' 
-            }])
-            .select()
-            .single();
-          
-          if (insertError) throw insertError;
-          setProfile(newProfile);
+          // Akun login tapi tidak punya profil (seharusnya selalu dibuat oleh
+          // trigger handle_new_user saat admin membuat user). JANGAN bikin
+          // profil dari sini — versi lama otomatis bikin profil role 'admin',
+          // artinya akun tanpa profil langsung jadi admin. Keluarkan saja.
+          console.warn('Profil tidak ditemukan untuk akun ini - logout paksa.');
+          try {
+            sessionStorage.setItem(AUTH_NOTICE_KEY, 'Akun Anda belum terdaftar di aplikasi. Hubungi admin.');
+          } catch {
+            // sessionStorage gak tersedia - lewati pesannya, logout tetap jalan
+          }
+          await supabase.auth.signOut();
+          setProfile(null);
+          setUser(null);
+          return;
         } else {
           throw error;
         }

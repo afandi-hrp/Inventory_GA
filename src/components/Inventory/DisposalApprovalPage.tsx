@@ -212,7 +212,9 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
             const session = await supabase.auth.getSession();
             const token = session.data.session?.access_token;
 
-            const delRes = await fetch(`/api/inventory/delete-item/${item.item_id}`, {
+            // requestId + type wajib: server memverifikasi pengajuan ini sudah
+            // APPROVED & barangnya termasuk item yang disetujui sebelum menghapus.
+            const delRes = await fetch(`/api/inventory/delete-item/${item.item_id}?type=disposal&requestId=${selectedRequest.id}`, {
               method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${token}`

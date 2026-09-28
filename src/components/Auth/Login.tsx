@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../hooks/useSettings';
 import LoginScene from './LoginScene';
+import { AUTH_NOTICE_KEY } from '../../hooks/useAuth';
 import { Mail, Lock, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -35,6 +36,17 @@ export default function Login() {
 
   useEffect(() => {
     setCaptchaText(generateCaptcha());
+
+    // Pesan dari logout paksa di useAuth (mis. akun tanpa profil).
+    try {
+      const notice = sessionStorage.getItem(AUTH_NOTICE_KEY);
+      if (notice) {
+        sessionStorage.removeItem(AUTH_NOTICE_KEY);
+        setError(notice);
+      }
+    } catch {
+      // sessionStorage gak tersedia - lewati
+    }
   }, []);
 
   useEffect(() => {

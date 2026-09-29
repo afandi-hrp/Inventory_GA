@@ -393,3 +393,19 @@ CREATE POLICY "GB items delete temuan spv" ON public.gudang_berkas_request_items
 COMMIT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- REVISI 4 (29 Sep 2026): jabatan penanda tangan "Diketahui Oleh" di PDF.
+-- ("Disetujui" di PDF sekarang hardcode Direktur di kode aplikasi.)
+-- =====================================================================
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS diketahui_oleh_jabatan TEXT;
+NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- REVISI 5 (29 Sep 2026): "Diketahui Oleh" dipilih dari admin General Affair.
+-- Nama & jabatan tetap disalin ke kolom teks (cadangan); PDF membaca jabatan
+-- terbaru dari profil lewat id ini.
+-- =====================================================================
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS diketahui_oleh_jabatan TEXT;
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS diketahui_oleh_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+NOTIFY pgrst, 'reload schema';

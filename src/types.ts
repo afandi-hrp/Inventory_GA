@@ -183,7 +183,12 @@ export interface GudangBerkasRequest {
   pendamping_id?: string | null;
   pendamping_nama: string | null;
   pendamping_divisi: string | null;
+  // "Diketahui Oleh" dipilih dari admin General Affair; nama & jabatan disalin
+  // saat disimpan (cadangan), tapi PDF membaca jabatan terbaru dari profilnya.
+  diketahui_oleh_id?: string | null;
   diketahui_oleh_nama: string | null;
+  diketahui_oleh_jabatan?: string | null;
+  // Tidak dipakai lagi di PDF — penanda tangan "Disetujui" di-hardcode Direktur.
   disetujui_oleh_nama: string | null;
   status: 'DIAJUKAN' | 'SELESAI';
   created_by?: string | null;

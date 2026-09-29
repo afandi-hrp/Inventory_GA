@@ -50,6 +50,15 @@ const emptyMember: MemberRow = { nama_lengkap: '', id_karyawan: '', jabatan: '' 
 const emptyItem: ItemRow = { jenis_dokumen: '', tahun: '', nomor_dokumen: '', keterangan: '' };
 
 const TUJUAN_OPTIONS = ['Pemeriksaan / Pencarian Berkas Fisik', 'Pengambilan Berkas', 'Tambah Berkas', 'Lainnya'];
+
+// Penanda tangan "Disetujui" di PDF surat permohonan selalu Direktur ini (hardcode).
+const DIREKTUR_NAMA = 'Medelin Dini';
+const DIREKTUR_JABATAN = 'Direktur';
+
+// Pendamping = admin dengan jabatan General Affair (tidak peka huruf besar/kecil,
+// jadi "General Affairs" / "Staff General Affair" juga ikut).
+const isGeneralAffair = (jabatan: string | null | undefined) =>
+  (jabatan || '').toLowerCase().includes('general affair');
 const LOKASI_OPTIONS = ['Gudang Mergat', 'Gudang Hasanuddin'] as const;
 
 const inputClass = 'w-full px-3 py-2 border border-brand-purple/20 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple/40 outline-none transition-colors';
@@ -234,7 +243,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [logbookStatus, setLogbookStatus] = useState<'Masuk' | 'Keluar' | 'Periksa'>('Periksa');
   const [logbookKeterangan, setLogbookKeterangan] = useState('');
-  const [signNames, setSignNames] = useState({ diketahui_oleh_nama: '', disetujui_oleh_nama: '' });
+  const [diketahuiOlehId, setDiketahuiOlehId] = useState('');
   const [savingSignNames, setSavingSignNames] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewFileName, setPdfPreviewFileName] = useState('');
@@ -295,7 +304,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
         .order('full_name');
       if (error) throw error;
       const active = (data || []).filter((p: any) => p.is_active !== false) as PersonOption[];
-      setPendampingOptions(active.filter(p => p.role === 'admin'));
+      setPendampingOptions(active.filter(p => p.role === 'admin' && isGeneralAffair(p.jabatan)));
       setPemohonOptions(active.filter(p => p.role === 'gudang_berkas'));
 
       if (isStaffGudangBerkas && profile) {
@@ -361,10 +370,9 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       if (itemsErr) throw itemsErr;
       setDetailMembers(membersData || []);
       setDetailItems(itemsData || []);
-      setSignNames({
-        diketahui_oleh_nama: req.diketahui_oleh_nama || '',
-        disetujui_oleh_nama: req.disetujui_oleh_nama || '',
-      });
+      setDiketahuiOlehId(req.diketahui_oleh_id || '');
+      // Pilihan "Diketahui Oleh" (admin General Affair) & data pemohon terbaru.
+      if (canManage) loadPeople();
 
       const { data: logbookData, error: logbookErr } = await supabase
         .from('gudang_berkas_logbook')
@@ -724,18 +732,22 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
     if (!canManage || !selectedRequest) return;
     setSavingSignNames(true);
     try {
+      // Nama & jabatan ikut disalin sebagai cadangan (PDF tetap baca jabatan terbaru dari profil).
+      const signer = pendampingOptions.find(p => p.id === diketahuiOlehId) || null;
+      const patch = {
+        diketahui_oleh_id: signer?.id || null,
+        diketahui_oleh_nama: signer?.full_name || null,
+        diketahui_oleh_jabatan: signer?.jabatan || null,
+      };
       const { error } = await supabase
         .from('gudang_berkas_requests')
-        .update({
-          diketahui_oleh_nama: signNames.diketahui_oleh_nama || null,
-          disetujui_oleh_nama: signNames.disetujui_oleh_nama || null,
-        })
+        .update(patch)
         .eq('id', selectedRequest.id);
       if (error) throw error;
-      setSelectedRequest({ ...selectedRequest, diketahui_oleh_nama: signNames.diketahui_oleh_nama || null, disetujui_oleh_nama: signNames.disetujui_oleh_nama || null });
-      showToast('Nama tanda tangan tersimpan', 'success');
+      setSelectedRequest({ ...selectedRequest, ...patch });
+      showToast('Penanda tangan tersimpan', 'success');
     } catch (err) {
-      showToast('Gagal menyimpan nama tanda tangan', 'error');
+      showToast('Gagal menyimpan penanda tangan', 'error');
     } finally {
       setSavingSignNames(false);
     }
@@ -929,24 +941,36 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       y += 18;
 
       // Titik tengah tiap kolom tanda tangan (dipakai juga untuk center-align label,
-      // nama, dan tanggal di bawahnya supaya semuanya sejajar center per kolom).
+      // nama, dan jabatan di bawahnya supaya semuanya sejajar center per kolom).
       const signColX = [14, 82, 155];
       const signColWidth = [66, 68, 45];
       const signColCenter = signColX.map((x, i) => x + signColWidth[i] / 2);
 
-      doc.text('Diajukan Oleh (Petugas/GA),', signColCenter[0], y, { align: 'center' });
-      doc.text('Diketahui Oleh (Pemohon/Depart),', signColCenter[1], y, { align: 'center' });
-      doc.text('Disetujui (Direktur),', signColCenter[2], y, { align: 'center' });
+      // Jabatan penanda tangan dibaca terbaru dari profil (pemohon & admin
+      // "Diketahui Oleh"); salinan di form cuma cadangan kalau profil tak ada.
+      const signerIds = [selectedRequest.pemohon_id, selectedRequest.diketahui_oleh_id].filter((id): id is string => !!id);
+      const { data: signerProfiles } = signerIds.length > 0
+        ? await supabase.from('profiles').select('id, jabatan').in('id', signerIds)
+        : { data: [] as { id: string; jabatan: string | null }[] };
+      const jabatanOf = (id: string | null | undefined) => (signerProfiles || []).find(p => p.id === id)?.jabatan || null;
+      const diajukanJabatan = jabatanOf(selectedRequest.pemohon_id) || selectedRequest.jabatan_pemohon || '-';
+      const diketahuiNama = selectedRequest.diketahui_oleh_nama;
+      const diketahuiJabatan = jabatanOf(selectedRequest.diketahui_oleh_id) || selectedRequest.diketahui_oleh_jabatan || '-';
+
+      doc.text('Diajukan Oleh,', signColCenter[0], y, { align: 'center' });
+      doc.text('Diketahui Oleh,', signColCenter[1], y, { align: 'center' });
+      doc.text('Disetujui,', signColCenter[2], y, { align: 'center' });
       y += 22;
-      // Nama, lalu tanggal otomatis di baris bawahnya, semua center per kolom
+      // Nama, lalu jabatan tepat di bawahnya — center per kolom.
+      // "Disetujui" selalu Direktur (hardcode, lihat DIREKTUR_NAMA).
       doc.text(`(${selectedRequest.nama_pemohon})`, signColCenter[0], y, { align: 'center', maxWidth: signColWidth[0] });
-      doc.text(selectedRequest.diketahui_oleh_nama ? `(${selectedRequest.diketahui_oleh_nama})` : '(..................................)', signColCenter[1], y, { align: 'center', maxWidth: signColWidth[1] });
-      doc.text(selectedRequest.disetujui_oleh_nama ? `(${selectedRequest.disetujui_oleh_nama})` : '(..................................)', signColCenter[2], y, { align: 'center', maxWidth: signColWidth[2] });
-      y += 5;
+      doc.text(diketahuiNama ? `(${diketahuiNama})` : '(..................................)', signColCenter[1], y, { align: 'center', maxWidth: signColWidth[1] });
+      doc.text(`(${DIREKTUR_NAMA})`, signColCenter[2], y, { align: 'center', maxWidth: signColWidth[2] });
+      y += 4.5;
       doc.setFontSize(8);
-      doc.text(currentDate, signColCenter[0], y, { align: 'center' });
-      if (selectedRequest.diketahui_oleh_nama) doc.text(currentDate, signColCenter[1], y, { align: 'center' });
-      if (selectedRequest.disetujui_oleh_nama) doc.text(currentDate, signColCenter[2], y, { align: 'center' });
+      doc.text(diajukanJabatan, signColCenter[0], y, { align: 'center', maxWidth: signColWidth[0] });
+      if (diketahuiNama) doc.text(diketahuiJabatan, signColCenter[1], y, { align: 'center', maxWidth: signColWidth[1] });
+      doc.text(DIREKTUR_JABATAN, signColCenter[2], y, { align: 'center', maxWidth: signColWidth[2] });
 
       const fileName = `Form_Akses_Gudang_Berkas_${selectedRequest.no_kunjungan}.pdf`;
       setPdfPreviewFileName(fileName);
@@ -1270,7 +1294,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
 
               {/* Pendamping */}
               <div className="space-y-2">
-                <Field label="Pendamping (Petugas Gudang)" required>
+                <Field label="Pendamping (Admin General Affair)" required>
                   <div className="space-y-2">
                     <select
                       value={form.pendamping_id}
@@ -1286,6 +1310,12 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                     <IdentityCard person={pendamping} emptyText="Belum ada pendamping dipilih" />
                   </div>
                 </Field>
+                {!loadingPeople && pendampingOptions.length === 0 && (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-700">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    Belum ada admin dengan jabatan General Affair. Isi jabatan admin di Manage Users.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1419,7 +1449,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
 
           <p className="flex items-start gap-2 text-xs text-brand-purple/70 bg-white/50 border border-white/60 rounded-xl p-3">
             <Info size={14} className="shrink-0 mt-0.5" />
-            No. Kunjungan dibuat otomatis saat form disimpan. Tanda tangan "Diajukan Oleh (Petugas/GA)" pada dokumen cetak memakai nama pemohon. Tanda tangan lain ditandatangani secara fisik.
+            No. Kunjungan dibuat otomatis saat form disimpan. Tanda tangan "Diajukan Oleh" pada dokumen cetak memakai nama &amp; jabatan pemohon, "Disetujui" oleh {DIREKTUR_NAMA} ({DIREKTUR_JABATAN}). Semua tanda tangan dibubuhkan secara fisik.
           </p>
 
           <div className="sticky bottom-4 z-10 bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/60 p-3 flex justify-end gap-3">
@@ -1727,17 +1757,43 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                 </SectionCard>
 
                 {canManage && (
-                  <SectionCard icon={<Pencil size={16} />} title="Nama Tanda Tangan PDF" subtitle="Tanggal muncul otomatis saat PDF dicetak">
+                  <SectionCard icon={<Pencil size={16} />} title="Tanda Tangan PDF" subtitle="Jabatan diambil dari profil masing-masing">
                     <div className="space-y-3">
-                      <Field label="Diketahui Oleh (Pemohon/Depart)">
-                        <input type="text" value={signNames.diketahui_oleh_nama} onChange={e => setSignNames({ ...signNames, diketahui_oleh_nama: e.target.value })} className={inputClass} placeholder="Nama yang mengetahui" />
+                      <div className="rounded-xl bg-brand-purple/5 border border-brand-purple/10 p-3 text-xs text-brand-purple">
+                        <p className="font-semibold">Diajukan Oleh</p>
+                        <p>
+                          {selectedRequest.nama_pemohon} ·{' '}
+                          {pemohonOptions.find(p => p.id === selectedRequest.pemohon_id)?.jabatan || selectedRequest.jabatan_pemohon || '-'}
+                        </p>
+                      </div>
+                      <Field label="Diketahui Oleh (Admin General Affair)">
+                        <div className="space-y-2">
+                          <select
+                            value={diketahuiOlehId}
+                            onChange={e => setDiketahuiOlehId(e.target.value)}
+                            className={inputClass}
+                            disabled={loadingPeople}
+                          >
+                            <option value="">{loadingPeople ? 'Memuat...' : '— Belum dipilih —'}</option>
+                            {pendampingOptions.map(p => (
+                              <option key={p.id} value={p.id}>{p.full_name || 'Tanpa nama'}{p.jabatan ? ` — ${p.jabatan}` : ''}</option>
+                            ))}
+                          </select>
+                          <IdentityCard
+                            person={pendampingOptions.find(p => p.id === diketahuiOlehId) || null}
+                            emptyText={selectedRequest.diketahui_oleh_nama && !selectedRequest.diketahui_oleh_id
+                              ? `Tersimpan manual: ${selectedRequest.diketahui_oleh_nama}`
+                              : 'Belum ada yang dipilih'}
+                          />
+                        </div>
                       </Field>
-                      <Field label="Disetujui (Direktur)">
-                        <input type="text" value={signNames.disetujui_oleh_nama} onChange={e => setSignNames({ ...signNames, disetujui_oleh_nama: e.target.value })} className={inputClass} placeholder="Nama Direktur" />
-                      </Field>
-                      <button type="button" onClick={saveSignNames} disabled={savingSignNames} className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-xl shadow-sm transition-colors disabled:opacity-50">
+                      <div className="rounded-xl bg-brand-purple/5 border border-brand-purple/10 p-3 text-xs text-brand-purple">
+                        <p className="font-semibold">Disetujui</p>
+                        <p>{DIREKTUR_NAMA} · {DIREKTUR_JABATAN} <span className="text-brand-purple/50">(tetap)</span></p>
+                      </div>
+                      <button type="button" onClick={saveSignNames} disabled={savingSignNames || loadingPeople} className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-xl shadow-sm transition-colors disabled:opacity-50">
                         {savingSignNames ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                        Simpan Nama
+                        Simpan Penanda Tangan
                       </button>
                     </div>
                   </SectionCard>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { ClipboardList, FileWarning, ChevronRight, Warehouse } from 'lucide-react';
+import { DISPOSAL_STAGE_BY_ROLE, SPK_STAGE_BY_ROLE } from './ApprovalProgress';
 
 export default function Approval() {
   const { profile } = useAuth();
@@ -20,19 +21,8 @@ export default function Approval() {
 
     // Setiap role cuma "punya" satu tahap yang bisa dia proses di masing-masing
     // alur — hitung berapa pengajuan yang lagi nunggu tahap itu.
-    const disposalStageByRole: Record<string, string> = {
-      auditor: 'PENDING_AUDITOR',
-      spv: 'PENDING_SPV',
-      direktur: 'PENDING_DIREKTUR',
-    };
-    const spkStageByRole: Record<string, string> = {
-      admin: 'PENDING_ADMIN',
-      auditor: 'PENDING_AUDITOR',
-      spv: 'PENDING_SPV',
-    };
-
     try {
-      const disposalStage = disposalStageByRole[role];
+      const disposalStage = DISPOSAL_STAGE_BY_ROLE[role];
       if (disposalStage) {
         const { count } = await supabase
           .from('disposal_requests')
@@ -43,7 +33,7 @@ export default function Approval() {
         setPendingDisposalCount(0);
       }
 
-      const spkStage = spkStageByRole[role];
+      const spkStage = SPK_STAGE_BY_ROLE[role];
       if (spkStage) {
         const { count } = await supabase
           .from('spk_requests')
@@ -66,7 +56,7 @@ export default function Approval() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {profile?.role === 'admin' && (
+        {(profile?.role === 'admin' || profile?.role === 'spv') && (
           <button
             onClick={() => navigate('/gudang-berkas')}
             className="text-left bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 hover:shadow-xl hover:border-orange-200 transition-all group"

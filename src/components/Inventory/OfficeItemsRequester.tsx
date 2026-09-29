@@ -10,6 +10,7 @@ import { Item, SPKRequest, SPKRequestItem, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { jsPDF } from 'jspdf';
+import { addPdfLogo } from '../../lib/pdfLogo';
 import {
   Search, X, Loader2, ShoppingCart, CheckSquare, Square, Package,
   ChevronLeft, ChevronRight, ClipboardList, Calendar, AlertCircle, Eye,
@@ -281,31 +282,7 @@ export default function OfficeItemsRequester() {
         return;
       }
 
-      const addLogo = async (doc: jsPDF, x: number, y: number) => {
-        return new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const imgWidth = img.width;
-            const imgHeight = img.height;
-            canvas.width = imgWidth;
-            canvas.height = imgHeight;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, imgWidth, imgHeight);
-              ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-              const dataUrl = canvas.toDataURL('image/png', 1.0);
-              const pdfHeight = 16;
-              const pdfWidth = (imgWidth / imgHeight) * pdfHeight;
-              doc.addImage(dataUrl, 'PNG', x, y, pdfWidth, pdfHeight);
-            }
-            resolve();
-          };
-          img.onerror = () => resolve();
-          img.src = '/logo-full.png';
-        });
-      };
+      const addLogo = async (doc: jsPDF, x: number, y: number) => addPdfLogo(doc, x, y);
 
       let currentY = 20;
       const lineSpacing = 8;

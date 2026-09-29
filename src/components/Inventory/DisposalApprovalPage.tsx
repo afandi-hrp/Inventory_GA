@@ -6,8 +6,13 @@ import { Profile, DisposalRequest, DisposalRequestItem } from '../../types';
 import { X, Loader2, CheckSquare, XCircle, FileWarning, Search, User, Calendar, MapPin, Eye, FileText, Download, Package, ClipboardList, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import SignedImage from '../UI/SignedImage';
+import {
+  ApprovalProgressCompact, ApprovalProgressStepper, disposalProgress, DISPOSAL_STAGE_BY_ROLE, type ApprovalFilter,
+  ApprovalFilterTabs, matchesApprovalFilter, finalizeApproval, ConfirmFinalApprovalModal, RejectionBanner,
+} from './ApprovalProgress';
 import { getSignedUrl } from '../../lib/signedStorage';
 import { jsPDF } from 'jspdf';
+import { addPdfLogo } from '../../lib/pdfLogo';
 
 interface DisposalApprovalPageProps {
   profile: Profile | null;
@@ -30,6 +35,10 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
   const [rejectFullModal, setRejectFullModal] = useState<{ isOpen: boolean, reason: string }>({ isOpen: false, reason: '' });
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewFileName, setPdfPreviewFileName] = useState('');
+  const [confirmFinalOpen, setConfirmFinalOpen] = useState(false);
+  // Tahap milik role ini — kalau ada, tab default-nya "Perlu Tindakan Saya".
+  const myStage = DISPOSAL_STAGE_BY_ROLE[profile?.role || ''];
+  const [statusFilter, setStatusFilter] = useState<ApprovalFilter>(myStage ? 'ACTION' : 'ALL');
 
   const parseRejectionReason = (reasonStr: string | null) => {
     if (!reasonStr) return { alasan: '-', rejectedBy: 'Sistem', role: '' };
@@ -51,7 +60,7 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, statusFilter]);
 
   async function fetchRequests() {
     setLoading(true);
@@ -127,8 +136,8 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
       // Check if all items in this request are now rejected
       const allRejected = updatedItems.every(item => item.status_item === 'REJECTED');
       if (allRejected && selectedRequest) {
-        await supabase.from('disposal_requests').update({ status: 'REJECTED' }).eq('id', selectedRequest.id);
-        setSelectedRequest({ ...selectedRequest, status: 'REJECTED' });
+        await supabase.from('disposal_requests').update({ status: 'REJECTED', alasan_penolakan: rejectionData }).eq('id', selectedRequest.id);
+        setSelectedRequest({ ...selectedRequest, status: 'REJECTED', alasan_penolakan: rejectionData });
         showToast('Semua item ditolak, status permohonan otomatis menjadi ditolak.', 'info');
         fetchRequests(); // refresh the list
       }
@@ -141,95 +150,32 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
     if (!selectedRequest) return;
     setIsSubmitting(true);
     try {
-      const updateData: any = {};
-      if (stage === 'AUDITOR') {
-        updateData.status = 'PENDING_SPV';
-        updateData.diketahui_auditor_oleh = profile?.full_name || 'Auditor';
-        updateData.tanggal_diketahui_auditor = new Date().toISOString();
-      } else if (stage === 'SPV') {
-        updateData.status = 'PENDING_DIREKTUR';
-        updateData.approved_by_l1 = profile?.full_name || 'SPV';
-        updateData.tanggal_approved_l1 = new Date().toISOString();
-      } else {
-        updateData.status = 'APPROVED';
-        updateData.approved_by_l2 = profile?.full_name || 'Direktur';
-        updateData.tanggal_approved_l2 = new Date().toISOString();
-      }
-
-      const { data: updateResult, error } = await supabase
-        .from('disposal_requests')
-        .update(updateData)
-        .eq('id', selectedRequest.id)
-        .select('id');
-
-      if (error) throw error;
-      if (!updateResult || updateResult.length === 0) {
-        throw new Error('Update gagal: kemungkinan Anda tidak memiliki izin (RLS) untuk mengubah status ini.');
-      }
-
       if (stage === 'DIREKTUR') {
-        // If final approval, we should deduct stock and add to history (StockOut).
-        // For items that are not REJECTED.
-        const approvedItems = requestItems.filter(i => i.status_item !== 'REJECTED');
+        // Approval final (status APPROVED + barang keluar dari stok) dijalankan
+        // server dalam satu transaksi — semua berhasil atau semua batal.
+        await finalizeApproval('disposal', selectedRequest.id);
+        setConfirmFinalOpen(false);
+      } else {
+        const updateData: any = {};
+        if (stage === 'AUDITOR') {
+          updateData.status = 'PENDING_SPV';
+          updateData.diketahui_auditor_oleh = profile?.full_name || 'Auditor';
+          updateData.tanggal_diketahui_auditor = new Date().toISOString();
+        } else {
+          updateData.status = 'PENDING_DIREKTUR';
+          updateData.approved_by_l1 = profile?.full_name || 'SPV';
+          updateData.tanggal_approved_l1 = new Date().toISOString();
+        }
 
-        for (const item of approvedItems) {
-          // Fetch full item to get foto_urls and deskripsi
-          const { data: fullItem } = await supabase.from('items').select('*').eq('id', item.item_id).single();
+        const { data: updateResult, error } = await supabase
+          .from('disposal_requests')
+          .update(updateData)
+          .eq('id', selectedRequest.id)
+          .select('id');
 
-          // Add to stock history
-          const { error: histError } = await supabase.from('stock_keluar_history').insert({
-            original_item_id: item.item_id,
-            kode_barang: item.kode_barang,
-            nama_barang: item.nama_barang,
-            jumlah_barang: item.jumlah_barang,
-            kode_lokasi: item.kode_lokasi,
-            nama_lokasi: fullItem?.lokasi || null,
-            lokasi_keluar: 'PEMUSNAHAN',
-            foto_urls: fullItem?.foto_urls || item.foto_urls || [],
-            deskripsi: fullItem?.deskripsi || '',
-            keterangan_alasan: `Berita Acara Pemusnahan No: ${selectedRequest.nomor_pengajuan}`,
-            tanggal_keluar: new Date().toISOString(),
-            user_name: profile?.full_name
-          });
-
-          if (!histError) {
-            // Update status to APPROVED
-            await supabase.from('disposal_request_items')
-              .update({ status_item: 'APPROVED' })
-              .eq('id', item.id);
-
-            // Nullify FK in ALL disposal_request_items to ensure no FK constraint blocks deletion
-            const { error: updError } = await supabase.from('disposal_request_items')
-              .update({ item_id: null })
-              .eq('item_id', item.item_id);
-
-            if (updError) {
-              console.error('Error nullifying item_id in disposal_request_items:', updError);
-              throw new Error(`Gagal memutuskan relasi item: ${updError.message}`);
-            }
-
-            // Delete original item via backend to bypass RLS for non-admins
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
-
-            // requestId + type wajib: server memverifikasi pengajuan ini sudah
-            // APPROVED & barangnya termasuk item yang disetujui sebelum menghapus.
-            const delRes = await fetch(`/api/inventory/delete-item/${item.item_id}?type=disposal&requestId=${selectedRequest.id}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            });
-
-            if (!delRes.ok) {
-              const errData = await delRes.json().catch(() => ({}));
-              console.error('Error deleting item from items table via API:', errData);
-              throw new Error(`Gagal menghapus item dari master barang: ${errData.error || delRes.statusText}`);
-            }
-          } else {
-            console.error('Error inserting to history:', histError);
-            throw new Error(`Gagal mencatat riwayat pemusnahan: ${histError.message || 'Izin (RLS) ditolak'}`);
-          }
+        if (error) throw error;
+        if (!updateResult || updateResult.length === 0) {
+          throw new Error('Update gagal: kemungkinan Anda tidak memiliki izin (RLS) untuk mengubah status ini.');
         }
       }
 
@@ -261,7 +207,7 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
       // Update the request
       const { data: reqUpdateResult, error: reqError } = await supabase
         .from('disposal_requests')
-        .update({ status: 'REJECTED' })
+        .update({ status: 'REJECTED', alasan_penolakan: rejectionData })
         .eq('id', selectedRequest.id)
         .select('id');
 
@@ -349,36 +295,7 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
         auditData = auditLogs || [];
       }
 
-      const addLogo = async (doc: jsPDF, x: number, y: number) => {
-        return new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const imgWidth = img.width;
-            const imgHeight = img.height;
-            canvas.width = imgWidth;
-            canvas.height = imgHeight;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, imgWidth, imgHeight);
-              ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-              const dataUrl = canvas.toDataURL('image/png', 1.0);
-
-              // Sesuaikan ukuran proporsional di PDF (misal tinggi 16)
-              const pdfHeight = 16;
-              const pdfWidth = (imgWidth / imgHeight) * pdfHeight;
-
-              doc.addImage(dataUrl, 'PNG', x, y, pdfWidth, pdfHeight);
-            }
-            resolve();
-          };
-          img.onerror = () => {
-            resolve(); // Lanjutkan tanpa logo jika file tidak ditemukan
-          };
-          img.src = '/logo-full.png'; // Logo lengkap Waruna Shipyard - Shipping
-        });
-      };
+      const addLogo = async (doc: jsPDF, x: number, y: number) => addPdfLogo(doc, x, y);
 
       let currentY = 20;
       const lineSpacing = 8;
@@ -554,10 +471,11 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
     setPdfPreviewUrl(null);
   }
 
-  const filteredRequests = requests.filter(req =>
+  const searchedRequests = requests.filter(req =>
     req.nomor_pengajuan.toLowerCase().includes(search.toLowerCase()) ||
     req.diajukan_oleh.toLowerCase().includes(search.toLowerCase())
   );
+  const filteredRequests = searchedRequests.filter(req => matchesApprovalFilter(req.status, statusFilter, myStage));
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / itemsPerPage));
   const currentPage = Math.min(page, totalPages);
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -573,7 +491,8 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
       {!isDetailView && (
         <>
           {/* Panel Filter */}
-          <div className="bg-white/60 backdrop-blur-xl p-3 rounded-2xl shadow-lg border border-white/50 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="bg-white/60 backdrop-blur-xl p-3 rounded-2xl shadow-lg border border-white/50 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={16} />
               <input
@@ -590,16 +509,24 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
             >
               <ArrowLeft size={16} /> Kembali ke Approval
             </button>
+            </div>
+            <ApprovalFilterTabs
+              statuses={searchedRequests.map(r => r.status)}
+              myStage={myStage}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
           </div>
 
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+          <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
               <div className="overflow-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50/80 sticky top-0 backdrop-blur-sm z-10">
-                    <tr className="text-xs font-semibold text-brand-purple uppercase tracking-wider border-b border-gray-100">
+                  <thead>
+                    <tr className="bg-brand-purple text-xs font-semibold text-white uppercase tracking-wider">
                       <th className="px-6 py-4">Nomor Pengajuan</th>
                       <th className="px-6 py-4">Diajukan Oleh</th>
                       <th className="px-6 py-4">Tanggal</th>
+                      <th className="px-6 py-4 text-center">Jumlah Barang</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4 text-right">Aksi</th>
                     </tr>
@@ -607,21 +534,21 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
                   <tbody className="divide-y divide-gray-50">
                     {loading ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center">
-                          <Loader2 className="animate-spin mx-auto text-indigo-600 mb-2" size={32} />
+                        <td colSpan={6} className="px-6 py-12 text-center">
+                          <Loader2 className="animate-spin mx-auto text-brand-purple mb-2" size={32} />
                           <p className="text-brand-purple">Memuat data...</p>
                         </td>
                       </tr>
                     ) : filteredRequests.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center">
+                        <td colSpan={6} className="px-6 py-12 text-center">
                           <ClipboardList className="mx-auto text-brand-purple mb-2" size={48} />
-                          <p className="text-brand-purple">Belum ada pengajuan pemusnahan.</p>
+                          <p className="text-brand-purple">{requests.length === 0 ? 'Belum ada pengajuan pemusnahan.' : statusFilter === 'ACTION' ? 'Tidak ada pengajuan yang menunggu tindakan Anda.' : 'Tidak ada pengajuan pada filter ini.'}</p>
                         </td>
                       </tr>
                     ) : (
                       paginatedRequests.map((req) => (
-                        <tr key={req.id} className="hover:bg-indigo-50/30 transition-colors group">
+                        <tr key={req.id} className="hover:bg-brand-purple/5 transition-colors group">
                           <td className="px-6 py-4">
                             <span className="font-semibold text-brand-purple">{req.nomor_pengajuan}</span>
                           </td>
@@ -637,6 +564,9 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
                               {new Date(req.tanggal_pengajuan || req.created_at).toLocaleDateString('id-ID')}
                             </div>
                           </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full bg-brand-purple/10 text-brand-purple text-sm font-semibold">{req.jumlah ?? '-'}</span>
+                          </td>
                           <td className="px-6 py-4">
                             <span className={cn(
                               "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border",
@@ -651,11 +581,12 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
                                req.status === 'PENDING_DIREKTUR' ? 'Menunggu Persetujuan Direktur' :
                                req.status === 'APPROVED' ? 'Disetujui' : 'Ditolak'}
                             </span>
+                            <ApprovalProgressCompact data={disposalProgress(req)} />
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => handleViewDetail(req)}
-                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors border border-indigo-100"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-brand-purple/10 text-brand-purple hover:bg-brand-purple/20 rounded-lg text-sm font-medium transition-colors border border-brand-purple/10"
                             >
                               <Eye size={16} />
                               <span>Detail</span>
@@ -746,11 +677,17 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
               <h4 className="text-xl font-bold text-brand-purple mb-2">Detail Pengajuan: {selectedRequest.nomor_pengajuan}</h4>
               <div className="flex flex-wrap gap-4 text-sm text-brand-purple">
                 <span className="flex items-center"><User size={14} className="mr-1.5 text-brand-purple" /> Pemohon: {selectedRequest.diajukan_oleh}</span>
-                <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-brand-purple" /> Tanggal: {new Date(selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
+                <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-brand-purple" /> Tanggal: {new Date(selectedRequest.tanggal_pengajuan || selectedRequest.created_at).toLocaleDateString('id-ID')}</span>
               </div>
-              <div className="mt-4 p-3 bg-white border rounded-xl shadow-sm">
-                <span className="text-xs font-semibold text-brand-purple uppercase">Keterangan</span>
-                <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.keterangan || 'Tidak ada keterangan'}</p>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-white border rounded-xl shadow-sm">
+                  <span className="text-xs font-semibold text-brand-purple uppercase">Alasan / Keterangan</span>
+                  <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.keterangan || selectedRequest.alasan || 'Tidak ada keterangan'}</p>
+                </div>
+                <div className="p-3 bg-white border rounded-xl shadow-sm">
+                  <span className="text-xs font-semibold text-brand-purple uppercase">Metode Pemusnahan</span>
+                  <p className="text-sm font-medium text-brand-purple mt-1">{selectedRequest.metode_pemusnahan || '-'}</p>
+                </div>
               </div>
             </div>
 
@@ -782,6 +719,15 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
             </div>
           </div>
 
+          <ApprovalProgressStepper data={disposalProgress(selectedRequest)} />
+
+          {selectedRequest.status === 'REJECTED' && (
+            <RejectionBanner
+              requestReason={selectedRequest.alasan_penolakan}
+              itemReasons={requestItems.filter(i => i.status_item === 'REJECTED').map(i => i.alasan_rejection)}
+            />
+          )}
+
           {/* Items List */}
           <div className="bg-white border rounded-2xl p-5 shadow-sm">
             <h5 className="font-bold text-brand-purple mb-4 flex items-center">
@@ -791,7 +737,7 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
 
             {loadingItems ? (
               <div className="py-12 text-center">
-                <Loader2 className="animate-spin mx-auto text-indigo-600 mb-2" size={32} />
+                <Loader2 className="animate-spin mx-auto text-brand-purple mb-2" size={32} />
                 <p className="text-brand-purple">Memuat barang...</p>
               </div>
             ) : (
@@ -907,7 +853,7 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
 
               {selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur' && (
                 <button
-                  onClick={() => advanceStage('DIREKTUR')}
+                  onClick={() => setConfirmFinalOpen(true)}
                   disabled={isSubmitting}
                   className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
@@ -1008,6 +954,17 @@ export function DisposalApprovalPage({ profile }: DisposalApprovalPageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmFinalOpen && selectedRequest && (
+        <ConfirmFinalApprovalModal
+          nomor={selectedRequest.nomor_pengajuan}
+          itemCount={requestItems.filter(i => i.status_item !== 'REJECTED').length}
+          approverLabel="Direktur"
+          submitting={isSubmitting}
+          onCancel={() => setConfirmFinalOpen(false)}
+          onConfirm={() => advanceStage('DIREKTUR')}
+        />
       )}
 
       {pdfPreviewUrl && (

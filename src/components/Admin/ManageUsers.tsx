@@ -28,16 +28,26 @@ export default function ManageUsers() {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
   useModalBackButton(isAddUserModalOpen, () => setIsAddUserModalOpen(false));
-  const [newUserForm, setNewUserForm] = useState({
+  const emptyNewUserForm = {
     email: '',
     password: '',
     full_name: '',
+    divisi: '',
+    jabatan: '',
     role: 'user' as 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' | 'gudang_berkas'
-  });
+  };
+  const [newUserForm, setNewUserForm] = useState(emptyNewUserForm);
+
+  // Admin: edit divisi & jabatan user lain (dipakai Form Akses Gudang Berkas)
+  const [userToEdit, setUserToEdit] = useState<Profile | null>(null);
+  const [userEditForm, setUserEditForm] = useState({ divisi: '', jabatan: '' });
+  useModalBackButton(!!userToEdit, () => setUserToEdit(null));
 
   // Profile Edit State
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [fullName, setFullName] = useState('');
+  const [divisi, setDivisi] = useState('');
+  const [jabatan, setJabatan] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -47,12 +57,17 @@ export default function ManageUsers() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
-    if (profile?.role === 'admin') {
+    if (!profile) return;
+    // Form "Profil Saya" diisi untuk SEMUA role (dulu admin gak diisi, jadi
+    // nama admin tampil kosong & bisa ketimpa kosong waktu disimpan).
+    setEditingProfile(profile);
+    setFullName(profile.full_name || '');
+    setDivisi(profile.divisi || '');
+    setJabatan(profile.jabatan || '');
+    setAvatarUrl(profile.avatar_url || '');
+    if (profile.role === 'admin') {
       fetchProfiles();
-    } else if (profile) {
-      setEditingProfile(profile);
-      setFullName(profile.full_name || '');
-      setAvatarUrl(profile.avatar_url || '');
+    } else {
       setLoading(false);
     }
   }, [profile]);
@@ -84,6 +99,8 @@ export default function ManageUsers() {
         .from('profiles')
         .update({
           full_name: fullName,
+          divisi: divisi.trim() || null,
+          jabatan: jabatan.trim() || null,
           avatar_url: avatarUrl,
         })
         .eq('id', user.id);
@@ -125,10 +142,37 @@ export default function ManageUsers() {
 
       showToast('User berhasil dibuat', 'success');
       setIsAddUserModalOpen(false);
-      setNewUserForm({ email: '', password: '', full_name: '', role: 'user' });
+      setNewUserForm(emptyNewUserForm);
       fetchProfiles();
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat user', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openUserEdit = (p: Profile) => {
+    setUserToEdit(p);
+    setUserEditForm({ divisi: p.divisi || '', jabatan: p.jabatan || '' });
+  };
+
+  const handleSaveUserEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToEdit) return;
+    setActionLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ divisi: userEditForm.divisi.trim() || null, jabatan: userEditForm.jabatan.trim() || null })
+        .eq('id', userToEdit.id)
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Gagal menyimpan: kemungkinan tidak punya izin (RLS).');
+      showToast('Divisi & jabatan tersimpan', 'success');
+      setUserToEdit(null);
+      fetchProfiles();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyimpan divisi & jabatan', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -272,6 +316,28 @@ export default function ManageUsers() {
                     placeholder="Masukkan nama lengkap"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Divisi</label>
+                    <input
+                      type="text"
+                      value={divisi}
+                      onChange={(e) => setDivisi(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                      placeholder="mis. Finance"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Jabatan</label>
+                    <input
+                      type="text"
+                      value={jabatan}
+                      onChange={(e) => setJabatan(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                      placeholder="mis. Staff"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Email</label>
                   <input
@@ -345,17 +411,28 @@ export default function ManageUsers() {
                   <Shield size={18} className="mr-2 text-emerald-600" />
                   Daftar Seluruh Pengguna
                 </h3>
-                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
-                  {profiles.length} Users
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
+                    {profiles.length} Users
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddUserModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-purple hover:bg-brand-purple-light text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
+                  >
+                    <UserPlus size={14} /> Tambah User
+                  </button>
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-left min-w-[480px]">
+                <table className="w-full text-left min-w-[640px]">
                   <thead className="bg-gray-50 text-[10px] uppercase tracking-wider font-bold text-brand-purple border-b border-gray-100">
                     <tr>
                       <th className="px-6 py-4">User</th>
+                      <th className="px-6 py-4">Divisi / Jabatan</th>
                       <th className="px-6 py-4">Role</th>
                       <th className="px-6 py-4">Bergabung</th>
+                      <th className="px-6 py-4 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -375,6 +452,16 @@ export default function ManageUsers() {
                             </div>
                           </div>
                         </td>
+                        <td className="px-6 py-4 text-xs text-brand-purple">
+                          {p.divisi || p.jabatan ? (
+                            <>
+                              <p className="font-semibold">{p.divisi || '-'}</p>
+                              <p className="text-brand-purple/70">{p.jabatan || '-'}</p>
+                            </>
+                          ) : (
+                            <span className="text-brand-purple/40 italic">Belum diisi</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4">
                           <span className={cn(
                             "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
@@ -385,6 +472,16 @@ export default function ManageUsers() {
                         </td>
                         <td className="px-6 py-4 text-xs text-brand-purple whitespace-nowrap">
                           {new Date(p.created_at).toLocaleDateString('id-ID')}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => openUserEdit(p)}
+                            title="Edit divisi & jabatan"
+                            className="p-2 text-brand-purple hover:bg-brand-purple/10 rounded-lg transition-colors"
+                          >
+                            <Edit2 size={15} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -450,6 +547,28 @@ export default function ManageUsers() {
                   required
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Divisi</label>
+                  <input
+                    type="text"
+                    value={newUserForm.divisi}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, divisi: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                    placeholder="mis. Finance"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Jabatan</label>
+                  <input
+                    type="text"
+                    value={newUserForm.jabatan}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, jabatan: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                    placeholder="mis. Staff"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Email</label>
                 <input
@@ -505,6 +624,60 @@ export default function ManageUsers() {
                 >
                   {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
                   <span>Daftarkan User</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Divisi & Jabatan (Admin) */}
+      {userToEdit && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setUserToEdit(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-brand-purple">Edit Divisi & Jabatan</h3>
+                <p className="text-xs text-brand-purple/70">{userToEdit.full_name || 'No Name'} · {userToEdit.role}</p>
+              </div>
+              <button onClick={() => setUserToEdit(null)} className="text-brand-purple p-1 rounded-full hover:bg-gray-100 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveUserEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Divisi</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={userEditForm.divisi}
+                  onChange={(e) => setUserEditForm({ ...userEditForm, divisi: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  placeholder="mis. Finance"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Jabatan</label>
+                <input
+                  type="text"
+                  value={userEditForm.jabatan}
+                  onChange={(e) => setUserEditForm({ ...userEditForm, jabatan: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  placeholder="mis. Staff"
+                />
+              </div>
+              <p className="text-xs text-brand-purple/60">Dipakai otomatis sebagai data pemohon / pendamping di Form Akses Gudang Berkas.</p>
+              <div className="pt-2 flex items-center gap-3">
+                <button type="button" onClick={() => setUserToEdit(null)} className="btn-cancel flex-1">Batal</button>
+                <button type="submit" disabled={actionLoading} className="btn-confirm flex-1">
+                  {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  <span>Simpan</span>
                 </button>
               </div>
             </form>

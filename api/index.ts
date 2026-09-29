@@ -35,7 +35,11 @@ app.use(helmet({
         ...(supabaseUrl ? [supabaseUrl, supabaseUrl.replace(/^https:/, 'wss:')] : []),
       ],
       objectSrc: ["'none'"],
-      frameSrc: ["'none'"],
+      // iframe dipakai buat preview PDF: blob: (PDF buatan jsPDF di halaman
+      // approval/gudang berkas) & signed URL Supabase (dokumen barang di Master
+      // Barang). Dulu 'none' → semua preview PDF ke-blok di production.
+      // Situs lain tetap gak bisa nge-embed app ini (frameAncestors di bawah).
+      frameSrc: ["'self'", 'blob:', ...(supabaseUrl ? [supabaseUrl] : [])],
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -87,7 +91,7 @@ const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
 // Middleware factory: verifikasi token Supabase, lalu pastikan pemanggil
 // punya profil AKTIF dengan salah satu role yang diizinkan. User yang sudah
 // dinonaktifkan (is_active = false) ditolak walau token-nya masih berlaku.
-// Id & role pemanggil disimpan di req supaya handler bisa pakai.
+// Id, role & nama pemanggil disimpan di req supaya handler bisa pakai.
 const requireRole = (allowedRoles: string[], deniedMessage: string) =>
   async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!supabaseAdmin) {
@@ -110,7 +114,7 @@ const requireRole = (allowedRoles: string[], deniedMessage: string) =>
 
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
-        .select('role, is_active')
+        .select('role, is_active, full_name')
         .eq('id', user.id)
         .single();
 
@@ -120,6 +124,7 @@ const requireRole = (allowedRoles: string[], deniedMessage: string) =>
 
       (req as any).userId = user.id;
       (req as any).userRole = profile.role;
+      (req as any).userName = profile.full_name || user.email || profile.role;
 
       next();
     } catch (err) {
@@ -131,7 +136,7 @@ const checkAdmin = requireRole(['admin'], 'Unauthorized: Admin only');
 
 // API Route to create user
 app.post('/api/admin/create-user', checkAdmin, async (req, res) => {
-  const { email, password, full_name, role } = req.body;
+  const { email, password, full_name, role, divisi, jabatan } = req.body;
 
   if (!email || !password || !full_name || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -146,6 +151,18 @@ app.post('/api/admin/create-user', checkAdmin, async (req, res) => {
 
   if (createError) {
     return res.status(400).json({ error: createError.message });
+  }
+
+  // Profil dibuat trigger handle_new_user; divisi & jabatan (dipakai Form Akses
+  // Gudang Berkas) diisi setelahnya.
+  if (newUser.user && (divisi || jabatan)) {
+    const { error: profileError } = await supabaseAdmin!
+      .from('profiles')
+      .update({ divisi: divisi || null, jabatan: jabatan || null })
+      .eq('id', newUser.user.id);
+    if (profileError) {
+      return res.status(400).json({ error: `User dibuat, tapi gagal menyimpan divisi/jabatan: ${profileError.message}` });
+    }
   }
 
   res.json({ message: 'User created successfully', user: newUser.user });
@@ -165,80 +182,47 @@ app.delete('/api/admin/delete-user/:userId', checkAdmin, async (req, res) => {
 });
 
 // Only 'spv'/'direktur' can trigger a final approval (SPV finalizes SPK, Direktur
-// finalizes Disposal), which is the only legitimate trigger for delete-item below.
+// finalizes Disposal).
 const checkFinalApprover = requireRole(['spv', 'direktur'], 'Unauthorized: SPV or Direktur only');
 
-// Per jenis pengajuan: tabel header, tabel item, dan satu-satunya role yang
-// boleh memberi approval final-nya (harus sama dengan tahapan di UI approval).
+// Per jenis pengajuan: fungsi database yang menjalankan approval final, dan
+// satu-satunya role yang boleh memberinya (harus sama dengan tahapan di UI).
 const FINAL_APPROVAL_SOURCES = {
-  disposal: { requestTable: 'disposal_requests', itemTable: 'disposal_request_items', finalRole: 'direktur' },
-  spk: { requestTable: 'spk_requests', itemTable: 'spk_request_items', finalRole: 'spv' },
+  disposal: { rpc: 'finalize_disposal_request', finalRole: 'direktur' },
+  spk: { rpc: 'finalize_spk_request', finalRole: 'spv' },
 } as const;
 
-// API Route to delete an item bypassing RLS (used for disposal/SPK final approval).
-// Selain cek role, server memastikan barangnya memang bagian dari pengajuan yang
-// SUDAH APPROVED — sebelumnya SPV/Direktur bisa menghapus barang apa pun lewat
-// endpoint ini. Pencocokan pakai kode_barang (bukan item_id) karena halaman
-// approval sudah mengosongkan item_id di tabel item pengajuan sebelum memanggil
-// endpoint ini (supaya FK tidak memblok delete).
-app.delete('/api/inventory/delete-item/:itemId', checkFinalApprover, async (req, res) => {
-  const { itemId } = req.params;
+// Approval final pemusnahan/SPK. Seluruh prosesnya (status pengajuan → APPROVED,
+// catat stock keluar, tandai item APPROVED, hapus barang dari master) jalan di
+// SATU transaksi database lewat RPC — kalau ada yang gagal, semuanya batal.
+// Dulu prosesnya dijalankan per barang dari browser, jadi bisa berhenti di
+// tengah (status APPROVED tapi sebagian barang masih ada di stok).
+// Fungsi RPC-nya cuma bisa dipanggil service_role (supabase_approval_finalize.sql).
+app.post('/api/approval/finalize', checkFinalApprover, async (req, res) => {
   const userId = (req as any).userId as string;
   const userRole = (req as any).userRole as string;
-  const requestId = typeof req.query.requestId === 'string' ? req.query.requestId : '';
-  const type = req.query.type as keyof typeof FINAL_APPROVAL_SOURCES;
-  const source = FINAL_APPROVAL_SOURCES[type];
+  const userName = (req as any).userName as string;
+  const { type, requestId } = req.body || {};
+  const source = FINAL_APPROVAL_SOURCES[type as keyof typeof FINAL_APPROVAL_SOURCES];
 
-  if (!itemId || itemId === 'undefined') {
-    return res.status(400).json({ error: 'Invalid item ID' });
-  }
-  if (!source || !requestId) {
+  if (!source || typeof requestId !== 'string' || !requestId) {
     return res.status(400).json({ error: 'requestId dan type (disposal/spk) wajib diisi' });
   }
   if (userRole !== source.finalRole) {
     return res.status(403).json({ error: `Approval final ${type} hanya boleh oleh ${source.finalRole}` });
   }
 
-  const { data: item } = await supabaseAdmin!
-    .from('items')
-    .select('kode_barang')
-    .eq('id', itemId)
-    .maybeSingle();
-  if (!item) {
-    return res.status(404).json({ error: 'Item not found' });
-  }
-
-  const { data: request } = await supabaseAdmin!
-    .from(source.requestTable)
-    .select('status')
-    .eq('id', requestId)
-    .maybeSingle();
-  if (!request || request.status !== 'APPROVED') {
-    return res.status(403).json({ error: 'Pengajuan belum disetujui final' });
-  }
-
-  const { data: approvedRows } = await supabaseAdmin!
-    .from(source.itemTable)
-    .select('id')
-    .eq('request_id', requestId)
-    .eq('kode_barang', item.kode_barang)
-    .eq('status_item', 'APPROVED')
-    .limit(1);
-  if (!approvedRows || approvedRows.length === 0) {
-    return res.status(403).json({ error: 'Barang ini tidak termasuk item yang disetujui di pengajuan tersebut' });
-  }
-
-  const { data, error } = await supabaseAdmin!.rpc('delete_item_as', { p_item_id: itemId, p_actor_id: userId });
+  const { data, error } = await supabaseAdmin!.rpc(source.rpc, {
+    p_request_id: requestId,
+    p_actor_id: userId,
+    p_actor_name: userName,
+  });
 
   if (error) {
     return res.status(400).json({ error: error.message });
   }
 
-  if (!data || data.length === 0) {
-    return res.status(404).json({ error: 'Item not found' });
-  }
-
-  res.json({ message: 'Item deleted successfully', data });
+  res.json({ message: 'Pengajuan disetujui final', processed: data });
 });
 
 // Export the app for Vercel

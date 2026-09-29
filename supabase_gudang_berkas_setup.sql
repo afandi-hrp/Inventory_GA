@@ -351,3 +351,45 @@ CREATE POLICY "GB logbook checks update admin only" ON gudang_berkas_logbook_ite
     FOR UPDATE USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin' AND profiles.is_active = true));
 CREATE POLICY "GB logbook checks delete admin only" ON gudang_berkas_logbook_item_checks
     FOR DELETE USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin' AND profiles.is_active = true));
+
+-- =====================================================================
+-- REVISI 3 (29 Sep 2026): pemohon & pendamping dari profil user,
+-- temuan lapangan saat verifikasi. Aman dijalankan berkali-kali.
+-- Butuh policy SPV Gudang Berkas (insert items/checks, select/update logbook)
+-- yang sudah dijalankan sebelumnya.
+-- =====================================================================
+BEGIN;
+
+-- 17. Divisi & jabatan di profil user (dipakai otomatis sebagai data pemohon/pendamping).
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS divisi TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS jabatan TEXT;
+
+-- 18. Tautan ke akun pemohon & pendamping. Nama/divisi/jabatan tetap disalin ke
+--     kolom teks yang sudah ada supaya form & PDF lama tidak berubah.
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS pemohon_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS pendamping_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+-- 19. Temuan lapangan: baris rincian yang ditambahkan admin/SPV saat verifikasi
+--     (kondisi nyata di gudang). Tidak ikut dicetak di surat permohonan.
+ALTER TABLE public.gudang_berkas_request_items ADD COLUMN IF NOT EXISTS is_temuan_lapangan BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.gudang_berkas_request_items ADD COLUMN IF NOT EXISTS ditambahkan_oleh TEXT;
+
+-- 20. SPV boleh edit & hapus baris TEMUAN LAPANGAN saja (admin sudah bisa lewat
+--     policy admin yang ada). Rincian permohonan asli tetap tidak bisa diubah SPV.
+DROP POLICY IF EXISTS "GB items update temuan spv" ON public.gudang_berkas_request_items;
+CREATE POLICY "GB items update temuan spv" ON public.gudang_berkas_request_items
+  FOR UPDATE TO authenticated
+  USING (is_temuan_lapangan AND EXISTS (SELECT 1 FROM public.profiles
+         WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true))
+  WITH CHECK (is_temuan_lapangan AND EXISTS (SELECT 1 FROM public.profiles
+         WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true));
+
+DROP POLICY IF EXISTS "GB items delete temuan spv" ON public.gudang_berkas_request_items;
+CREATE POLICY "GB items delete temuan spv" ON public.gudang_berkas_request_items
+  FOR DELETE TO authenticated
+  USING (is_temuan_lapangan AND EXISTS (SELECT 1 FROM public.profiles
+         WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true));
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';

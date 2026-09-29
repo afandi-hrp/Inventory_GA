@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../hooks/useSettings';
 import LoginScene from './LoginScene';
 import { AUTH_NOTICE_KEY } from '../../hooks/useAuth';
+import { LOGO_PURPLE_SRC } from '../../lib/brandLogo';
 import { Mail, Lock, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -127,7 +128,7 @@ export default function Login() {
           {/* Logo & App Name */}
           <div className="flex flex-col items-center mb-3 sm:mb-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-brand-cream to-brand-coral shadow-lg p-1.5 mb-2.5 flex items-center justify-center">
-              <img src="/logo-purple.svg" alt="Logo" className="w-full h-full object-contain" />
+              <img src={LOGO_PURPLE_SRC} alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-brand-purple tracking-tight text-center leading-tight">
               {settings.login_title}

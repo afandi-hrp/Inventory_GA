@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Lock, Loader2, ArrowRight, LogOut } from 'lucide-react';
+import { LOGO_PURPLE_SRC } from '../../lib/brandLogo';
 
 interface LockScreenProps {
   email: string;
@@ -37,7 +38,7 @@ export default function LockScreen({ email, fullName, onUnlock, onLogoutInstead 
       <div className="w-full max-w-[320px] bg-brand-cream/95 backdrop-blur-2xl border border-white/60 rounded-[1.5rem] shadow-2xl p-6">
         <div className="flex flex-col items-center mb-4">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-cream to-brand-coral shadow-lg p-1.5 mb-3 flex items-center justify-center">
-            <img src="/logo-purple.svg" alt="Logo" className="w-full h-full object-contain" />
+            <img src={LOGO_PURPLE_SRC} alt="Logo" className="w-full h-full object-contain" />
           </div>
           <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-white flex items-center justify-center text-brand-purple mb-2">
             <Lock size={20} />

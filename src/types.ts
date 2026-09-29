@@ -4,6 +4,9 @@ export interface Profile {
   role: 'admin' | 'user' | 'auditor' | 'spv' | 'direktur' | 'requester' | 'gudang_berkas';
   is_active: boolean;
   avatar_url: string | null;
+  // Dipakai Form Akses Gudang Berkas (data pemohon & pendamping otomatis dari profil)
+  divisi?: string | null;
+  jabatan?: string | null;
   created_at: string;
 }
 
@@ -100,6 +103,7 @@ export interface DisposalRequest {
   tanggal_approved_l1: string | null;
   approved_by_l2: string | null;
   tanggal_approved_l2: string | null;
+  alasan_penolakan?: string | null;
   keterangan: string | null;
   created_at: string;
   updated_at: string;
@@ -139,6 +143,7 @@ export interface SPKRequest {
   tanggal_approved_l1: string | null;
   approved_by_l2: string | null;
   tanggal_approved_l2: string | null;
+  alasan_penolakan?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -174,6 +179,8 @@ export interface GudangBerkasRequest {
   tujuan_kunjungan: string | null;
   tujuan_lainnya: string | null;
   jumlah_personil: number;
+  pemohon_id?: string | null;
+  pendamping_id?: string | null;
   pendamping_nama: string | null;
   pendamping_divisi: string | null;
   diketahui_oleh_nama: string | null;
@@ -203,6 +210,10 @@ export interface GudangBerkasRequestItem {
   tahun: string | null;
   nomor_dokumen: string | null;
   keterangan: string | null;
+  // true = baris ditambahkan admin/SPV saat verifikasi (kondisi nyata di
+  // lapangan), bukan bagian permohonan asli — TIDAK ikut dicetak di PDF.
+  is_temuan_lapangan?: boolean;
+  ditambahkan_oleh?: string | null;
   created_at: string;
 }
 

@@ -9,6 +9,7 @@ import {
   Edit2, X
 } from 'lucide-react';
 import { Profile } from '../../types';
+import { roleLabel } from '../../lib/roles';
 import SignedImage from '../UI/SignedImage';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -17,8 +18,46 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const DIVISI_OPTIONS = [
+  'Tax',
+  'Accounting',
+  'Finance',
+  'Purchasing',
+  'Logistic',
+  'ICT',
+  'Business Development',
+  'Human Capital',
+  'Legal',
+  'MJS HO',
+  'Personal Assistant / Secretary',
+  'SMO',
+  'Industrial Relations',
+  'Private Equity',
+  'General Affair',
+];
+
+// Divisi dipilih dari daftar baku. Nilai lama yang dulu diketik manual (dan
+// gak ada di daftar) tetap ditampilkan supaya gak hilang diam-diam.
+function DivisiSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const isLegacy = !!value && !DIVISI_OPTIONS.includes(value);
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+    >
+      <option value="">— Pilih divisi —</option>
+      {isLegacy && <option value={value}>{value} (data lama)</option>}
+      {DIVISI_OPTIONS.map((d) => (
+        <option key={d} value={d}>{d}</option>
+      ))}
+    </select>
+  );
+}
+
 export default function ManageUsers() {
   const { profile, user } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const { showToast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,9 +304,9 @@ export default function ManageUsers() {
         </p>
       </div>
 
-      <div className={cn("grid grid-cols-1 gap-4", profile?.role === 'requester' ? "max-w-4xl mx-auto" : "lg:grid-cols-3")}>
-        {/* Profile Section */}
-        <div className={cn(profile?.role === 'requester' ? "grid grid-cols-1 sm:grid-cols-2 gap-6" : "lg:col-span-1 space-y-6")}>
+      <div className={cn("grid grid-cols-1 gap-4", isAdmin ? "lg:grid-cols-3" : "max-w-4xl mx-auto w-full")}>
+        {/* Profile Section — non-admin: kartu profil & password berdampingan di tengah */}
+        <div className={cn(isAdmin ? "lg:col-span-1 space-y-6" : "grid grid-cols-1 md:grid-cols-2 gap-6 items-start")}>
           <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden">
             <div className="p-6 border-b border-white/30 bg-white/20">
               <h3 className="font-bold text-brand-purple flex items-center">
@@ -293,12 +332,12 @@ export default function ManageUsers() {
                 <div className="mt-4 text-center">
                   <p className="font-bold text-brand-purple">{profile?.full_name || 'User'}</p>
                   {profile?.role !== 'requester' && (
-                    <p className="text-xs text-brand-purple uppercase tracking-widest font-bold mt-1">
+                    <p className="text-xs font-semibold mt-1.5">
                       <span className={cn(
-                        "px-2 py-0.5 rounded",
-                        profile?.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
+                        "px-2.5 py-1 rounded-full",
+                        profile?.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-brand-purple/10 text-brand-purple"
                       )}>
-                        {profile?.role}
+                        {roleLabel(profile?.role)}
                       </span>
                     </p>
                   )}
@@ -319,13 +358,7 @@ export default function ManageUsers() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Divisi</label>
-                    <input
-                      type="text"
-                      value={divisi}
-                      onChange={(e) => setDivisi(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                      placeholder="mis. Finance"
-                    />
+                    <DivisiSelect value={divisi} onChange={setDivisi} />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Jabatan</label>
@@ -401,10 +434,9 @@ export default function ManageUsers() {
           </div>
         </div>
 
-        {/* User List Section (Admin Only) — disembunyikan sepenuhnya untuk requester */}
-        {profile?.role !== 'requester' && (
+        {/* User List Section — khusus admin. Role lain cuma lihat kartu profil & password. */}
+        {isAdmin && (
         <div className="lg:col-span-2">
-          {profile?.role === 'admin' ? (
             <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 overflow-hidden h-full flex flex-col">
               <div className="p-6 border-b border-white/30 bg-white/20 flex items-center justify-between">
                 <h3 className="font-bold text-brand-purple flex items-center">
@@ -464,10 +496,10 @@ export default function ManageUsers() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={cn(
-                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
-                            p.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-brand-purple"
+                            "px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap",
+                            p.role === 'admin' ? "bg-blue-100 text-blue-700" : "bg-brand-purple/10 text-brand-purple"
                           )}>
-                            {p.role}
+                            {roleLabel(p.role)}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-xs text-brand-purple whitespace-nowrap">
@@ -489,29 +521,6 @@ export default function ManageUsers() {
                 </table>
               </div>
             </div>
-          ) : (
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-8 flex flex-col items-center text-center space-y-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                <Shield size={32} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-brand-purple">Akses Terbatas</h3>
-                <p className="text-sm text-brand-purple max-w-sm mt-2">
-                  Sebagai pengguna dengan role <strong className="capitalize">{profile?.role || 'User'}</strong>, Anda hanya dapat mengelola profil dan keamanan akun Anda sendiri.
-                </p>
-              </div>
-              <div className="pt-4 grid grid-cols-2 gap-4 w-full max-w-xs">
-                <div className="bg-white/60 backdrop-blur-md p-3 rounded-xl border border-white/50 shadow-sm">
-                  <p className="text-[10px] font-bold text-brand-purple uppercase">Inventory</p>
-                  <p className="text-xs font-bold text-blue-600">View Only</p>
-                </div>
-                <div className="bg-white/60 backdrop-blur-md p-3 rounded-xl border border-white/50 shadow-sm">
-                  <p className="text-[10px] font-bold text-brand-purple uppercase">Profile</p>
-                  <p className="text-xs font-bold text-blue-600">Full Access</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         )}
       </div>
@@ -550,13 +559,7 @@ export default function ManageUsers() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Divisi</label>
-                  <input
-                    type="text"
-                    value={newUserForm.divisi}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, divisi: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                    placeholder="mis. Finance"
-                  />
+                  <DivisiSelect value={newUserForm.divisi} onChange={(v) => setNewUserForm({ ...newUserForm, divisi: v })} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Jabatan</label>
@@ -653,14 +656,7 @@ export default function ManageUsers() {
             <form onSubmit={handleSaveUserEdit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Divisi</label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={userEditForm.divisi}
-                  onChange={(e) => setUserEditForm({ ...userEditForm, divisi: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                  placeholder="mis. Finance"
-                />
+                <DivisiSelect value={userEditForm.divisi} onChange={(v) => setUserEditForm({ ...userEditForm, divisi: v })} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-brand-purple uppercase tracking-wider mb-1">Jabatan</label>

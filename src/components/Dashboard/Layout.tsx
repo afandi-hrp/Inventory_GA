@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import SignedImage from '../UI/SignedImage';
+import { roleLabel } from '../../lib/roles';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -287,8 +288,8 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-white truncate">{profile?.full_name || 'User'}</p>
                   {profile?.role && (
-                    <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/15 text-white/80">
-                      {profile.role}
+                    <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/15 text-white/80">
+                      {roleLabel(profile.role)}
                     </span>
                   )}
                 </div>

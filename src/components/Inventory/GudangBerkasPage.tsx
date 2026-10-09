@@ -284,13 +284,11 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
   const [uploadingMemberPhoto, setUploadingMemberPhoto] = useState(false);
   const [uploadingItemPhotoId, setUploadingItemPhotoId] = useState<string | null>(null);
   const [lightboxPath, setLightboxPath] = useState<string | null>(null);
-  const [deletingRequest, setDeletingRequest] = useState(false);
 
   // Admin & SPV setara di modul ini: input form, verifikasi logbook, isi nama
   // penanda tangan, tambah temuan lapangan, tandai selesai. Direktur hanya
-  // melihat (tanpa tombol aksi apa pun); hapus permohonan khusus admin (RLS).
+  // melihat (tanpa tombol aksi apa pun).
   const canManage = profile?.role === 'admin' || profile?.role === 'spv';
-  const canDeleteRequest = profile?.role === 'admin';
   // Role khusus: hanya boleh membuat form & melihat/cetak PDF miliknya sendiri.
   // Tidak boleh mengedit apa pun, dan sama sekali tidak boleh melihat bagian
   // verifikasi/logbook — dijaga juga di level RLS (lihat supabase_gudang_berkas_setup.sql),
@@ -968,54 +966,6 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       showToast(err.message || 'Gagal menghapus foto', 'error');
     } finally {
       setUploadingItemPhotoId(null);
-    }
-  }
-
-  // Hapus 1 permohonan beserta SEMUA foto-nya di storage. File dihapus lebih
-  // dulu (bukan baris dulu): kalau penghapusan file gagal, permohonan tetap ada
-  // dan bisa dicoba lagi — kalau baris dihapus duluan, file jadi yatim tanpa
-  // referensi dan tidak akan pernah terbersihkan. Baris anak (anggota, rincian,
-  // logbook, checklist) ikut terhapus lewat FK ON DELETE CASCADE.
-  async function deleteRequest() {
-    if (!canDeleteRequest || !selectedRequest) return;
-    if (!window.confirm(
-      `Hapus permohonan ${selectedRequest.no_kunjungan} beserta seluruh data verifikasi dan foto-fotonya?\n\nTindakan ini tidak bisa dibatalkan.`
-    )) return;
-    setDeletingRequest(true);
-    try {
-      const folder = selectedRequest.id;
-      const { data: listed, error: listErr } = await supabase.storage.from(GB_BUCKET).list(folder, { limit: 1000 });
-      if (listErr) throw listErr;
-      const paths = new Set<string>((listed || []).filter(f => f.id).map(f => `${folder}/${f.name}`));
-      if (selectedRequest.members_foto_path) paths.add(selectedRequest.members_foto_path);
-      logbookChecks.forEach(c => { if (c.foto_path) paths.add(c.foto_path); });
-
-      if (paths.size > 0) {
-        const { data: removed, error: removeErr } = await supabase.storage.from(GB_BUCKET).remove([...paths]);
-        if (removeErr) throw removeErr;
-        // File yang memang sudah tidak ada tidak muncul di hasil, jadi cuma file
-        // yang MASIH ada di storage (listed) yang wajib terkonfirmasi terhapus.
-        const stillThere = new Set(removed?.map(r => r.name) || []);
-        const missing = (listed || []).filter(f => f.id && !stillThere.has(`${folder}/${f.name}`));
-        if (missing.length > 0) throw new Error('Sebagian file foto gagal dihapus dari storage (kemungkinan tidak punya izin). Permohonan belum dihapus.');
-      }
-
-      const { data, error } = await supabase
-        .from('gudang_berkas_requests')
-        .delete()
-        .eq('id', selectedRequest.id)
-        .select('id');
-      if (error) throw error;
-      if (!data || data.length === 0) throw new Error('Gagal menghapus permohonan: kemungkinan tidak punya izin (RLS).');
-
-      showToast(`Permohonan ${selectedRequest.no_kunjungan} dan foto-fotonya dihapus`, 'success');
-      setView('list');
-      setSelectedRequest(null);
-      await fetchRequests();
-    } catch (err: any) {
-      showToast(err.message || 'Gagal menghapus permohonan', 'error');
-    } finally {
-      setDeletingRequest(false);
     }
   }
 
@@ -1738,12 +1688,12 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
             </div>
           </SectionCard>
 
-          <p className="flex items-start gap-2 text-xs text-brand-purple/70 bg-white/50 border border-white/60 rounded-xl p-3">
-            <AlertTriangle size={14} className="shrink-0 mt-0.5 text-yellow-500" />
+          <p className="flex items-start gap-3 text-base font-semibold text-brand-purple bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
+            <AlertTriangle size={22} className="shrink-0 mt-0.5 text-yellow-500" />
             Jika PIC dari GA berhalangan, tim pemohon harus menunggu hingga tim GA available.
           </p>
 
-          <div className="sticky bottom-4 z-10 bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/60 p-3 flex justify-end gap-3">
+          <div className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-lg border border-white/50 p-3 flex justify-end gap-3">
             <button type="button" onClick={() => setView('list')} className="btn-cancel">Batal</button>
             <button type="submit" disabled={isSubmitting || loadingPeople} className="px-6 py-2.5 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <ClipboardCheck size={18} />}
@@ -1772,18 +1722,10 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                 <span className="flex items-center gap-1.5"><MapPin size={14} /> {selectedRequest.lokasi_gudang || '-'}</span>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-              {canDeleteRequest && (
-                <button onClick={deleteRequest} disabled={deletingRequest || isSubmitting} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-xl shadow-sm text-sm font-semibold transition-colors disabled:opacity-50">
-                  {deletingRequest ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  <span>Hapus Permohonan</span>
-                </button>
-              )}
-              <button onClick={() => generatePDFPreview(selectedRequest ?? undefined, detailMembers, detailItems)} disabled={isSubmitting || deletingRequest} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-purple hover:bg-brand-purple-light text-white rounded-xl shadow-md text-sm font-semibold transition-colors disabled:opacity-50">
-                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                <span>Preview Surat Permohonan (PDF)</span>
-              </button>
-            </div>
+            <button onClick={() => generatePDFPreview(selectedRequest ?? undefined, detailMembers, detailItems)} disabled={isSubmitting} className="flex items-center justify-center gap-2 shrink-0 px-4 py-2.5 bg-brand-purple hover:bg-brand-purple-light text-white rounded-xl shadow-md text-sm font-semibold transition-colors disabled:opacity-50">
+              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+              <span>Preview Surat Permohonan (PDF)</span>
+            </button>
           </div>
 
           {loadingDetail ? (

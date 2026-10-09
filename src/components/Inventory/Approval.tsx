@@ -56,7 +56,7 @@ export default function Approval() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(profile?.role === 'admin' || profile?.role === 'spv') && (
+        {(profile?.role === 'admin' || profile?.role === 'spv' || profile?.role === 'direktur') && (
           <button
             onClick={() => navigate('/gudang-berkas')}
             className="text-left bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/50 hover:shadow-xl hover:border-orange-200 transition-all group"

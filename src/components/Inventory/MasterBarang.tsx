@@ -10,7 +10,7 @@ import {
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
   LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning,
   UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText, RefreshCw,
-  Nfc, ScanLine, CheckCircle
+  Nfc, ScanLine, CheckCircle, LayoutGrid, List as ListIcon
 } from 'lucide-react';
 import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -162,6 +162,36 @@ function saveXlsxWorkbook(wb: XLSX.WorkBook, fileName: string) {
   }
 }
 
+// Kelengkapan data barang untuk tampilan card: 5 komponen (foto, dokumen
+// garansi/sertifikat/manual, hasil audit). Murni dihitung dari kolom `items`
+// yang sudah ada — tidak ada kolom database baru.
+function getKelengkapan(item: Item) {
+  const parts = [
+    { key: 'foto', label: 'Foto', done: (item.foto_urls?.length || 0) > 0 },
+    { key: 'garansi', label: 'Garansi', done: !!item.dokumen_garansi_url },
+    { key: 'sertifikat', label: 'Sertifikat', done: !!item.dokumen_sertifikat_url },
+    { key: 'manual', label: 'Manual', done: !!item.dokumen_manual_url },
+    { key: 'audit', label: 'Audit', done: !!item.tanggal_audit || !!item.note_audit },
+  ];
+  return { parts, doneCount: parts.filter(p => p.done).length };
+}
+
+// Pilihan urutan untuk tampilan card (tabel tetap urut lewat klik header kolom).
+const CARD_SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'created_at:desc', label: 'Terbaru' },
+  { value: 'created_at:asc', label: 'Terlama' },
+  { value: 'kode_barang:asc', label: 'Kode A → Z' },
+  { value: 'kode_barang:desc', label: 'Kode Z → A' },
+  { value: 'nama_barang:asc', label: 'Nama A → Z' },
+  { value: 'nama_barang:desc', label: 'Nama Z → A' },
+  { value: 'kode_lokasi:asc', label: 'Lokasi A → Z' },
+  { value: 'kode_lokasi:desc', label: 'Lokasi Z → A' },
+  { value: 'jumlah_barang:desc', label: 'Stok terbanyak' },
+  { value: 'jumlah_barang:asc', label: 'Stok tersedikit' },
+];
+
+const VIEW_MODE_KEY = 'masterBarang.viewMode';
+
 export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -189,12 +219,24 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     }, { replace: true });
   };
   const [totalCount, setTotalCount] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [availableLocations, setAvailableLocations] = useState<any[]>([]);
   const [locationStats, setLocationStats] = useState<{name: string, count: number, stock: number}[]>([]);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  // Tampilan daftar barang: card (default) atau tabel; pilihan diingat per browser.
+  const [viewMode, setViewMode] = useState<'card' | 'table'>(() => {
+    try {
+      return localStorage.getItem(VIEW_MODE_KEY) === 'table' ? 'table' : 'card';
+    } catch {
+      return 'card';
+    }
+  });
+  const changeViewMode = (mode: 'card' | 'table') => {
+    setViewMode(mode);
+    try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch { /* storage diblokir — abaikan */ }
+  };
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -305,7 +347,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [activeFilterPanel, setActiveFilterPanel] = useState<'' | 'kategori' | 'lokasi' | 'kepemilikan'>('');
   // Cuma dipakai di layar HP (di bawah breakpoint sm) - panel filter bisa
   // diciutkan/dilebarkan biar gak makan tempat pas gak lagi dipakai.
-  const [isMobileFilterExpanded, setIsMobileFilterExpanded] = useState(true);
+  const [isMobileFilterExpanded, setIsMobileFilterExpanded] = useState(false);
   // Posisi dropdown dihitung manual (bukan cuma absolute+relative) & dirender
   // lewat portal ke document.body, karena baris filter sekarang overflow-x-auto
   // (biar muat 1 baris) — overflow-x-auto otomatis ikut meng-clip overflow-y,
@@ -2115,8 +2157,112 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
+  // Tombol aksi utama (Excel & PDF, Tambah Barang) — ditaruh di toolbar atas daftar,
+  // di samping "Urutkan" (bukan lagi di panel filter). Hanya admin & SPV.
+  const headerActions = (profile?.role === 'admin' || profile?.role === 'spv') ? (
+      <div className="shrink-0 flex items-center gap-2">
+        <div>
+          <button
+            onClick={(e) => {
+              if (fileMenuPos) {
+                setFileMenuPos(null);
+              } else {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setFileMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 224) });
+              }
+            }}
+            className="flex items-center justify-center gap-2 bg-white hover:bg-brand-purple/5 border border-brand-purple/25 text-brand-purple px-3 py-2 rounded-lg transition-all shadow-sm font-semibold text-sm"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Excel &amp; PDF</span>
+            <ChevronDown size={14} className={cn("transition-transform", fileMenuPos && "rotate-180")} />
+          </button>
+          {fileMenuPos && createPortal(
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setFileMenuPos(null)} />
+              <div
+                className="fixed w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                style={{ top: fileMenuPos.top, left: fileMenuPos.left }}
+              >
+                <button
+                  onClick={() => { handleDownloadTemplate(); setFileMenuPos(null); }}
+                  className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                >
+                  <Download size={16} className="text-brand-purple" />
+                  <span>Download Template</span>
+                </button>
+                <label
+                  className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
+                  <span>Import Excel</span>
+                  <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
+                </label>
+                <button
+                  onClick={() => { handlePrepareExport(); setFileMenuPos(null); }}
+                  className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
+                >
+                  <FileSpreadsheet size={16} className="text-emerald-600" />
+                  <span>Export Excel</span>
+                </button>
+                <button
+                  onClick={() => { handleExportPDF(); setFileMenuPos(null); }}
+                  disabled={isExportingPDF}
+                  className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {isExportingPDF ? <Loader2 size={16} className="animate-spin text-red-500" /> : <FileText size={16} className="text-red-500" />}
+                  <span>Export PDF</span>
+                </button>
+              </div>
+            </>,
+            document.body
+          )}
+        </div>
+        <button
+          onClick={() => handleOpenModal()}
+          className="flex items-center justify-center gap-2 bg-brand-purple hover:bg-brand-purple-light text-white px-3 py-2 rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold text-sm whitespace-nowrap"
+        >
+          <Plus size={18} />
+          <span>Tambah Barang</span>
+        </button>
+      </div>
+  ) : null;
+
+  // Kontrol khusus tampilan card (dipakai di panel utama, dan di modal pemusnahan
+  // yang tidak punya panel utama): pilih semua + urutan.
+  const selectAllButton = (
+    <button
+      type="button"
+      onClick={toggleSelectAll}
+      disabled={items.length === 0}
+      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-brand-purple/20 text-sm font-semibold text-brand-purple hover:border-brand-purple/40 transition-colors disabled:opacity-50"
+    >
+      {selectedItems.length === items.length && items.length > 0 ? <CheckSquare size={16} className="text-brand-purple" /> : <Square size={16} />}
+      <span>{selectedItems.length > 0 ? `${selectedItems.length} dipilih` : 'Pilih semua'}</span>
+    </button>
+  );
+  const sortSelect = (
+    <label className="inline-flex items-center gap-2 text-sm text-brand-purple">
+      <ArrowUpDown size={14} className="shrink-0" />
+      <span className="font-semibold">Urutkan</span>
+      <select
+        value={`${sortColumn}:${sortOrder}`}
+        onChange={(e) => {
+          const [col, order] = e.target.value.split(':');
+          setSortColumn(col);
+          setSortOrder(order as 'asc' | 'desc');
+        }}
+        className="text-sm border border-brand-purple/20 rounded-lg px-2.5 py-2 bg-white focus:ring-2 focus:ring-brand-purple/30 outline-none"
+      >
+        {CARD_SORT_OPTIONS.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-2.5 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-block">Master Barang</h2>
@@ -2161,11 +2307,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       {/* Panel Kontrol: Search + Filter, digabung jadi satu kartu biar tidak numpuk.
           Dipadatkan (padding & tinggi dikecilkan, semua filter jadi 1 baris)
           supaya tabel barang di bawahnya gak keteken terlalu jauh. */}
-      <div className="bg-white/60 backdrop-blur-xl p-3 rounded-2xl shadow-lg border border-white/50 space-y-2.5">
-      {/* Tombol ciutkan/lebarkan panel filter - CUMA muncul di layar HP
-          (sm:hidden), biar panel bisa diringkas kalau gak lagi dipakai supaya
-          gak makan tempat layar yang kecil. Di layar sm+ gak relevan (panel
-          udah ringkas 1 baris), jadi tombolnya disembunyikan total. */}
+      <div className="bg-white/60 backdrop-blur-xl p-2.5 rounded-2xl shadow-lg border border-white/50 space-y-2">
+      {/* Tombol buka/tutup panel filter - CUMA muncul di layar HP (sm:hidden).
+          Di HP panel tersembunyi secara default dan baru muncul saat tombol ini
+          diklik, supaya daftar barang langsung kelihatan di layar kecil. */}
       <button
         type="button"
         onClick={() => setIsMobileFilterExpanded((v) => !v)}
@@ -2178,7 +2323,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         <ChevronDown size={16} className={cn("transition-transform", isMobileFilterExpanded && "rotate-180")} />
       </button>
       {/* Search + semua filter cepat (Status, Kategori/Lokasi/Kepemilikan,
-          Perlu Pemusnahan, Reset, Excel & PDF, Tambah Barang) dipaksa jadi
+          Perlu Pemusnahan, Reset, toggle tampilan) dipaksa jadi
           SATU baris (flex-nowrap) di layar laptop/desktop — kalau agak sempit
           (mis. laptop 14"), baris itu scroll horizontal sendiri (overflow-x-auto).
           Di layar HP (di bawah breakpoint sm), semuanya dibiarkan WRAP ke
@@ -2187,14 +2332,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           gak peduli status ciutkan-nya). */}
       <div className={cn(
         isMobileFilterExpanded ? "flex" : "hidden",
-        "flex-col gap-2 sm:flex sm:flex-row sm:items-center"
+        "flex-col gap-2 sm:flex"
       )}>
-      {/* Cuma bagian filter yang scroll horizontal kalau kepanjangan (sm+) —
-          tombol aksi utama (Excel & PDF, Tambah Barang) sengaja ditaruh DI LUAR
-          area scroll ini supaya selalu keliatan penuh, gak ikut ke-scroll/terpotong
-          di layar sempit (mis. laptop 14"). */}
-      <div className="flex-1 min-w-0 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:overflow-x-auto scrollbar-hide pb-0.5">
-        <div className="relative group shrink-0 w-44">
+      {/* Baris 1: search + filter (search melebar mengisi sisa ruang, jadi tepi kanan
+          rata dengan baris 2). Scroll horizontal sendiri kalau kepanjangan (sm+). */}
+      <div className="min-w-0 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:overflow-x-auto scrollbar-hide pb-0.5">
+        <div className="relative group flex-1 min-w-[9rem]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-purple" size={16} />
           <input
             type="text"
@@ -2431,76 +2574,41 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         >
           <XCircle size={16} />
         </button>
+
+        {/* Toggle tampilan Card / Tabel */}
+        <div className="shrink-0 inline-flex rounded-lg border border-brand-purple/20 bg-white p-0.5" role="group" aria-label="Tampilan daftar barang">
+          {([
+            { id: 'card' as const, label: 'Card', icon: <LayoutGrid size={15} /> },
+            { id: 'table' as const, label: 'Tabel', icon: <ListIcon size={15} /> },
+          ]).map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => changeViewMode(opt.id)}
+              title={`Tampilan ${opt.label}`}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                viewMode === opt.id ? "bg-brand-purple text-white" : "text-brand-purple/70 hover:bg-brand-purple/5"
+              )}
+            >
+              {opt.icon}
+              <span className="hidden xl:inline">{opt.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-        {(profile?.role === 'admin' || profile?.role === 'spv') && (
-          <div className="shrink-0 flex items-center gap-2">
-            <div>
-              <button
-                onClick={(e) => {
-                  if (fileMenuPos) {
-                    setFileMenuPos(null);
-                  } else {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setFileMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 224) });
-                  }
-                }}
-                className="flex items-center justify-center gap-2 bg-white hover:bg-brand-purple/5 border border-brand-purple/25 text-brand-purple px-3 py-2 rounded-lg transition-all shadow-sm font-semibold text-sm"
-              >
-                <FileSpreadsheet size={16} />
-                <span>Excel &amp; PDF</span>
-                <ChevronDown size={14} className={cn("transition-transform", fileMenuPos && "rotate-180")} />
-              </button>
-              {fileMenuPos && createPortal(
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setFileMenuPos(null)} />
-                  <div
-                    className="fixed w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-                    style={{ top: fileMenuPos.top, left: fileMenuPos.left }}
-                  >
-                    <button
-                      onClick={() => { handleDownloadTemplate(); setFileMenuPos(null); }}
-                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
-                    >
-                      <Download size={16} className="text-brand-purple" />
-                      <span>Download Template</span>
-                    </button>
-                    <label
-                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      {importLoading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <FileSpreadsheet size={16} className="text-emerald-500" />}
-                      <span>Import Excel</span>
-                      <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
-                    </label>
-                    <button
-                      onClick={() => { handlePrepareExport(); setFileMenuPos(null); }}
-                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors"
-                    >
-                      <FileSpreadsheet size={16} className="text-emerald-600" />
-                      <span>Export Excel</span>
-                    </button>
-                    <button
-                      onClick={() => { handleExportPDF(); setFileMenuPos(null); }}
-                      disabled={isExportingPDF}
-                      className="w-full flex items-center space-x-2.5 px-4 py-2.5 text-sm text-brand-purple hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
-                      {isExportingPDF ? <Loader2 size={16} className="animate-spin text-red-500" /> : <FileText size={16} className="text-red-500" />}
-                      <span>Export PDF</span>
-                    </button>
-                  </div>
-                </>,
-                document.body
-              )}
-            </div>
-            <button
-              onClick={() => handleOpenModal()}
-              className="flex items-center justify-center gap-2 bg-brand-purple hover:bg-brand-purple-light text-white px-3 py-2 rounded-lg transition-all shadow-md shadow-brand-purple/20 font-semibold text-sm whitespace-nowrap"
-            >
-              <Plus size={18} />
-              <span>Tambah Barang</span>
-            </button>
-          </div>
+      {/* Baris 2: kiri = pilih semua (card) / jumlah barang (tabel); kanan = urutan (card) + Excel & PDF + Tambah Barang */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-brand-purple/10">
+        {viewMode === 'card' ? selectAllButton : (
+          <p className="text-sm text-brand-purple px-1"><span className="font-bold">{totalCount}</span> barang</p>
         )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {viewMode === 'card' && sortSelect}
+          {headerActions}
+        </div>
+      </div>
+
       </div>
       </div>
 
@@ -2531,8 +2639,268 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         </div>
       )}
 
-      {/* Table */}
+      {/* Tampilan Card — pagination di bawah dipakai bersama dengan tampilan tabel */}
+      {viewMode === 'card' && (
+        <div className="space-y-3 mb-3">
+          {/* Modal pemusnahan tidak punya panel utama di atasnya — kontrol card ditaruh di sini */}
+          {isPemusnahanModalOpen && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-brand-purple/5">
+              {selectAllButton}
+              {sortSelect}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg px-6 py-12 text-center">
+              <Loader2 className="animate-spin mx-auto text-brand-purple mb-2" size={32} />
+              <p className="text-brand-purple">Memuat data...</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg px-6 py-12 text-center">
+              <Package className="mx-auto text-brand-purple mb-2" size={48} />
+              <p className="text-brand-purple">Tidak ada barang ditemukan</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+              {items.map((item) => {
+                const isSelected = selectedItems.includes(item.id);
+                const { parts: kelengkapan, doneCount } = getKelengkapan(item);
+                const canStockActions = profile?.role === 'admin' || profile?.role === 'spv';
+                const canEditItem = profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv';
+                const needsDisposal = item.kondisi_barang === 'RUSAK' || item.kondisi_barang === 'CUKUP BAIK';
+                const hasDocs = !!(item.dokumen_garansi_url || item.dokumen_sertifikat_url || item.dokumen_manual_url);
+                const lokasiNama = (item as any).master_lokasi?.nama_lokasi || 'Unassigned';
+                const kategoriNama = (item as any).categories?.nama_kategori || 'Tanpa Kategori';
+                const kepemilikanNama = (item as any).master_kepemilikan?.nama_pemilik || '-';
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleShowDetail(item)}
+                    className={cn(
+                      "bg-white/85 rounded-2xl shadow-md border p-4 flex flex-col gap-3 cursor-pointer hover:shadow-lg transition-shadow",
+                      isSelected ? "border-brand-purple ring-2 ring-brand-purple/30" : "border-white/70"
+                    )}
+                  >
+                    {/* Header: pilih + kode + status/kondisi */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" onClick={() => toggleSelectItem(item.id)} className="text-brand-purple hover:text-brand-purple-light transition-colors shrink-0">
+                          {isSelected ? <CheckSquare size={17} className="text-brand-purple" /> : <Square size={17} />}
+                        </button>
+                        <span className="font-mono font-bold text-sm text-brand-purple truncate">{item.kode_barang}</span>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-1 shrink-0">
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
+                          item.sifat_barang === 'OFFICE' ? "bg-sky-50 text-sky-700 border-sky-200" :
+                          item.sifat_barang === 'REUSABLE' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                          "bg-purple-50 text-purple-700 border-purple-200"
+                        )}>
+                          {item.sifat_barang || 'PRIVATE'}
+                        </span>
+                        {item.kondisi_barang && (
+                          <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
+                            item.kondisi_barang === 'BAIK' ? "bg-green-50 text-green-700 border-green-200" :
+                            item.kondisi_barang === 'CUKUP BAIK' ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
+                            "bg-red-50 text-red-700 border-red-200"
+                          )}>
+                            {item.kondisi_barang}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Panel: foto + nama + deskripsi + stok */}
+                    <div className="rounded-xl bg-brand-purple/5 p-3 flex items-stretch gap-3 min-h-[6.5rem]">
+                      {item.foto_urls && item.foto_urls.length > 0 ? (
+                        <div className="relative shrink-0 self-center">
+                          <SignedImage
+                            bucket="item-photos"
+                            path={item.foto_urls[0]}
+                            alt={item.nama_barang}
+                            className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm cursor-zoom-in"
+                            containerClassName="w-20 h-20 rounded-lg"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCarousel(item.foto_urls, 0);
+                            }}
+                          />
+                          {item.foto_urls.length > 1 && (
+                            <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-brand-purple text-white text-[10px] font-bold shadow">
+                              +{item.foto_urls.length - 1}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 shrink-0 self-center rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-200" title="Belum ada foto">
+                          <AlertTriangle size={20} />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1 self-center">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-purple/60">Nama Barang</p>
+                        <p className="font-bold text-brand-purple leading-snug line-clamp-2 break-words">{item.nama_barang}</p>
+                        <p className="text-xs text-brand-purple/70 mt-0.5 line-clamp-2 break-words whitespace-pre-line">{item.deskripsi || '-'}</p>
+                      </div>
+                      <div className="shrink-0 pl-3 border-l border-brand-purple/10 flex flex-col items-center justify-center text-center leading-none">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-purple/60 mb-1.5">Stok</p>
+                        <p className={cn("text-2xl font-bold", item.jumlah_barang <= 5 ? "text-red-600" : "text-brand-purple")}>{item.jumlah_barang}</p>
+                      </div>
+                    </div>
+
+                    {/* Kategori, Lokasi & Milik — masing-masing diberi label + warna sendiri biar jelas */}
+                    <div className="space-y-2">
+                      <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5" title={kategoriNama}>
+                        <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-orange-700/70"><Tag size={10} /> Kategori</p>
+                        <p className="text-sm font-bold text-orange-800 line-clamp-2 break-words">{kategoriNama}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 min-w-0" title={lokasiNama}>
+                          <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-700/70"><MapPin size={10} /> Lokasi</p>
+                          <p className="text-sm font-bold text-blue-800 line-clamp-2 break-words">{lokasiNama}</p>
+                        </div>
+                        <div className="rounded-xl border border-brand-purple/25 bg-brand-purple/10 px-3 py-1.5 min-w-0" title={kepemilikanNama}>
+                          <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand-purple/70"><UserCheck size={10} /> Milik</p>
+                          <p className="text-sm font-bold text-brand-purple line-clamp-2 break-words">{kepemilikanNama}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dokumen */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-purple/60">Dokumen</span>
+                      {hasDocs ? (
+                        <>
+                          {item.dokumen_garansi_url && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_garansi_url, `${item.kode_barang} - Garansi`); }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              <FileText size={10} /> Garansi
+                            </button>
+                          )}
+                          {item.dokumen_sertifikat_url && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_sertifikat_url, `${item.kode_barang} - Sertifikat`); }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              <FileText size={10} /> Sertifikat
+                            </button>
+                          )}
+                          {item.dokumen_manual_url && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_manual_url, `${item.kode_barang} - Manual Book`); }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              <FileText size={10} /> Manual
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-xs text-brand-purple/50">-</span>
+                      )}
+                    </div>
+
+                    {/* Peringatan */}
+                    {(needsDisposal || !(item.foto_urls?.length)) && (
+                      <div className="space-y-1.5">
+                        {needsDisposal && (
+                          <p className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" /> Masuk list pemusnahan · {item.kondisi_barang}
+                          </p>
+                        )}
+                        {!(item.foto_urls?.length) && (
+                          <p className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" /> Belum ada foto
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Kelengkapan data (foto, garansi, sertifikat, manual, audit) */}
+                    <div className="mt-auto">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="flex items-center gap-1.5 font-semibold text-brand-purple">
+                          <span className={cn("w-1.5 h-1.5 rounded-full", doneCount === kelengkapan.length ? "bg-green-500" : "bg-amber-500")} />
+                          Kelengkapan data
+                        </span>
+                        <span className="text-brand-purple/60">{doneCount}/{kelengkapan.length}</span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1">
+                        {kelengkapan.map(p => (
+                          <div key={p.key} title={`${p.label}: ${p.done ? 'lengkap' : 'belum ada'}`}>
+                            <div className={cn("h-1 rounded-full", p.done ? (doneCount === kelengkapan.length ? "bg-green-500" : "bg-amber-500") : "bg-brand-purple/10")} />
+                            <p className={cn("text-[9px] mt-0.5 text-center truncate", p.done ? "text-brand-purple" : "text-brand-purple/40")}>{p.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Aksi — semua ditampilkan, mengikuti hak akses role seperti menu Aksi di tabel */}
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleShowDetail(item)}
+                        className="flex-1 px-3 py-2 rounded-lg bg-brand-purple/10 text-brand-purple hover:bg-brand-purple/20 text-sm font-semibold transition-colors"
+                      >
+                        Detail
+                      </button>
+                      {canEditItem && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenModal(item)}
+                          className="flex-1 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-semibold transition-colors"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        title="Lihat Riwayat"
+                        onClick={() => {
+                          if (setHistorySearch) {
+                            setHistorySearch(item.kode_barang);
+                            navigate('/log-item-change');
+                          }
+                        }}
+                        className="p-2 rounded-lg border border-gray-200 bg-white text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      >
+                        <History size={16} />
+                      </button>
+                      {canStockActions && (
+                        <>
+                          <button
+                            type="button"
+                            title="Ambil Barang"
+                            onClick={() => handleTakeItem(item)}
+                            className="p-2 rounded-lg border border-gray-200 bg-white text-orange-600 hover:bg-orange-50 transition-colors"
+                          >
+                            <LogOut size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Keluarkan Barang"
+                            onClick={() => handleStockOut(item)}
+                            className="p-2 rounded-lg border border-gray-200 bg-white text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Archive size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bg-white/60 backdrop-blur-xl rounded-3xl shadow-lg overflow-hidden">
+        {viewMode === 'table' && (
         <div
           className="overflow-x-auto custom-scrollbar"
           ref={tableContainerRef}
@@ -2827,6 +3195,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Pagination */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -3929,7 +4298,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
         >
           <div 
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
@@ -4183,26 +4552,26 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+            <div className="px-6 py-3 border-t border-gray-100 flex flex-wrap gap-2 bg-gray-50/50">
               <button
                 onClick={() => {
                   setIsDetailModalOpen(false);
                   setSelectedItemForDetail(null);
                 }}
-                className="btn-cancel"
+                className="flex-1 basis-0 min-w-[8.5rem] h-10 px-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors bg-gray-100 text-brand-purple hover:bg-gray-200"
               >
                 Tutup
               </button>
               <button
                 onClick={() => handleOpenItemHistory(selectedItemForDetail)}
-                className="px-6 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 bg-indigo-50 rounded-lg transition-colors flex items-center space-x-1.5"
+                className="flex-1 basis-0 min-w-[8.5rem] h-10 px-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors text-indigo-700 hover:bg-indigo-100 bg-indigo-50"
               >
                 <History size={15} />
                 <span>Riwayat</span>
               </button>
               <button
                 onClick={() => handleOpenAuditHistory(selectedItemForDetail)}
-                className="px-6 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 bg-blue-50 rounded-lg transition-colors flex items-center space-x-1.5"
+                className="flex-1 basis-0 min-w-[8.5rem] h-10 px-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors text-blue-700 hover:bg-blue-100 bg-blue-50"
               >
                 <ClipboardList size={15} />
                 <span>Riwayat Audit</span>
@@ -4216,7 +4585,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     setIsScanningVerify(false);
                     setIsVerifyScanOpen(true);
                   }}
-                  className="px-6 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 bg-emerald-50 rounded-lg transition-colors flex items-center space-x-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-50"
+                  className="flex-1 basis-0 min-w-[8.5rem] h-10 px-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors text-emerald-700 hover:bg-emerald-100 bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-50"
                 >
                   <Nfc size={15} />
                   <span>Mode Scan RFID</span>
@@ -4228,14 +4597,14 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     setIsDetailModalOpen(false);
                     handleOpenModal(selectedItemForDetail);
                   }}
-                  className="btn-confirm"
+                  className="flex-1 basis-0 min-w-[8.5rem] h-10 px-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors bg-brand-purple text-white hover:bg-brand-purple-light"
                 >
                   {profile?.role === 'auditor' ? 'Audit Barang' : 'Edit Barang'}
                 </button>
               ) : (
                 <button
                   disabled
-                  className="px-6 py-2 text-sm font-medium text-brand-purple bg-gray-100 rounded-lg cursor-not-allowed flex items-center space-x-2"
+                  className="px-4 py-2 text-sm font-medium whitespace-nowrap text-brand-purple bg-gray-100 rounded-lg cursor-not-allowed flex items-center space-x-2"
                 >
                   <AlertCircle size={16} />
                   <span>Mode Lihat Saja</span>

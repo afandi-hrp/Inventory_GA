@@ -13,12 +13,14 @@ import {
 import {
   X, Loader2, Warehouse, Search, User, Users, Calendar, Clock, MapPin, Eye, Download, Plus, Trash2,
   ClipboardCheck, CheckCircle2, XCircle, CircleDashed, ArrowLeft, Printer, Save, ChevronLeft, ChevronRight,
-  FileText, ShieldCheck, Pencil, AlertTriangle, Info, NotebookPen,
+  FileText, ShieldCheck, Pencil, AlertTriangle, NotebookPen, Camera, ImageIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { jsPDF } from 'jspdf';
 import { addPdfLogo } from '../../lib/pdfLogo';
 import autoTable from 'jspdf-autotable';
+import { compressImage } from '../../lib/imageCompress';
+import SignedImage from '../UI/SignedImage';
 
 interface GudangBerkasPageProps {
   profile: Profile | null;
@@ -51,9 +53,30 @@ const emptyItem: ItemRow = { jenis_dokumen: '', tahun: '', nomor_dokumen: '', ke
 
 const TUJUAN_OPTIONS = ['Pemeriksaan / Pencarian Berkas Fisik', 'Pengambilan Berkas', 'Tambah Berkas', 'Lainnya'];
 
-// Penanda tangan "Disetujui" di PDF surat permohonan selalu Direktur ini (hardcode).
-const DIREKTUR_NAMA = 'Medelin Dini';
-const DIREKTUR_JABATAN = 'Direktur';
+// Bucket private foto verifikasi. Path file: <request_id>/<tag>-<acak>.jpg, jadi
+// seluruh foto 1 permohonan ada di 1 "folder" dan mudah dibersihkan saat dihapus.
+const GB_BUCKET = 'gudang-berkas-photos';
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // batas sebelum kompresi, sama dengan Master Barang
+
+// Kompres lalu upload 1 foto, balikin path-nya.
+async function uploadGbPhoto(file: File, requestId: string, tag: string): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Hanya file gambar (JPG/PNG/WEBP) yang diperbolehkan');
+  if (file.size > MAX_PHOTO_BYTES) throw new Error('Foto terlalu besar (maks 10MB)');
+  const compressed = await compressImage(file);
+  const path = `${requestId}/${tag}-${Math.random().toString(36).substring(2)}-${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from(GB_BUCKET).upload(path, compressed, { contentType: 'image/jpeg' });
+  if (error) throw error;
+  return path;
+}
+
+// Hapus file dari storage. `false` kalau gagal / ada yang tidak terhapus —
+// Supabase diam-diam mengembalikan daftar kosong kalau RLS menolak.
+async function removeGbPhotos(paths: (string | null | undefined)[]): Promise<boolean> {
+  const list = paths.filter((p): p is string => !!p);
+  if (list.length === 0) return true;
+  const { data, error } = await supabase.storage.from(GB_BUCKET).remove(list);
+  return !error && (data?.length ?? 0) >= list.length;
+}
 
 // Pendamping = admin dengan jabatan General Affair (tidak peka huruf besar/kecil,
 // jadi "General Affairs" / "Staff General Affair" juga ikut).
@@ -254,9 +277,20 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
   const [temuanEditDraft, setTemuanEditDraft] = useState<ItemRow>({ ...emptyItem });
   const [savingTemuan, setSavingTemuan] = useState(false);
 
+  // Anggota tambahan manual, foto + catatan panel anggota, foto per baris verifikasi
+  const [memberDraft, setMemberDraft] = useState<MemberRow | null>(null);
+  const [savingMember, setSavingMember] = useState(false);
+  const [memberNote, setMemberNote] = useState('');
+  const [uploadingMemberPhoto, setUploadingMemberPhoto] = useState(false);
+  const [uploadingItemPhotoId, setUploadingItemPhotoId] = useState<string | null>(null);
+  const [lightboxPath, setLightboxPath] = useState<string | null>(null);
+  const [deletingRequest, setDeletingRequest] = useState(false);
+
   // Admin & SPV setara di modul ini: input form, verifikasi logbook, isi nama
-  // penanda tangan, tambah temuan lapangan, tandai selesai.
+  // penanda tangan, tambah temuan lapangan, tandai selesai. Direktur hanya
+  // melihat (tanpa tombol aksi apa pun); hapus permohonan khusus admin (RLS).
   const canManage = profile?.role === 'admin' || profile?.role === 'spv';
+  const canDeleteRequest = profile?.role === 'admin';
   // Role khusus: hanya boleh membuat form & melihat/cetak PDF miliknya sendiri.
   // Tidak boleh mengedit apa pun, dan sama sekali tidak boleh melihat bagian
   // verifikasi/logbook — dijaga juga di level RLS (lihat supabase_gudang_berkas_setup.sql),
@@ -361,16 +395,23 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
     setView('detail');
     setTemuanDraft(null);
     setEditingTemuanId(null);
+    setMemberDraft(null);
     try {
-      const [{ data: membersData, error: membersErr }, { data: itemsData, error: itemsErr }] = await Promise.all([
+      // Baca ulang baris permohonan: `req` dari daftar bisa basi (mis. path foto
+      // yang baru diganti, jumlah personil setelah tambah anggota).
+      const [{ data: membersData, error: membersErr }, { data: itemsData, error: itemsErr }, { data: freshReq }] = await Promise.all([
         supabase.from('gudang_berkas_request_members').select('*').eq('request_id', req.id).order('no_urut'),
         supabase.from('gudang_berkas_request_items').select('*').eq('request_id', req.id).order('no_urut'),
+        supabase.from('gudang_berkas_requests').select('*').eq('id', req.id).maybeSingle(),
       ]);
       if (membersErr) throw membersErr;
       if (itemsErr) throw itemsErr;
+      const current: GudangBerkasRequest = (freshReq as GudangBerkasRequest) || req;
+      setSelectedRequest(current);
+      setMemberNote(current.members_catatan || '');
       setDetailMembers(membersData || []);
       setDetailItems(itemsData || []);
-      setDiketahuiOlehId(req.diketahui_oleh_id || '');
+      setDiketahuiOlehId(current.diketahui_oleh_id || '');
       // Pilihan "Diketahui Oleh" (admin General Affair) & data pemohon terbaru.
       if (canManage) loadPeople();
 
@@ -706,6 +747,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
 
   async function deleteTemuan(item: GudangBerkasRequestItem) {
     if (!window.confirm(`Hapus temuan lapangan "${item.jenis_dokumen}"?`)) return;
+    const fotoPath = logbookChecks.find(c => c.request_item_id === item.id)?.foto_path;
     setSavingTemuan(true);
     try {
       // Checklist verifikasinya ikut terhapus (FK ON DELETE CASCADE).
@@ -720,11 +762,260 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       setDetailItems(prev => prev.filter(it => it.id !== item.id));
       setLogbookChecks(updatedChecks);
       await syncLogbookCounts(updatedChecks);
-      showToast('Temuan lapangan dihapus', 'success');
+      // Foto temuan ikut dibersihkan dari storage (barisnya sudah terhapus).
+      const fotoOk = await removeGbPhotos([fotoPath]);
+      if (fotoOk) showToast('Temuan lapangan dihapus', 'success');
+      else showToast('Temuan dihapus, tetapi file fotonya gagal dihapus dari storage', 'error');
     } catch (err: any) {
       showToast(err.message || 'Gagal menghapus temuan lapangan', 'error');
     } finally {
       setSavingTemuan(false);
+    }
+  }
+
+  // ---------- anggota tambahan manual ----------
+
+  // Sinkronkan jumlah_personil di header dengan jumlah baris anggota sebenarnya.
+  async function syncMemberCount(count: number) {
+    if (!selectedRequest) return;
+    const total = Math.max(count, 1);
+    const { data, error } = await supabase
+      .from('gudang_berkas_requests')
+      .update({ jumlah_personil: total })
+      .eq('id', selectedRequest.id)
+      .select('id');
+    if (error || !data || data.length === 0) {
+      showToast('Anggota tersimpan, tetapi jumlah personil di header gagal diperbarui', 'error');
+      return;
+    }
+    setSelectedRequest(prev => prev ? { ...prev, jumlah_personil: total } : prev);
+  }
+
+  async function addMember() {
+    if (!canManage || !selectedRequest || !memberDraft) return;
+    if (!memberDraft.nama_lengkap.trim()) {
+      showToast('Nama lengkap anggota wajib diisi', 'error');
+      return;
+    }
+    setSavingMember(true);
+    try {
+      const nextNo = detailMembers.reduce((max, m) => Math.max(max, m.no_urut), 0) + 1;
+      const { data: newMember, error } = await supabase
+        .from('gudang_berkas_request_members')
+        .insert({
+          request_id: selectedRequest.id,
+          no_urut: nextNo,
+          nama_lengkap: memberDraft.nama_lengkap.trim(),
+          id_karyawan: memberDraft.id_karyawan.trim() || null,
+          jabatan: memberDraft.jabatan.trim() || null,
+          is_tambahan: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setDetailMembers(prev => [...prev, newMember]);
+      setMemberDraft(null);
+      await syncMemberCount(detailMembers.length + 1);
+      showToast('Anggota tim ditambahkan', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah anggota tim', 'error');
+    } finally {
+      setSavingMember(false);
+    }
+  }
+
+  // Hanya anggota tambahan manual yang bisa dihapus (anggota asli = bagian permohonan).
+  async function deleteMember(member: GudangBerkasRequestMember) {
+    if (!canManage || !member.is_tambahan) return;
+    if (!window.confirm(`Hapus anggota "${member.nama_lengkap}"?`)) return;
+    setSavingMember(true);
+    try {
+      const { data, error } = await supabase
+        .from('gudang_berkas_request_members')
+        .delete()
+        .eq('id', member.id)
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Gagal menghapus: kemungkinan tidak punya izin (RLS).');
+      setDetailMembers(prev => prev.filter(m => m.id !== member.id));
+      await syncMemberCount(detailMembers.length - 1);
+      showToast('Anggota tim dihapus', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus anggota tim', 'error');
+    } finally {
+      setSavingMember(false);
+    }
+  }
+
+  // ---------- foto & catatan panel Anggota Tim / Pengunjung (1 per permohonan) ----------
+
+  async function handleMemberPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // supaya file yang sama bisa dipilih lagi
+    if (!file || !canManage || !selectedRequest) return;
+    setUploadingMemberPhoto(true);
+    try {
+      const oldPath = selectedRequest.members_foto_path;
+      const newPath = await uploadGbPhoto(file, selectedRequest.id, 'anggota');
+      const { data, error } = await supabase
+        .from('gudang_berkas_requests')
+        .update({ members_foto_path: newPath })
+        .eq('id', selectedRequest.id)
+        .select('id');
+      if (error || !data || data.length === 0) {
+        await removeGbPhotos([newPath]); // jangan tinggalkan file yatim
+        throw error || new Error('Gagal menyimpan foto: kemungkinan tidak punya izin (RLS).');
+      }
+      setSelectedRequest(prev => prev ? { ...prev, members_foto_path: newPath } : prev);
+      if (oldPath && !(await removeGbPhotos([oldPath]))) {
+        showToast('Foto baru tersimpan, tetapi foto lama gagal dihapus dari storage', 'error');
+      } else {
+        showToast('Foto anggota tim tersimpan', 'success');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengunggah foto', 'error');
+    } finally {
+      setUploadingMemberPhoto(false);
+    }
+  }
+
+  async function removeMemberPhoto() {
+    if (!canManage || !selectedRequest?.members_foto_path) return;
+    if (!window.confirm('Hapus foto anggota tim / pengunjung?')) return;
+    setUploadingMemberPhoto(true);
+    try {
+      const oldPath = selectedRequest.members_foto_path;
+      if (!(await removeGbPhotos([oldPath]))) throw new Error('Gagal menghapus file foto dari storage.');
+      const { error } = await supabase
+        .from('gudang_berkas_requests')
+        .update({ members_foto_path: null })
+        .eq('id', selectedRequest.id);
+      if (error) throw error;
+      setSelectedRequest(prev => prev ? { ...prev, members_foto_path: null } : prev);
+      showToast('Foto dihapus', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus foto', 'error');
+    } finally {
+      setUploadingMemberPhoto(false);
+    }
+  }
+
+  async function saveMemberNote() {
+    if (!canManage || !selectedRequest) return;
+    const value = memberNote.trim() || null;
+    if (value === (selectedRequest.members_catatan || null)) return; // tidak berubah
+    try {
+      const { data, error } = await supabase
+        .from('gudang_berkas_requests')
+        .update({ members_catatan: value })
+        .eq('id', selectedRequest.id)
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Gagal menyimpan: kemungkinan tidak punya izin (RLS).');
+      setSelectedRequest(prev => prev ? { ...prev, members_catatan: value } : prev);
+      showToast('Catatan tersimpan', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyimpan catatan', 'error');
+    }
+  }
+
+  // ---------- foto per baris verifikasi (1 per baris) ----------
+
+  async function handleItemPhotoChange(check: GudangBerkasLogbookItemCheck, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !canManage || !selectedRequest) return;
+    setUploadingItemPhotoId(check.id);
+    try {
+      const oldPath = check.foto_path;
+      const newPath = await uploadGbPhoto(file, selectedRequest.id, 'berkas');
+      const { data, error } = await supabase
+        .from('gudang_berkas_logbook_item_checks')
+        .update({ foto_path: newPath })
+        .eq('id', check.id)
+        .select('id');
+      if (error || !data || data.length === 0) {
+        await removeGbPhotos([newPath]);
+        throw error || new Error('Gagal menyimpan foto: kemungkinan tidak punya izin (RLS).');
+      }
+      setLogbookChecks(prev => prev.map(c => c.id === check.id ? { ...c, foto_path: newPath } : c));
+      if (oldPath && !(await removeGbPhotos([oldPath]))) {
+        showToast('Foto baru tersimpan, tetapi foto lama gagal dihapus dari storage', 'error');
+      } else {
+        showToast('Foto berkas tersimpan', 'success');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengunggah foto', 'error');
+    } finally {
+      setUploadingItemPhotoId(null);
+    }
+  }
+
+  async function removeItemPhoto(check: GudangBerkasLogbookItemCheck) {
+    if (!canManage || !check.foto_path) return;
+    if (!window.confirm('Hapus foto berkas ini?')) return;
+    setUploadingItemPhotoId(check.id);
+    try {
+      if (!(await removeGbPhotos([check.foto_path]))) throw new Error('Gagal menghapus file foto dari storage.');
+      const { error } = await supabase
+        .from('gudang_berkas_logbook_item_checks')
+        .update({ foto_path: null })
+        .eq('id', check.id);
+      if (error) throw error;
+      setLogbookChecks(prev => prev.map(c => c.id === check.id ? { ...c, foto_path: null } : c));
+      showToast('Foto dihapus', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus foto', 'error');
+    } finally {
+      setUploadingItemPhotoId(null);
+    }
+  }
+
+  // Hapus 1 permohonan beserta SEMUA foto-nya di storage. File dihapus lebih
+  // dulu (bukan baris dulu): kalau penghapusan file gagal, permohonan tetap ada
+  // dan bisa dicoba lagi — kalau baris dihapus duluan, file jadi yatim tanpa
+  // referensi dan tidak akan pernah terbersihkan. Baris anak (anggota, rincian,
+  // logbook, checklist) ikut terhapus lewat FK ON DELETE CASCADE.
+  async function deleteRequest() {
+    if (!canDeleteRequest || !selectedRequest) return;
+    if (!window.confirm(
+      `Hapus permohonan ${selectedRequest.no_kunjungan} beserta seluruh data verifikasi dan foto-fotonya?\n\nTindakan ini tidak bisa dibatalkan.`
+    )) return;
+    setDeletingRequest(true);
+    try {
+      const folder = selectedRequest.id;
+      const { data: listed, error: listErr } = await supabase.storage.from(GB_BUCKET).list(folder, { limit: 1000 });
+      if (listErr) throw listErr;
+      const paths = new Set<string>((listed || []).filter(f => f.id).map(f => `${folder}/${f.name}`));
+      if (selectedRequest.members_foto_path) paths.add(selectedRequest.members_foto_path);
+      logbookChecks.forEach(c => { if (c.foto_path) paths.add(c.foto_path); });
+
+      if (paths.size > 0) {
+        const { data: removed, error: removeErr } = await supabase.storage.from(GB_BUCKET).remove([...paths]);
+        if (removeErr) throw removeErr;
+        // File yang memang sudah tidak ada tidak muncul di hasil, jadi cuma file
+        // yang MASIH ada di storage (listed) yang wajib terkonfirmasi terhapus.
+        const stillThere = new Set(removed?.map(r => r.name) || []);
+        const missing = (listed || []).filter(f => f.id && !stillThere.has(`${folder}/${f.name}`));
+        if (missing.length > 0) throw new Error('Sebagian file foto gagal dihapus dari storage (kemungkinan tidak punya izin). Permohonan belum dihapus.');
+      }
+
+      const { data, error } = await supabase
+        .from('gudang_berkas_requests')
+        .delete()
+        .eq('id', selectedRequest.id)
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Gagal menghapus permohonan: kemungkinan tidak punya izin (RLS).');
+
+      showToast(`Permohonan ${selectedRequest.no_kunjungan} dan foto-fotonya dihapus`, 'success');
+      setView('list');
+      setSelectedRequest(null);
+      await fetchRequests();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus permohonan', 'error');
+    } finally {
+      setDeletingRequest(false);
     }
   }
 
@@ -759,6 +1050,10 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
 
     if (markComplete && decidedCount < logbookChecks.length) {
       showToast(`Belum semua item diverifikasi (${decidedCount}/${logbookChecks.length})`, 'error');
+      return;
+    }
+    if (markComplete && !selectedRequest.members_foto_path) {
+      showToast('Foto Anggota Tim / Pengunjung wajib diunggah sebelum verifikasi diselesaikan', 'error');
       return;
     }
 
@@ -937,13 +1232,13 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       const currentDate = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Medan, ${currentDate}`, 150, y);
+      doc.text(`Medan, ${currentDate}`, 196, y, { align: 'right' });
       y += 18;
 
-      // Titik tengah tiap kolom tanda tangan (dipakai juga untuk center-align label,
-      // nama, dan jabatan di bawahnya supaya semuanya sejajar center per kolom).
-      const signColX = [14, 82, 155];
-      const signColWidth = [66, 68, 45];
+      // 2 kolom tanda tangan (Diajukan Oleh & Diketahui Oleh). Titik tengah tiap
+      // kolom dipakai untuk center-align label, nama, dan jabatan di bawahnya.
+      const signColX = [20, 110];
+      const signColWidth = [80, 80];
       const signColCenter = signColX.map((x, i) => x + signColWidth[i] / 2);
 
       // Jabatan penanda tangan dibaca terbaru dari profil (pemohon & admin
@@ -959,18 +1254,14 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
 
       doc.text('Diajukan Oleh,', signColCenter[0], y, { align: 'center' });
       doc.text('Diketahui Oleh,', signColCenter[1], y, { align: 'center' });
-      doc.text('Disetujui,', signColCenter[2], y, { align: 'center' });
       y += 22;
       // Nama, lalu jabatan tepat di bawahnya — center per kolom.
-      // "Disetujui" selalu Direktur (hardcode, lihat DIREKTUR_NAMA).
       doc.text(`(${selectedRequest.nama_pemohon})`, signColCenter[0], y, { align: 'center', maxWidth: signColWidth[0] });
       doc.text(diketahuiNama ? `(${diketahuiNama})` : '(..................................)', signColCenter[1], y, { align: 'center', maxWidth: signColWidth[1] });
-      doc.text(`(${DIREKTUR_NAMA})`, signColCenter[2], y, { align: 'center', maxWidth: signColWidth[2] });
       y += 4.5;
       doc.setFontSize(8);
       doc.text(diajukanJabatan, signColCenter[0], y, { align: 'center', maxWidth: signColWidth[0] });
       if (diketahuiNama) doc.text(diketahuiJabatan, signColCenter[1], y, { align: 'center', maxWidth: signColWidth[1] });
-      doc.text(DIREKTUR_JABATAN, signColCenter[2], y, { align: 'center', maxWidth: signColWidth[2] });
 
       const fileName = `Form_Akses_Gudang_Berkas_${selectedRequest.no_kunjungan}.pdf`;
       setPdfPreviewFileName(fileName);
@@ -1448,8 +1739,8 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
           </SectionCard>
 
           <p className="flex items-start gap-2 text-xs text-brand-purple/70 bg-white/50 border border-white/60 rounded-xl p-3">
-            <Info size={14} className="shrink-0 mt-0.5" />
-            No. Kunjungan dibuat otomatis saat form disimpan. Tanda tangan "Diajukan Oleh" pada dokumen cetak memakai nama &amp; jabatan pemohon, "Disetujui" oleh {DIREKTUR_NAMA} ({DIREKTUR_JABATAN}). Semua tanda tangan dibubuhkan secara fisik.
+            <AlertTriangle size={14} className="shrink-0 mt-0.5 text-yellow-500" />
+            Jika PIC dari GA berhalangan, tim pemohon harus menunggu hingga tim GA available.
           </p>
 
           <div className="sticky bottom-4 z-10 bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/60 p-3 flex justify-end gap-3">
@@ -1481,10 +1772,18 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                 <span className="flex items-center gap-1.5"><MapPin size={14} /> {selectedRequest.lokasi_gudang || '-'}</span>
               </div>
             </div>
-            <button onClick={() => generatePDFPreview(selectedRequest ?? undefined, detailMembers, detailItems)} disabled={isSubmitting} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-purple hover:bg-brand-purple-light text-white rounded-xl shadow-md text-sm font-semibold transition-colors disabled:opacity-50 shrink-0">
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-              <span>Preview Surat Permohonan (PDF)</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+              {canDeleteRequest && (
+                <button onClick={deleteRequest} disabled={deletingRequest || isSubmitting} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-xl shadow-sm text-sm font-semibold transition-colors disabled:opacity-50">
+                  {deletingRequest ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  <span>Hapus Permohonan</span>
+                </button>
+              )}
+              <button onClick={() => generatePDFPreview(selectedRequest ?? undefined, detailMembers, detailItems)} disabled={isSubmitting || deletingRequest} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-purple hover:bg-brand-purple-light text-white rounded-xl shadow-md text-sm font-semibold transition-colors disabled:opacity-50">
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                <span>Preview Surat Permohonan (PDF)</span>
+              </button>
+            </div>
           </div>
 
           {loadingDetail ? (
@@ -1516,7 +1815,20 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                   </dl>
                 </SectionCard>
 
-                <SectionCard icon={<Users size={16} />} title="Anggota Tim / Pengunjung" subtitle={`${detailMembers.length} orang`}>
+                <SectionCard
+                  icon={<Users size={16} />}
+                  title="Anggota Tim / Pengunjung"
+                  subtitle={`${detailMembers.length} orang`}
+                  action={canManage && !memberDraft ? (
+                    <button
+                      type="button"
+                      onClick={() => setMemberDraft({ ...emptyMember })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-purple bg-white hover:bg-brand-purple/5 border border-brand-purple/20 rounded-lg transition-colors shrink-0"
+                    >
+                      <Plus size={14} /> Tambah Anggota
+                    </button>
+                  ) : undefined}
+                >
                   {detailMembers.length === 0 ? (
                     <p className="text-sm text-brand-purple/60">Tidak ada anggota tim tercatat.</p>
                   ) : (
@@ -1528,19 +1840,105 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                             <th className="py-2 px-3">Nama Lengkap</th>
                             <th className="py-2 px-3">ID Karyawan</th>
                             <th className="py-2 px-3">Jabatan</th>
+                            {canManage && <th className="py-2 px-3 w-10" />}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-brand-purple/5 text-brand-purple">
                           {detailMembers.map((m, i) => (
                             <tr key={m.id}>
                               <td className="py-2 px-3">{i + 1}</td>
-                              <td className="py-2 px-3 font-medium">{m.nama_lengkap}</td>
+                              <td className="py-2 px-3 font-medium">
+                                {m.nama_lengkap}
+                                {m.is_tambahan && (
+                                  <span className="ml-2 inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200 align-middle">Tambahan</span>
+                                )}
+                              </td>
                               <td className="py-2 px-3">{m.id_karyawan || '-'}</td>
                               <td className="py-2 px-3">{m.jabatan || '-'}</td>
+                              {canManage && (
+                                <td className="py-2 px-3 text-right">
+                                  {m.is_tambahan && (
+                                    <button type="button" onClick={() => deleteMember(m)} disabled={savingMember} title="Hapus anggota tambahan" className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50">
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+
+                  {memberDraft && (
+                    <div className="mt-3 rounded-xl border-2 border-dashed border-brand-purple/30 bg-brand-purple/5 p-3 space-y-2">
+                      <p className="text-sm font-bold text-brand-purple flex items-center gap-1.5"><Plus size={14} /> Anggota Tim Tambahan</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input type="text" autoFocus placeholder="Nama Lengkap *" value={memberDraft.nama_lengkap} onChange={e => setMemberDraft({ ...memberDraft, nama_lengkap: e.target.value })} className={inputClass} />
+                        <input type="text" placeholder="ID Karyawan" value={memberDraft.id_karyawan} onChange={e => setMemberDraft({ ...memberDraft, id_karyawan: e.target.value })} className={inputClass} />
+                        <input type="text" placeholder="Jabatan / Posisi" value={memberDraft.jabatan} onChange={e => setMemberDraft({ ...memberDraft, jabatan: e.target.value })} className={inputClass} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setMemberDraft(null)} className="btn-cancel">Batal</button>
+                        <button type="button" onClick={addMember} disabled={savingMember} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-lg disabled:opacity-50">
+                          {savingMember ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Simpan Anggota
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Foto (wajib) + catatan (opsional) — 1 untuk seluruh panel anggota */}
+                  {(canManage || selectedRequest.members_foto_path || selectedRequest.members_catatan) && (
+                    <div className="mt-4 pt-4 border-t border-brand-purple/10 space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-brand-purple mb-1.5">
+                          Foto Anggota Tim / Pengunjung
+                          {canManage && <span className="text-red-500"> * wajib</span>}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          {selectedRequest.members_foto_path ? (
+                            <button type="button" onClick={() => setLightboxPath(selectedRequest.members_foto_path!)} title="Lihat foto" className="rounded-xl overflow-hidden border border-brand-purple/15 shrink-0">
+                              <SignedImage bucket={GB_BUCKET} path={selectedRequest.members_foto_path} alt="Foto anggota tim" className="w-24 h-24 object-cover" containerClassName="w-24 h-24" />
+                            </button>
+                          ) : (
+                            <div className={cn('w-24 h-24 rounded-xl border border-dashed flex items-center justify-center shrink-0', canManage ? 'border-red-300 text-red-300' : 'border-brand-purple/20 text-brand-purple/30')}>
+                              <ImageIcon size={24} />
+                            </div>
+                          )}
+                          {canManage && (
+                            <div className="flex flex-wrap gap-2">
+                              <label className={cn('inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-purple bg-white hover:bg-brand-purple/5 border border-brand-purple/20 rounded-lg transition-colors cursor-pointer', uploadingMemberPhoto && 'opacity-50 pointer-events-none')}>
+                                {uploadingMemberPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                                {selectedRequest.members_foto_path ? 'Ganti Foto' : 'Upload Foto'}
+                                <input type="file" accept="image/*" className="hidden" onChange={handleMemberPhotoChange} disabled={uploadingMemberPhoto} />
+                              </label>
+                              {selectedRequest.members_foto_path && (
+                                <button type="button" onClick={removeMemberPhoto} disabled={uploadingMemberPhoto} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-white hover:bg-red-50 border border-red-200 rounded-lg transition-colors disabled:opacity-50">
+                                  <Trash2 size={14} /> Hapus
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {canManage && !selectedRequest.members_foto_path && (
+                          <p className="text-[11px] text-red-600 mt-1.5">Foto wajib diunggah sebelum verifikasi bisa diselesaikan. Foto dikompres otomatis.</p>
+                        )}
+                      </div>
+                      {canManage ? (
+                        <Field label="Catatan (opsional)">
+                          <textarea
+                            rows={2}
+                            value={memberNote}
+                            onChange={e => setMemberNote(e.target.value)}
+                            onBlur={saveMemberNote}
+                            className={inputClass}
+                            placeholder="Catatan untuk anggota tim / pengunjung"
+                          />
+                        </Field>
+                      ) : selectedRequest.members_catatan ? (
+                        <p className="text-xs text-brand-purple/70"><span className="font-semibold">Catatan:</span> {selectedRequest.members_catatan}</p>
+                      ) : null}
                     </div>
                   )}
                 </SectionCard>
@@ -1548,7 +1946,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                 <SectionCard
                   icon={<ClipboardCheck size={16} />}
                   title="Rincian Berkas & Verifikasi"
-                  subtitle={logbook ? `${decidedCount}/${totalChecks} item sudah diputuskan` : 'Data verifikasi hanya bisa dilihat Admin/SPV'}
+                  subtitle={logbook ? `${decidedCount}/${totalChecks} item sudah diputuskan` : 'Data verifikasi hanya bisa dilihat Admin/SPV/Direktur'}
                   action={canEditTemuan && !temuanDraft ? (
                     <button
                       type="button"
@@ -1624,18 +2022,41 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                                   )}
                                 </div>
                               </div>
-                              {canManage && check && (
-                                <input
-                                  type="text"
-                                  placeholder="Catatan verifikasi (opsional)"
-                                  value={check.verified_note || ''}
-                                  onChange={e => updateItemNote(check, e.target.value)}
-                                  onBlur={() => saveItemNote(check)}
-                                  className={cn(inputClass, 'mt-2 text-xs py-1.5 md:ml-10 md:w-[calc(100%-2.5rem)]')}
-                                />
-                              )}
-                              {!canManage && check?.verified_note && (
-                                <p className="text-xs text-brand-purple/70 mt-2 md:ml-10">Catatan: {check.verified_note}</p>
+                              {/* Catatan verifikasi + foto berkas (opsional, 1 per baris) dalam 1 baris */}
+                              {check && (canManage || check.verified_note || check.foto_path) && (
+                                <div className="mt-2 md:ml-10 flex flex-wrap sm:flex-nowrap items-center gap-2">
+                                  {canManage ? (
+                                    <input
+                                      type="text"
+                                      placeholder="Catatan verifikasi (opsional)"
+                                      value={check.verified_note || ''}
+                                      onChange={e => updateItemNote(check, e.target.value)}
+                                      onBlur={() => saveItemNote(check)}
+                                      className={cn(inputClass, 'flex-1 min-w-[180px] text-xs py-1.5')}
+                                    />
+                                  ) : (
+                                    <p className="flex-1 min-w-0 text-xs text-brand-purple/70">{check.verified_note ? `Catatan: ${check.verified_note}` : ''}</p>
+                                  )}
+                                  {check.foto_path && (
+                                    <button type="button" onClick={() => setLightboxPath(check.foto_path!)} title="Lihat foto" className="rounded-lg overflow-hidden border border-brand-purple/15 shrink-0">
+                                      <SignedImage bucket={GB_BUCKET} path={check.foto_path} alt={`Foto ${it.jenis_dokumen}`} className="w-9 h-9 object-cover" containerClassName="w-9 h-9" />
+                                    </button>
+                                  )}
+                                  {canManage && (
+                                    <>
+                                      <label className={cn('inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-brand-purple bg-white hover:bg-brand-purple/5 border border-brand-purple/20 rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap', uploadingItemPhotoId === check.id && 'opacity-50 pointer-events-none')}>
+                                        {uploadingItemPhotoId === check.id ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                                        {check.foto_path ? 'Ganti Foto' : 'Foto Berkas'}
+                                        <input type="file" accept="image/*" className="hidden" onChange={e => handleItemPhotoChange(check, e)} disabled={uploadingItemPhotoId === check.id} />
+                                      </label>
+                                      {check.foto_path && (
+                                        <button type="button" onClick={() => removeItemPhoto(check)} disabled={uploadingItemPhotoId === check.id} title="Hapus foto" className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50 shrink-0">
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               )}
                             </>
                           )}
@@ -1693,7 +2114,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
 
                 <SectionCard icon={<ShieldCheck size={16} />} title="Logbook Kunjungan">
                   {!logbook ? (
-                    <p className="text-sm text-brand-purple/60">Logbook hanya dapat dilihat Admin/SPV.</p>
+                    <p className="text-sm text-brand-purple/60">Logbook hanya dapat dilihat Admin/SPV/Direktur.</p>
                   ) : logbook.is_completed ? (
                     <div className="text-sm text-brand-purple space-y-2">
                       <p className="flex items-center gap-2">
@@ -1730,7 +2151,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                         </div>
                       </Field>
                       <Field label="GA Verificator">
-                        <input type="text" disabled value={profile?.full_name || '-'} className={cn(inputClass, 'bg-gray-50')} />
+                        <input type="text" disabled value={(canManage ? profile?.full_name : logbook.ga_verificator_name) || '-'} className={cn(inputClass, 'bg-gray-50')} />
                       </Field>
                       <Field label="Keterangan">
                         <textarea rows={2} value={logbookKeterangan} onChange={e => setLogbookKeterangan(e.target.value)} disabled={!canManage} className={cn(inputClass, 'disabled:bg-gray-50')} placeholder="Catatan tambahan (opsional)" />
@@ -1740,9 +2161,9 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                           <button
                             type="button"
                             onClick={() => saveLogbook(true)}
-                            disabled={isSubmitting || decidedCount < totalChecks}
+                            disabled={isSubmitting || decidedCount < totalChecks || !selectedRequest.members_foto_path}
                             className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                            title={decidedCount < totalChecks ? 'Putuskan status semua item dulu' : undefined}
+                            title={decidedCount < totalChecks ? 'Putuskan status semua item dulu' : !selectedRequest.members_foto_path ? 'Upload foto Anggota Tim / Pengunjung dulu' : undefined}
                           >
                             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
                             <span>Selesaikan Verifikasi</span>
@@ -1787,10 +2208,6 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                           />
                         </div>
                       </Field>
-                      <div className="rounded-xl bg-brand-purple/5 border border-brand-purple/10 p-3 text-xs text-brand-purple">
-                        <p className="font-semibold">Disetujui</p>
-                        <p>{DIREKTUR_NAMA} · {DIREKTUR_JABATAN} <span className="text-brand-purple/50">(tetap)</span></p>
-                      </div>
                       <button type="button" onClick={saveSignNames} disabled={savingSignNames || loadingPeople} className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-purple hover:bg-brand-purple-light rounded-xl shadow-sm transition-colors disabled:opacity-50">
                         {savingSignNames ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Simpan Penanda Tangan
@@ -1801,6 +2218,15 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {lightboxPath && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200" onClick={() => setLightboxPath(null)}>
+          <button type="button" onClick={() => setLightboxPath(null)} className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full transition-colors" title="Tutup">
+            <X size={24} />
+          </button>
+          <SignedImage bucket={GB_BUCKET} path={lightboxPath} alt="Foto" className="max-h-[88dvh] max-w-full object-contain rounded-lg" containerClassName="w-40 h-40" onClick={e => e.stopPropagation()} />
         </div>
       )}
 

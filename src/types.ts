@@ -188,8 +188,12 @@ export interface GudangBerkasRequest {
   diketahui_oleh_id?: string | null;
   diketahui_oleh_nama: string | null;
   diketahui_oleh_jabatan?: string | null;
-  // Tidak dipakai lagi di PDF — penanda tangan "Disetujui" di-hardcode Direktur.
+  // Tidak dipakai lagi — PDF kini hanya memuat "Diajukan Oleh" & "Diketahui Oleh".
   disetujui_oleh_nama: string | null;
+  // 1 foto (wajib, path di bucket gudang-berkas-photos) + catatan (opsional)
+  // untuk seluruh panel Anggota Tim / Pengunjung. Diisi Admin/SPV saat review.
+  members_foto_path?: string | null;
+  members_catatan?: string | null;
   status: 'DIAJUKAN' | 'SELESAI';
   created_by?: string | null;
   created_by_name: string | null;
@@ -204,6 +208,8 @@ export interface GudangBerkasRequestMember {
   nama_lengkap: string;
   id_karyawan: string | null;
   jabatan: string | null;
+  // true = anggota ditambahkan manual oleh Admin/SPV setelah form dibuat.
+  is_tambahan?: boolean;
   created_at: string;
 }
 
@@ -246,6 +252,8 @@ export interface GudangBerkasLogbookItemCheck {
   verification_status: 'PENDING' | 'VERIFIED' | 'TIDAK_SESUAI';
   verified_note: string | null;
   verified_at: string | null;
+  // Foto berkas yang dicek (opsional, 1 per baris; path di bucket gudang-berkas-photos).
+  foto_path?: string | null;
 }
 
 export interface AppSettings {

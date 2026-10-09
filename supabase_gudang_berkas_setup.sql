@@ -409,3 +409,79 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS diketahui_oleh_jabatan TEXT;
 ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS diketahui_oleh_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- REVISI 6 (9 Okt 2026): foto verifikasi, anggota tambahan manual,
+-- akses lihat-saja untuk role Direktur. Aman dijalankan berkali-kali.
+-- Policy baru bersifat additive (permissive/OR) — tidak mengubah policy lama.
+-- =====================================================================
+BEGIN;
+
+-- 21. Kolom baru
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS members_foto_path TEXT;   -- 1 foto panel Anggota Tim (wajib saat selesaikan verifikasi)
+ALTER TABLE public.gudang_berkas_requests ADD COLUMN IF NOT EXISTS members_catatan TEXT;     -- catatan opsional panel Anggota Tim
+ALTER TABLE public.gudang_berkas_request_members ADD COLUMN IF NOT EXISTS is_tambahan BOOLEAN NOT NULL DEFAULT false; -- anggota ditambah manual setelah form dibuat
+ALTER TABLE public.gudang_berkas_logbook_item_checks ADD COLUMN IF NOT EXISTS foto_path TEXT; -- 1 foto per baris verifikasi (opsional)
+
+-- 22. Bucket private untuk foto (path: <request_id>/<nama-file>.jpg)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('gudang-berkas-photos', 'gudang-berkas-photos', false)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "GB photos select" ON storage.objects;
+CREATE POLICY "GB photos select" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'gudang-berkas-photos' AND EXISTS (
+    SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.is_active = true
+      AND profiles.role IN ('admin', 'spv', 'auditor', 'direktur')));
+
+DROP POLICY IF EXISTS "GB photos insert" ON storage.objects;
+CREATE POLICY "GB photos insert" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'gudang-berkas-photos' AND EXISTS (
+    SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.is_active = true
+      AND profiles.role IN ('admin', 'spv')));
+
+DROP POLICY IF EXISTS "GB photos update" ON storage.objects;
+CREATE POLICY "GB photos update" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'gudang-berkas-photos' AND EXISTS (
+    SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.is_active = true
+      AND profiles.role IN ('admin', 'spv')));
+
+DROP POLICY IF EXISTS "GB photos delete" ON storage.objects;
+CREATE POLICY "GB photos delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'gudang-berkas-photos' AND EXISTS (
+    SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.is_active = true
+      AND profiles.role IN ('admin', 'spv')));
+
+-- 23. Direktur: LIHAT SAJA. Header/anggota/rincian sudah terbaca lewat policy
+--     "select" yang ada (semua role selain gudang_berkas); logbook & checklist
+--     tadinya admin-only, jadi dibukakan SELECT-nya. Tidak ada policy tulis untuk direktur.
+DROP POLICY IF EXISTS "GB logbook select direktur" ON public.gudang_berkas_logbook;
+CREATE POLICY "GB logbook select direktur" ON public.gudang_berkas_logbook FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'direktur' AND profiles.is_active = true));
+
+DROP POLICY IF EXISTS "GB logbook checks select direktur" ON public.gudang_berkas_logbook_item_checks;
+CREATE POLICY "GB logbook checks select direktur" ON public.gudang_berkas_logbook_item_checks FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'direktur' AND profiles.is_active = true));
+
+-- 24. SPV setara admin saat verifikasi: update header (foto/catatan/jumlah personil),
+--     tambah anggota, hapus anggota TAMBAHAN saja, update checklist (foto per baris).
+--     Kalau policy serupa sudah ada dari sebelumnya, ini cuma duplikat yang tidak berbahaya.
+DROP POLICY IF EXISTS "GB requests update spv r6" ON public.gudang_berkas_requests;
+CREATE POLICY "GB requests update spv r6" ON public.gudang_berkas_requests FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true));
+
+DROP POLICY IF EXISTS "GB members insert spv r6" ON public.gudang_berkas_request_members;
+CREATE POLICY "GB members insert spv r6" ON public.gudang_berkas_request_members FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true));
+
+DROP POLICY IF EXISTS "GB members delete tambahan spv r6" ON public.gudang_berkas_request_members;
+CREATE POLICY "GB members delete tambahan spv r6" ON public.gudang_berkas_request_members FOR DELETE TO authenticated
+  USING (is_tambahan AND EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true));
+
+DROP POLICY IF EXISTS "GB logbook checks update spv r6" ON public.gudang_berkas_logbook_item_checks;
+CREATE POLICY "GB logbook checks update spv r6" ON public.gudang_berkas_logbook_item_checks FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'spv' AND profiles.is_active = true));
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';

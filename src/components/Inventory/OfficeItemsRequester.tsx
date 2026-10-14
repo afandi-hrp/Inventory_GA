@@ -854,17 +854,64 @@ export default function OfficeItemsRequester() {
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Judul + notifikasi */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-flex items-center space-x-2">
-            <ShoppingCart className="text-brand-purple" size={24} />
-            <span>Barang Reusable</span>
-          </h2>
-          <p className="text-brand-purple">Pilih barang, tentukan qty, lalu ajukan SPK pengambilan</p>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-brand-purple border-b-2 border-orange-500 pb-1 inline-flex items-center space-x-2">
+          <ShoppingCart className="text-brand-purple" size={24} />
+          <span>Barang Reusable</span>
+        </h2>
+        <p className="text-brand-purple">Pilih barang, tentukan qty, lalu ajukan SPK pengambilan</p>
+      </div>
 
-        <div className="flex items-center gap-2 shrink-0" ref={notifRef}>
+      {/* Ringkasan */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {statCards.map(card => (
+          <button
+            key={card.label}
+            type="button"
+            onClick={card.onClick}
+            className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-md border border-white/50 p-4 flex items-center gap-3 text-left hover:shadow-lg hover:bg-white/80 transition-all"
+          >
+            <span className={cn("p-2.5 rounded-xl shrink-0", card.tone)}>
+              <card.icon size={20} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-2xl font-bold text-brand-purple leading-none">{card.value}</span>
+              <span className="block text-xs font-semibold text-brand-purple/70 mt-1 truncate">{card.label}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tabs + notifikasi. Notifikasi sengaja di sini (bukan di baris judul)
+          supaya tidak tertimpa sapaan pojok kanan atas dari Layout. Dropdown-nya
+          di luar container overflow tab supaya tidak terpotong. */}
+      <div className="flex items-end gap-2 border-b border-gray-200">
+        <div className="flex-1 min-w-0 flex items-center space-x-2 overflow-x-auto scrollbar-hide">
+          <button
+            onClick={() => setTab('items')}
+            className={cn(
+              "px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center space-x-1.5 whitespace-nowrap shrink-0",
+              tab === 'items' ? "border-orange-500 text-brand-purple" : "border-transparent text-brand-purple/60 hover:text-brand-purple"
+            )}
+          >
+            <Package size={16} />
+            <span>Daftar Barang</span>
+          </button>
+          <button
+            onClick={() => setTab('history')}
+            className={cn(
+              "px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center space-x-1.5 whitespace-nowrap shrink-0",
+              tab === 'history' ? "border-orange-500 text-brand-purple" : "border-transparent text-brand-purple/60 hover:text-brand-purple"
+            )}
+          >
+            <ClipboardList size={16} />
+            <span>Riwayat Pengajuan Saya</span>
+            {pendingCount > 0 && (
+              <span className="min-w-[20px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[10px] leading-none text-center">{pendingCount}</span>
+            )}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 pb-1.5" ref={notifRef}>
           <span
             className={cn(
               "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border",
@@ -933,53 +980,6 @@ export default function OfficeItemsRequester() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Ringkasan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {statCards.map(card => (
-          <button
-            key={card.label}
-            type="button"
-            onClick={card.onClick}
-            className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-md border border-white/50 p-4 flex items-center gap-3 text-left hover:shadow-lg hover:bg-white/80 transition-all"
-          >
-            <span className={cn("p-2.5 rounded-xl shrink-0", card.tone)}>
-              <card.icon size={20} />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-2xl font-bold text-brand-purple leading-none">{card.value}</span>
-              <span className="block text-xs font-semibold text-brand-purple/70 mt-1 truncate">{card.label}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-gray-200 overflow-x-auto scrollbar-hide">
-        <button
-          onClick={() => setTab('items')}
-          className={cn(
-            "px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center space-x-1.5 whitespace-nowrap shrink-0",
-            tab === 'items' ? "border-orange-500 text-brand-purple" : "border-transparent text-brand-purple/60 hover:text-brand-purple"
-          )}
-        >
-          <Package size={16} />
-          <span>Daftar Barang</span>
-        </button>
-        <button
-          onClick={() => setTab('history')}
-          className={cn(
-            "px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center space-x-1.5 whitespace-nowrap shrink-0",
-            tab === 'history' ? "border-orange-500 text-brand-purple" : "border-transparent text-brand-purple/60 hover:text-brand-purple"
-          )}
-        >
-          <ClipboardList size={16} />
-          <span>Riwayat Pengajuan Saya</span>
-          {pendingCount > 0 && (
-            <span className="min-w-[20px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[10px] leading-none text-center">{pendingCount}</span>
-          )}
-        </button>
       </div>
 
       {tab === 'items' ? (

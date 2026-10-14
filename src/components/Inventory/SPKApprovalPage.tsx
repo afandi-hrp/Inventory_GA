@@ -92,7 +92,8 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
             master_lokasi ( nama_lokasi ),
             master_kepemilikan ( nama_pemilik ),
             categories ( nama_kategori ),
-            foto_urls
+            foto_urls,
+            jumlah_barang
           )
         `)
         .eq('request_id', requestId);
@@ -326,6 +327,10 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
 
         doc.text('Nama Barang', 14, currentY);
         doc.text(`: ${item.nama_barang}`, 65, currentY);
+        currentY += lineSpacing;
+
+        doc.text('Jumlah Diambil', 14, currentY);
+        doc.text(`: ${item.jumlah_barang} unit`, 65, currentY);
         currentY += lineSpacing;
 
         doc.text('Lokasi Tujuan', 14, currentY);
@@ -715,6 +720,30 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
                           {(item as any).items?.master_kepemilikan?.nama_pemilik || 'Tanpa Kepemilikan'}
                         </span>
                       </div>
+                      {/* Qty diminta vs stok saat ini. Ambil sebagian = stok berkurang
+                          (Take Item History); ambil semua = barang keluar (Stock Out History). */}
+                      {(() => {
+                        if (item.status_item !== 'PENDING') return (
+                          <div className="mt-2 text-xs font-semibold text-brand-purple">Qty: {item.jumlah_barang} unit</div>
+                        );
+                        const stok: number | undefined = (item as any).items?.jumlah_barang;
+                        const kurang = stok === undefined || item.jumlah_barang > stok;
+                        return (
+                          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs font-semibold">
+                            <span className="bg-brand-purple text-white px-2 py-1 rounded-md">Qty diminta: {item.jumlah_barang}</span>
+                            <span className="bg-gray-100 text-brand-purple px-2 py-1 rounded-md">Stok saat ini: {stok ?? 'tidak ada'}</span>
+                            {kurang ? (
+                              <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded-md">
+                                {stok === undefined ? 'Barang sudah tidak ada di stok — batalkan item ini' : 'Stok kurang — batalkan item ini'}
+                              </span>
+                            ) : item.jumlah_barang === stok ? (
+                              <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-md">Ambil semua — barang keluar dari master</span>
+                            ) : (
+                              <span className="bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded-md">Ambil sebagian — sisa {stok - item.jumlah_barang}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0 w-full md:w-auto">

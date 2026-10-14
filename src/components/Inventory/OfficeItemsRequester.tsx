@@ -159,6 +159,8 @@ export default function OfficeItemsRequester() {
   const [selectedRequest, setSelectedRequest] = useState<SPKRequest | null>(null);
   const [requestItems, setRequestItems] = useState<SPKRequestItem[]>([]);
   const [loadingRequestItems, setLoadingRequestItems] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingRequest, setIsDeletingRequest] = useState(false);
 
   // Notifikasi live
   const [notifs, setNotifs] = useState<RequesterNotif[]>([]);
@@ -177,6 +179,7 @@ export default function OfficeItemsRequester() {
   // Supaya tombol/gesture "Kembali" di mobile menutup modal, bukan keluar aplikasi
   useModalBackButton(isSPKModalOpen, () => setIsSPKModalOpen(false));
   useModalBackButton(!!selectedRequest, () => setSelectedRequest(null));
+  useModalBackButton(isDeleteConfirmOpen, () => !isDeletingRequest && setIsDeleteConfirmOpen(false));
   useModalBackButton(!!selectedItemDetail, () => setSelectedItemDetail(null));
   useModalBackButton(carouselImages.length > 0, () => setCarouselImages([]));
 
@@ -460,8 +463,40 @@ export default function OfficeItemsRequester() {
 
   const handleViewRequestDetail = (req: SPKRequest) => {
     setRequestItems([]);
+    setIsDeleteConfirmOpen(false);
     setSelectedRequest(req);
     fetchRequestItems(req.id);
+  };
+
+  // Hapus pengajuan yang masih PENDING. Pemilik & status dicek ulang di server
+  // (delete_own_spk_request, lihat supabase_spk_delete.sql); karena approval
+  // membaca tabel yang sama, pengajuan otomatis hilang dari antrean approver.
+  const deleteSelectedRequest = async () => {
+    if (!selectedRequest) return;
+    const target = selectedRequest;
+    setIsDeletingRequest(true);
+    try {
+      const { error } = await supabase.rpc('delete_own_spk_request', { p_request_id: target.id });
+      if (error) throw error;
+
+      setMyRequests(prev => prev.filter(r => r.id !== target.id));
+      setNotifs(prev => {
+        const next = prev.filter(n => n.requestId !== target.id);
+        writeStorage(notifKey, next);
+        return next;
+      });
+      setIsDeleteConfirmOpen(false);
+      setSelectedRequest(null);
+      showToast(`Pengajuan ${target.nomor_spk} berhasil dihapus`, 'success');
+      refreshMyRequests(true);
+    } catch (err: any) {
+      console.error('Error deleting SPK request:', err);
+      showToast('Gagal menghapus pengajuan: ' + (err.message || 'kesalahan tidak diketahui'), 'error');
+      // Status bisa saja sudah berubah (mis. baru disetujui) — segarkan tampilan.
+      refreshMyRequests(true);
+    } finally {
+      setIsDeletingRequest(false);
+    }
   };
 
   const handleOpenCarousel = async (images: string[], index: number) => {
@@ -789,6 +824,15 @@ export default function OfficeItemsRequester() {
     (req.spk_request_items || []).filter(i => i.status_item !== 'REJECTED').reduce((s, i) => s + (i.jumlah_barang || 0), 0);
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  // Hapus hanya boleh selama BELUM ADA approval sama sekali: status masih di
+  // Admin (level 1) dan belum ada barang yang ditolak/diproses. Aturan yang
+  // sama dicek ulang di server (delete_own_spk_request).
+  const canDeleteSelected = !!selectedRequest
+    && selectedRequest.status === 'PENDING_ADMIN'
+    && !selectedRequest.diketahui_admin_oleh
+    && !loadingRequestItems
+    && requestItems.every(i => (i.status_item || 'PENDING') === 'PENDING');
+
   const pendingCount = myRequests.filter(r => r.status.startsWith('PENDING')).length;
   const approvedCount = myRequests.filter(r => r.status === 'APPROVED').length;
   const rejectedCount = myRequests.filter(r => r.status === 'REJECTED').length;
@@ -1550,9 +1594,65 @@ export default function OfficeItemsRequester() {
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
-              <button onClick={() => setSelectedRequest(null)} className="btn-cancel">
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-between gap-3 bg-gray-50/50">
+              {canDeleteSelected ? (
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteConfirmOpen(true)}
+                  className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Trash2 size={16} /> Hapus Pengajuan
+                </button>
+              ) : selectedRequest.status.startsWith('PENDING') && !loadingRequestItems ? (
+                <p className="text-xs text-brand-purple/70 flex items-center gap-1.5 sm:max-w-xs">
+                  <Info size={14} className="shrink-0" /> Sudah diproses approval, pengajuan tidak bisa dihapus.
+                </p>
+              ) : <span className="hidden sm:block" />}
+              <button onClick={() => setSelectedRequest(null)} className="btn-cancel w-full sm:w-auto">
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Pengajuan */}
+      {selectedRequest && isDeleteConfirmOpen && canDeleteSelected && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-brand-purple/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={isDeletingRequest ? undefined : () => setIsDeleteConfirmOpen(false)}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 bg-red-100 text-red-600 rounded-xl shrink-0">
+                  <Trash2 size={22} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-brand-purple text-lg">Hapus Pengajuan?</h3>
+                  <p className="mt-2 text-sm text-brand-purple">
+                    Pengajuan <span className="font-semibold font-mono">{selectedRequest.nomor_spk}</span>{' '}
+                    ({requestItems.length || selectedRequest.jumlah || 0} barang) akan dihapus permanen dan
+                    otomatis hilang dari daftar approval Admin, Auditor, dan SPV.
+                  </p>
+                  <p className="mt-2 text-sm text-brand-purple/80">
+                    Jika ingin merevisi barang atau qty, ajukan SPK baru setelah menghapus.
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-red-600">Tindakan ini tidak bisa dibatalkan.</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3">
+              <button onClick={() => setIsDeleteConfirmOpen(false)} disabled={isDeletingRequest} className="btn-cancel w-full sm:w-auto">
+                Batal
+              </button>
+              <button
+                onClick={deleteSelectedRequest}
+                disabled={isDeletingRequest}
+                className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeletingRequest ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Ya, Hapus Pengajuan
               </button>
             </div>
           </div>

@@ -10,7 +10,8 @@ import {
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
   LogOut, History, ClipboardList, Archive, XCircle, Camera, AlertTriangle, FileWarning,
   UserCheck, Tag, Star, CheckCircle2, Flag as FlagIcon, Zap, ShieldAlert, FileText, RefreshCw,
-  Nfc, ScanLine, CheckCircle, LayoutGrid, List as ListIcon
+  Nfc, ScanLine, CheckCircle, LayoutGrid, List as ListIcon,
+  ShieldCheck, Award, BookOpen, ClipboardCheck
 } from 'lucide-react';
 import { Item, FlagDef } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -178,6 +179,16 @@ function getKelengkapan(item: Item) {
   ];
   return { parts, doneCount: parts.filter(p => p.done).length };
 }
+
+// Ikon + label pendek indikator kelengkapan di card (label pendek supaya muat
+// di card sempit; nama lengkap tetap ada di tooltip).
+const KELENGKAPAN_CARD: Record<string, { icon: React.ElementType; short: string }> = {
+  foto: { icon: Camera, short: 'Foto' },
+  garansi: { icon: ShieldCheck, short: 'Garansi' },
+  sertifikat: { icon: Award, short: 'Sertif' },
+  manual: { icon: BookOpen, short: 'Manual' },
+  audit: { icon: ClipboardCheck, short: 'Audit' },
+};
 
 // Pilihan urutan untuk tampilan card (tabel tetap urut lewat klik header kolom).
 const CARD_SORT_OPTIONS: { value: string; label: string }[] = [
@@ -2809,14 +2820,15 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                             : p.key === 'sertifikat' ? item.dokumen_sertifikat_url
                             : p.key === 'manual' ? item.dokumen_manual_url
                             : null;
+                          const { icon: Icon, short } = KELENGKAPAN_CARD[p.key];
                           const chipClass = cn(
-                            "flex items-center justify-center gap-1 min-w-0 px-1 py-0.5 rounded-md text-[10px] font-medium transition-colors",
-                            p.done ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-400"
+                            "flex flex-col items-center gap-0.5 min-w-0 py-1 rounded-lg transition-colors",
+                            p.done ? "text-green-600" : "text-gray-300"
                           );
                           const content = (
                             <>
-                              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", p.done ? "bg-green-500" : "bg-gray-300")} />
-                              <span className="truncate">{p.label}</span>
+                              <Icon size={15} strokeWidth={p.done ? 2.25 : 1.75} />
+                              <span className={cn("text-[9px] leading-none font-semibold truncate max-w-full", p.done ? "text-green-700" : "text-gray-400")}>{short}</span>
                             </>
                           );
                           return docUrl ? (
@@ -2825,7 +2837,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                               type="button"
                               title={`Buka dokumen ${p.label}`}
                               onClick={(e) => handleOpenDocument(e, docUrl, `${item.kode_barang} - ${p.label === 'Manual' ? 'Manual Book' : p.label}`)}
-                              className={cn(chipClass, "hover:bg-green-100 underline-offset-2 hover:underline")}
+                              className={cn(chipClass, "hover:bg-green-50")}
                             >
                               {content}
                             </button>

@@ -17,7 +17,10 @@ Baca file ini dulu sebelum mulai kerja di project ini — isinya struktur aplika
 ```
 src/
   components/
-    Auth/Login.tsx
+    Auth/
+      Login.tsx
+      LoginScene.tsx      # animasi SVG "Gudang Hidup" di halaman login (CSS keyframes `ls-*` di index.css)
+      LockScreen.tsx      # layar kunci (idle) — logo pakai src/lib/brandLogo.ts
     Dashboard/
       Layout.tsx        # shell aplikasi: sidebar, sapaan pojok kanan atas, main content wrapper
       Home.tsx           # halaman /dashboard
@@ -29,9 +32,11 @@ src/
       TakeItemHistory.tsx     # /take-item-history
       LogItemChange.tsx       # /log-item-change
       StockOutHistory.tsx     # /stock-out-history
-      Approval.tsx             # /approval — hub buka DisposalApprovalModal & SPKApprovalModal
-      DisposalApprovalModal.tsx  # modal alur approve/reject pemusnahan (dipanggil dari Approval.tsx)
-      SPKApprovalModal.tsx       # modal alur approve/reject SPK (dipanggil dari Approval.tsx)
+      Approval.tsx             # /approval — hub kartu ke halaman approval pemusnahan & SPK
+      DisposalApprovalPage.tsx   # /approval/pemusnahan — alur approve/reject pemusnahan (dulu DisposalApprovalModal)
+      SPKApprovalPage.tsx        # /approval/spk — alur approve/reject SPK (dulu SPKApprovalModal)
+      ApprovalProgress.tsx       # UI bersama halaman approval: progress bar, stepper, banner penolakan
+      GudangBerkasPage.tsx       # /gudang-berkas — Form Akses Gudang Berkas + logbook verifikasi + PDF
       OfficeItemsRequester.tsx   # /office-items — halaman khusus role requester ("Barang Reusable")
     Admin/ManageUsers.tsx    # /manage-users
     UI/SignedImage.tsx, Toast.tsx
@@ -40,18 +45,25 @@ src/
     useSettings.ts        # app_settings (login_title, dll)
     useModalBackButton.ts # DIMATIKAN di MasterBarang (lihat komentar di file), dipakai normal di file lain
     useIdleTimeout.ts     # auto logout 30 menit idle
+    useRfidScanner.ts     # tangkap input gun RFID (mode keystroke) lewat keydown global, hanya saat `active`
   lib/
     supabase.ts           # client Supabase (anon key, dipakai browser)
     signedStorage.ts       # getSignedUrl/getSignedUrls buat bucket private (item-photos, item-documents)
     utils.ts               # generateDailyDocNumber, dll
+    roles.ts               # label tampilan role (kode mentah seperti "gudang_berkas" jangan tampil di UI)
+    beep.ts                # nada feedback scan RFID via Web Audio API (tanpa file audio)
+    nativeDownload.ts      # jembatan download ke shell Android RFID (window.AndroidFileSaver), fallback <a download>
+    imageCompress.ts, pdfLogo.ts, brandLogo.ts   # kompres foto upload, logo kop PDF, logo ungu Login/LockScreen
   types.ts                 # semua interface TS (Profile, Item, DisposalRequest, SPKRequest, dll) — SUMBER KEBENARAN kolom, cek ini duluan sebelum nebak nama kolom
 api/index.ts                # Express API terpisah, butuh SUPABASE_SERVICE_ROLE_KEY
+scripts/check-claude-md.mjs # cek semua tabel/kolom/fungsi/bucket/endpoint/route/file sudah tercatat di file ini (Stop hook)
 supabase_setup.sql, supabase_rbac_setup.sql   # snapshot historis, LIHAT PERINGATAN di bawah
+supabase_approval_finalize.sql, supabase_spk_qty.sql, supabase_spk_delete.sql, supabase_gudang_berkas_setup.sql  # migrasi modul (dijalankan manual di SQL Editor)
 ```
 
 ## Role & Permission
 
-Role: `admin`, `auditor`, `spv`, `direktur`, `requester` (+ legacy `user`, gak dipakai aktif). Didefinisikan di `Profile.role` (`src/types.ts`).
+Role: `admin`, `auditor`, `spv`, `direktur`, `requester`, `gudang_berkas` (staf yang mengajukan akses Gudang Berkas — cuma bisa buka `/gudang-berkas`) (+ legacy `user`, gak dipakai aktif). Label tampilan role ada di `src/lib/roles.ts`. Didefinisikan di `Profile.role` (`src/types.ts`).
 
 Ringkasan hak akses per role di Master Barang (setelah perubahan sesi ini):
 - **admin**: full CRUD, upload foto/dokumen, semua aksi (Ambil/Keluarkan Barang, Import/Export, Bulk Edit)
@@ -73,6 +85,9 @@ Mapping role→stage yang menentukan badge/notifikasi count **diduplikasi** di 3
 | `/dashboard` | `Home.tsx` | semua |
 | `/barang` | `MasterBarang.tsx` | non-requester |
 | `/approval` | `Approval.tsx` | non-requester |
+| `/approval/pemusnahan` | `DisposalApprovalPage.tsx` | non-requester |
+| `/approval/spk` | `SPKApprovalPage.tsx` | non-requester |
+| `/gudang-berkas` | `GudangBerkasPage.tsx` | role `gudang_berkas` (halaman default-nya) + admin/SPV (kelola) + direktur (lihat saja) |
 | `/kategori`, `/lokasi`, `/kepemilikan` | Master* | non-requester |
 | `/take-item-history`, `/log-item-change`, `/stock-out-history` | *History*/*Change* | non-requester |
 | `/office-items` | `OfficeItemsRequester.tsx` | semua (tapi isinya khusus requester) |
@@ -87,7 +102,8 @@ Belum ada koneksi MCP Supabase yang authenticated di sesi manapun sejauh ini —
 ### Tabel utama (kolom dari `src/types.ts` + observasi kode, bukan dump skema resmi)
 
 - **profiles**: `id, full_name, role, is_active, avatar_url, created_at`
-- **items**: `id, kode_barang, nama_barang, jumlah_barang, kode_lokasi, kategori_id, kepemilikan_id, sifat_barang ('PRIVATE'|'OFFICE'|'REUSABLE'), foto_urls[], deskripsi, kelengkapan_garansi/sertifikat/manual (bool), dokumen_garansi_url/sertifikat_url/manual_url, kondisi_barang ('BAIK'|'CUKUP BAIK'|'RUSAK'), note_audit ('ADA'|'TIDAK ADA'), tanggal_audit, flags[], created_at, updated_at`
+- **items**: `id, kode_barang, nama_barang, jumlah_barang, kode_lokasi, kategori_id, kepemilikan_id, sifat_barang ('PRIVATE'|'OFFICE'|'REUSABLE'), foto_urls[], deskripsi, kelengkapan_garansi, kelengkapan_sertifikat, kelengkapan_manual (bool), dokumen_garansi_url, dokumen_sertifikat_url, dokumen_manual_url, kondisi_barang ('BAIK'|'CUKUP BAIK'|'RUSAK'), note_audit ('ADA'|'TIDAK ADA'), tanggal_audit, flags[], rfid_tag, rfid_tag_2, created_at, updated_at`
+  - `rfid_tag` / `rfid_tag_2`: maks. 2 tag RFID per barang (null = kosong), unik lintas KEDUA kolom semua barang (dicek di form). Dipakai fitur scan RFID & filter "Status Tag RFID" (Sudah/Belum Ada Tag) di Master Barang.
 - **categories**: `id, nama_kategori, deskripsi, parent_id, created_at, updated_at` (bisa nested lewat `parent_id`)
 - **master_kepemilikan**: `id, nama_pemilik, keterangan, created_at`
 - **master_lokasi**: `kode_lokasi, nama_lokasi, parent_kode_lokasi, created_at`
@@ -96,11 +112,44 @@ Belum ada koneksi MCP Supabase yang authenticated di sesi manapun sejauh ini —
 - **item_audit_history**: `id, item_id, note_audit, tanggal_audit, audited_by, created_at` — riwayat hasil audit (beda dari `item_audit_logs`!). Diisi manual saat auditor simpan hasil audit. Ditampilkan lewat tombol "Riwayat Audit" di Detail Barang (fitur baru sesi ini)
 - **take_item_history**: `id, item_id, kode_barang, nama_barang, jumlah, kode_lokasi, nama_lokasi, user_id, user_name, alasan, created_at`
 - **stock_keluar_history**: `id, original_item_id, kode_barang, nama_barang, jumlah_barang, kode_lokasi, nama_lokasi, lokasi_keluar, foto_urls[], deskripsi, created_at, updated_at, keterangan_alasan, user_name, tanggal_keluar`
-- **disposal_requests**: `id, nomor_pengajuan, diajukan_oleh, user_id, jumlah, alasan, metode_pemusnahan, status ('PENDING_AUDITOR'|'PENDING_SPV'|'PENDING_DIREKTUR'|'APPROVED'|'REJECTED'), tanggal_pengajuan, diketahui_auditor_oleh, tanggal_diketahui_auditor, approved_by_l1/l2, tanggal_approved_l1/l2, keterangan, created_at, updated_at`
+- **disposal_requests**: `id, nomor_pengajuan, diajukan_oleh, user_id, jumlah, alasan, metode_pemusnahan, status ('PENDING_AUDITOR'|'PENDING_SPV'|'PENDING_DIREKTUR'|'APPROVED'|'REJECTED'), tanggal_pengajuan, diketahui_auditor_oleh, tanggal_diketahui_auditor, approved_by_l1, approved_by_l2, tanggal_approved_l1, tanggal_approved_l2, keterangan, alasan_penolakan, created_at, updated_at`
 - **disposal_request_items**: `id, request_id, item_id, kode_barang, nama_barang, jumlah_barang, kode_lokasi, kondisi_barang, foto_urls[], status_item ('PENDING'|'APPROVED'|'REJECTED'), alasan_rejection, created_at`
-- **spk_requests**: `id, nomor_spk, diajukan_oleh, user_id, jumlah, keterangan, lokasi_tujuan, status ('PENDING_ADMIN'|'PENDING_AUDITOR'|'PENDING_SPV'|'APPROVED'|'REJECTED'), tanggal_pengajuan, diketahui_admin_oleh, tanggal_diketahui_admin, diketahui_auditor_oleh, tanggal_diketahui_auditor, approved_by_l1/l2, tanggal_approved_l1/l2, created_at, updated_at`
+- **spk_requests**: `id, nomor_spk, diajukan_oleh, user_id, jumlah, keterangan, lokasi_tujuan, status ('PENDING_ADMIN'|'PENDING_AUDITOR'|'PENDING_SPV'|'APPROVED'|'REJECTED'), tanggal_pengajuan, diketahui_admin_oleh, tanggal_diketahui_admin, diketahui_auditor_oleh, tanggal_diketahui_auditor, approved_by_l1, approved_by_l2, tanggal_approved_l1, tanggal_approved_l2, alasan_penolakan, created_at, updated_at`
 - **spk_request_items**: `id, request_id, item_id, kode_barang, nama_barang, jumlah_barang, kode_lokasi, kepemilikan_id, nama_kategori, nama_lokasi, foto_urls[], status_item, alasan_rejection, created_at`
 - **app_settings**: `id, login_title, login_footer, login_bg_url, updated_at`
+- **locations**: tabel LEGACY dari `supabase_setup.sql` (sudah digantikan `master_lokasi`, tidak dipakai kode) — jangan dipakai untuk fitur baru.
+
+Modul Gudang Berkas (`supabase_gudang_berkas_setup.sql`, dipakai `GudangBerkasPage.tsx`):
+- **gudang_berkas_requests**: header permohonan akses — `id, no_kunjungan (auto KJ<DDMMYY><2 digit>), tanggal_kunjungan, waktu_mulai, waktu_selesai, divisi_pemohon, nama_pemohon, jabatan_pemohon, pemohon_id, lokasi_gudang ('Gudang Mergat'|'Gudang Hasanuddin'), tujuan_kunjungan, tujuan_lainnya, jumlah_personil, pendamping_id, pendamping_nama, pendamping_divisi, diketahui_oleh_id, diketahui_oleh_nama, diketahui_oleh_jabatan, disetujui_oleh_nama (legacy, PDF sekarang 2 tanda tangan), members_foto_path, members_catatan, status ('DIAJUKAN'|'SELESAI'), created_by, created_by_name, created_at, updated_at`
+- **gudang_berkas_request_members**: anggota tim/pengunjung — `id, request_id, no_urut, nama_lengkap, id_karyawan, jabatan, is_tambahan (ditambah manual admin/SPV), created_at`
+- **gudang_berkas_request_items**: rincian berkas yang dicari — `id, request_id, no_urut, jenis_dokumen, tahun, nomor_dokumen, keterangan, is_temuan_lapangan, ditambahkan_oleh, created_at`
+- **gudang_berkas_logbook**: 1 ringkasan verifikasi per permohonan — `id, request_id (unique), tanggal_verifikasi, status_kunjungan ('Masuk'|'Keluar'|'Periksa'), ga_verificator_id, ga_verificator_name, keterangan, total_items, verified_items, is_completed, completed_at, created_at, updated_at`
+- **gudang_berkas_logbook_item_checks**: checklist per item berkas — `id, logbook_id, request_item_id, is_verified, verification_status ('PENDING'|'VERIFIED'|'TIDAK_SESUAI'), verified_note, verified_at, foto_path`
+- **profiles** tambahan modul ini: `divisi`, `jabatan`.
+
+### Fungsi, trigger & RPC Postgres
+
+| Nama | File | Fungsi |
+|---|---|---|
+| `log_item_changes` + trigger `on_item_changed` | `supabase_setup.sql` | isi `item_audit_logs` tiap `items` berubah (atribusi user lewat override transaksi, fallback `auth.uid()`) |
+| `delete_item_as` | `supabase_setup.sql` | RPC lama hapus item atas nama user (service-role); endpoint pemanggilnya sudah dihapus |
+| `is_admin`, `is_active_user`, `app_role()` | `supabase_setup.sql` / `supabase_rbac_setup.sql` / audit keamanan | helper RLS (role & status aktif user) |
+| `handle_new_user` + trigger `on_auth_user_created` | `supabase_rbac_setup.sql` | bikin baris `profiles` saat user Auth dibuat |
+| `finalize_disposal_request`, `finalize_spk_request` | `supabase_approval_finalize.sql`, `supabase_spk_qty.sql` | approval final dalam 1 transaksi (hanya `service_role`, dipanggil `POST /api/approval/finalize`) |
+| `validate_spk_request_item` + trigger `trg_validate_spk_request_item` | `supabase_spk_qty.sql` | tolak qty SPK > stok saat diajukan |
+| `assign_spk_number` + trigger `trg_assign_spk_number` | `supabase_spk_qty.sql` | nomor SPK `SPK-DDMMYYYY-0001` (WIB) di server, pakai advisory lock |
+| `delete_own_spk_request` (RPC) | `supabase_spk_delete.sql` | requester hapus SPK miliknya selama masih `PENDING_ADMIN` (dipanggil dari `OfficeItemsRequester.tsx`) |
+| `generate_gudang_berkas_no_kunjungan` + trigger `trg_gudang_berkas_no_kunjungan` | `supabase_gudang_berkas_setup.sql` | nomor kunjungan otomatis `KJ<DDMMYY><urut>` |
+| `set_updated_at` + trigger `trg_gb_requests_updated_at`, `trg_gb_logbook_updated_at` | `supabase_gudang_berkas_setup.sql` | isi `updated_at` otomatis |
+
+### Bucket storage
+
+- `item-photos` (private) — foto barang; `item-documents` (private) — dokumen garansi/sertifikat/manual; `gudang-berkas-photos` (private) — foto verifikasi Gudang Berkas; `app-assets` (public, dibuat di `supabase_setup.sql`; tidak dirujuk langsung oleh kode saat ini).
+
+### Endpoint API (`api/index.ts`)
+
+- `POST /api/admin/create-user`, `DELETE /api/admin/delete-user/:userId` — kelola user (admin only, dipanggil `ManageUsers.tsx`)
+- `POST /api/approval/finalize` — approval final pemusnahan/SPK (lihat bagian Keamanan)
 
 ### RLS yang diketahui (diverifikasi live lewat query `pg_policies` di sesi sebelumnya)
 
@@ -177,11 +226,18 @@ Layout global (`Layout.tsx`):
 
 **Status akhir**: semua perubahan sudah lolos `npx tsc --noEmit` dan `npx vite build` tanpa error di setiap langkah. Belum ada testing end-to-end otomatis (gak ada test suite di project ini) — verifikasi selama ini murni lewat review kode + build check + user screenshot manual.
 
+## Aturan Dokumentasi (WAJIB)
+
+Setiap kali menambah/mengubah **tabel, kolom, fungsi/trigger/RPC Postgres, bucket storage, endpoint API, route halaman, atau file baru di `src/components|hooks|lib`**, catat di file ini pada bagian yang sesuai (Struktur Folder, Routing, Skema Supabase, Fungsi/trigger, Bucket, Endpoint API) — termasuk SQL yang cuma dikasih di chat dan dijalankan manual di SQL Editor. **Sebelum bikin nama baru, cek dulu di file ini** supaya tidak bentrok dengan yang sudah ada.
+
+Pengecek otomatis: `node scripts/check-claude-md.mjs` (dari folder `Inventory_GA`) memindai `src/`, `api/`, `src/types.ts`, dan `*.sql`, lalu melaporkan nama yang belum tercatat di sini. Skrip ini dipasang sebagai **Stop hook** Claude Code di `stock GA/.claude/settings.json`: kalau ada yang belum tercatat, Claude dipaksa melengkapi CLAUDE.md sebelum selesai. Catatan: kolom yang ditambah lewat SQL Editor tanpa disinkron ke `src/types.ts`/file `.sql` tidak terdeteksi skrip — tetap catat manual.
+
 ## Cara Kerja yang Terbukti Efektif di Sesi Ini (buat sesi lanjutan)
 
 - User (panggilan "lae") sering minta **konsep/opini dulu sebelum eksekusi** ("apakah bisa... bagaimana menurut lae?") — jangan langsung ubah kode untuk pertanyaan eksploratif, kasih rekomendasi singkat + trade-off dulu, tunggu konfirmasi.
 - Setelah user bilang "silahkan eksekusi"/"oke lae, lakukan" — baru jalan, dan **selalu tutup dengan `npx tsc --noEmit -p tsconfig.json` + `npx vite build`** sebelum lapor selesai (project ini gak ada CI, jadi ini gate kualitas satu-satunya).
-- Perubahan SQL/RLS ke Supabase: **paste SQL lengkap di chat** (bukan cuma rujukan file), user jalanin manual di SQL Editor (gak ada koneksi Supabase MCP yang authenticated), minta user paste balik hasil verifikasi query.
+- **Git (sejak 15 Okt 2026)**: repo ini punya remote `origin` = github.com/afandi-hrp/Inventory_GA (branch `main`). Setiap selesai satu perubahan yang lolos build gate, Claude **commit lokal** (1 commit per perubahan, pesan deskriptif bahasa Indonesia) supaya bisa di-revert kalau ternyata tidak sesuai. **JANGAN push** — push ke GitHub dilakukan user sendiri setelah dicek. Jangan ikut-commit `.env*` atau file yang tidak terkait.
+- Perubahan SQL/RLS ke Supabase (sejak 15 Okt 2026): **taruh file baru di folder `sql/`** (`YYYYMMDD_<topik>.sql`, idempotent — lihat `sql/README.md`), JANGAN paste di chat. User jalankan manual di SQL Editor (gak ada koneksi Supabase MCP yang authenticated) lalu konfirmasi → verifikasi (minta hasil query cek bila perlu) → catat di CLAUDE.md → hapus file SQL-nya dari `sql/`.
 - User cukup sering kasih feedback visual lewat screenshot + minta revisi kecil (warna, margin, posisi) — biasanya butuh 1-3 putaran iterasi sebelum pas, itu normal buat project ini.
 
 ## Keamanan (audit 2026-09-28)

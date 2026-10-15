@@ -162,6 +162,9 @@ function saveXlsxWorkbook(wb: XLSX.WorkBook, fileName: string) {
   }
 }
 
+// Filter "Sudah ada tag RFID": tag di slot 1 ATAU slot 2 terisi
+const RFID_SUDAH_OR = 'rfid_tag.not.is.null,rfid_tag_2.not.is.null';
+
 // Kelengkapan data barang untuk tampilan card: 5 komponen (foto, dokumen
 // garansi/sertifikat/manual, hasil audit). Murni dihitung dari kolom `items`
 // yang sudah ada — tidak ada kolom database baru.
@@ -339,6 +342,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
   const [filterKepemilikan, setFilterKepemilikan] = useState('');
   const [filterSifat, setFilterSifat] = useState<'' | 'PRIVATE' | 'OFFICE' | 'REUSABLE'>('');
   const [filterAudit, setFilterAudit] = useState<'' | 'SUDAH' | 'BELUM'>('');
+  const [filterRfid, setFilterRfid] = useState<'' | 'SUDAH' | 'BELUM'>('');
   const [flagInput, setFlagInput] = useState('');
   const [flagCatalog, setFlagCatalog] = useState<FlagDef[]>([]);
   const [newFlagColorKey, setNewFlagColorKey] = useState('teal');
@@ -406,7 +410,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     fetchCategories();
     fetchKepemilikan();
     fetchFlagCatalog();
-  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterAudit, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
+  }, [page, debouncedSearch, filterLokasi, filterKategori, filterKepemilikan, filterSifat, filterAudit, filterRfid, filterPemusnahan, itemsPerPage, profile, sortColumn, sortOrder]);
 
   async function fetchFlagCatalog() {
     try {
@@ -547,6 +551,11 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       } else if (filterAudit === 'BELUM') {
         query = query.is('tanggal_audit', null);
       }
+      if (filterRfid === 'SUDAH') {
+        query = query.or(RFID_SUDAH_OR);
+      } else if (filterRfid === 'BELUM') {
+        query = query.is('rfid_tag', null).is('rfid_tag_2', null);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -602,7 +611,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
     if (activeFilterPanel) {
       fetchDimensionStats(activeFilterPanel);
     }
-  }, [activeFilterPanel, filterKategori, filterLokasi, filterKepemilikan, filterSifat, filterAudit, categories, availableLocations, kepemilikanList]);
+  }, [activeFilterPanel, filterKategori, filterLokasi, filterKepemilikan, filterSifat, filterAudit, filterRfid, categories, availableLocations, kepemilikanList]);
 
   async function fetchItems() {
     setLoading(true);
@@ -622,8 +631,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           )
         `, { count: 'exact' });
 
-      if (debouncedSearch) {
-        query = query.or(`nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%,deskripsi.ilike.%${debouncedSearch}%`);
+      // Pencarian & filter "Sudah ada tag RFID" sama-sama butuh OR — digabung
+      // jadi SATU parameter or (pakai and(...)) karena 2x .or() gak bisa
+      // diandalkan digabung AND oleh PostgREST.
+      const searchOr = debouncedSearch
+        ? `nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%,deskripsi.ilike.%${debouncedSearch}%`
+        : '';
+      if (searchOr && filterRfid === 'SUDAH') {
+        query = query.or(`and(or(${searchOr}),or(${RFID_SUDAH_OR}))`);
+      } else if (searchOr) {
+        query = query.or(searchOr);
+      } else if (filterRfid === 'SUDAH') {
+        query = query.or(RFID_SUDAH_OR);
+      }
+      if (filterRfid === 'BELUM') {
+        query = query.is('rfid_tag', null).is('rfid_tag_2', null);
       }
 
       if (filterLokasi === 'unassigned') {
@@ -2411,19 +2433,12 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
         )}
 
         <select
-          value={filterSifat ? `SIFAT:${filterSifat}` : filterAudit ? `AUDIT:${filterAudit}` : ''}
+          value={filterSifat ? `SIFAT:${filterSifat}` : filterAudit ? `AUDIT:${filterAudit}` : filterRfid ? `RFID:${filterRfid}` : ''}
           onChange={(e) => {
             const v = e.target.value;
-            if (v.startsWith('SIFAT:')) {
-              setFilterSifat(v.slice(6) as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE');
-              setFilterAudit('');
-            } else if (v.startsWith('AUDIT:')) {
-              setFilterAudit(v.slice(6) as '' | 'SUDAH' | 'BELUM');
-              setFilterSifat('');
-            } else {
-              setFilterSifat('');
-              setFilterAudit('');
-            }
+            setFilterSifat(v.startsWith('SIFAT:') ? v.slice(6) as '' | 'PRIVATE' | 'OFFICE' | 'REUSABLE' : '');
+            setFilterAudit(v.startsWith('AUDIT:') ? v.slice(6) as '' | 'SUDAH' | 'BELUM' : '');
+            setFilterRfid(v.startsWith('RFID:') ? v.slice(5) as '' | 'SUDAH' | 'BELUM' : '');
             setPage(1);
           }}
           className="shrink-0 px-3 py-2 border border-brand-purple/20 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-brand-purple text-sm appearance-none bg-white font-medium"
@@ -2437,6 +2452,10 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
           <optgroup label="Status Audit">
             <option value="AUDIT:SUDAH">Sudah Diaudit</option>
             <option value="AUDIT:BELUM">Belum Diaudit</option>
+          </optgroup>
+          <optgroup label="Status Tag RFID">
+            <option value="RFID:SUDAH">Sudah Ada Tag RFID</option>
+            <option value="RFID:BELUM">Belum Ada Tag RFID</option>
           </optgroup>
         </select>
 
@@ -2564,6 +2583,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
             setFilterKepemilikan('');
             setFilterSifat('');
             setFilterAudit('');
+            setFilterRfid('');
             setFilterPemusnahan(false);
             setActiveFilterPanel('');
             setDimensionMenuPos(null);
@@ -2661,14 +2681,17 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
               <p className="text-brand-purple">Tidak ada barang ditemukan</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
               {items.map((item) => {
                 const isSelected = selectedItems.includes(item.id);
                 const { parts: kelengkapan, doneCount } = getKelengkapan(item);
                 const canStockActions = profile?.role === 'admin' || profile?.role === 'spv';
                 const canEditItem = profile?.role === 'admin' || profile?.role === 'auditor' || profile?.role === 'spv';
                 const needsDisposal = item.kondisi_barang === 'RUSAK' || item.kondisi_barang === 'CUKUP BAIK';
-                const hasDocs = !!(item.dokumen_garansi_url || item.dokumen_sertifikat_url || item.dokumen_manual_url);
+                const hasRfid = !!(item.rfid_tag || item.rfid_tag_2);
+                // Stok merah cuma buat barang REUSABLE (habis pakai) yang tinggal sedikit —
+                // barang aset memang wajar stoknya 1.
+                const lowStock = item.sifat_barang === 'REUSABLE' ? item.jumlah_barang <= 5 : item.jumlah_barang <= 0;
                 const lokasiNama = (item as any).master_lokasi?.nama_lokasi || 'Unassigned';
                 const kategoriNama = (item as any).categories?.nama_kategori || 'Tanpa Kategori';
                 const kepemilikanNama = (item as any).master_kepemilikan?.nama_pemilik || '-';
@@ -2677,165 +2700,139 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     key={item.id}
                     onClick={() => handleShowDetail(item)}
                     className={cn(
-                      "bg-white/85 rounded-2xl shadow-md border p-4 flex flex-col gap-3 cursor-pointer hover:shadow-lg transition-shadow",
+                      "bg-white/90 rounded-2xl shadow-sm border p-4 flex flex-col gap-3 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200",
                       isSelected ? "border-brand-purple ring-2 ring-brand-purple/30" : "border-white/70"
                     )}
                   >
-                    {/* Header: pilih + kode + status/kondisi */}
-                    <div className="flex items-start justify-between gap-2">
+                    {/* Header: pilih + kode + badge status/kondisi/RFID */}
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0" onClick={(e) => e.stopPropagation()}>
-                        <button type="button" onClick={() => toggleSelectItem(item.id)} className="text-brand-purple hover:text-brand-purple-light transition-colors shrink-0">
+                        <button type="button" onClick={() => toggleSelectItem(item.id)} className="text-brand-purple/60 hover:text-brand-purple transition-colors shrink-0">
                           {isSelected ? <CheckSquare size={17} className="text-brand-purple" /> : <Square size={17} />}
                         </button>
-                        <span className="font-mono font-bold text-sm text-brand-purple truncate">{item.kode_barang}</span>
+                        <span className="font-mono font-semibold text-xs text-brand-purple/70 tracking-wide truncate">{item.kode_barang}</span>
                       </div>
                       <div className="flex flex-wrap justify-end gap-1 shrink-0">
                         <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
-                          item.sifat_barang === 'OFFICE' ? "bg-sky-50 text-sky-700 border-sky-200" :
-                          item.sifat_barang === 'REUSABLE' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                          "bg-purple-50 text-purple-700 border-purple-200"
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide",
+                          item.sifat_barang === 'OFFICE' ? "bg-sky-100 text-sky-700" :
+                          item.sifat_barang === 'REUSABLE' ? "bg-emerald-100 text-emerald-700" :
+                          "bg-purple-100 text-purple-700"
                         )}>
                           {item.sifat_barang || 'PRIVATE'}
                         </span>
                         {item.kondisi_barang && (
                           <span className={cn(
-                            "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
-                            item.kondisi_barang === 'BAIK' ? "bg-green-50 text-green-700 border-green-200" :
-                            item.kondisi_barang === 'CUKUP BAIK' ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
-                            "bg-red-50 text-red-700 border-red-200"
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide",
+                            item.kondisi_barang === 'BAIK' ? "bg-green-100 text-green-700" :
+                            item.kondisi_barang === 'CUKUP BAIK' ? "bg-yellow-100 text-yellow-800" :
+                            "bg-red-100 text-red-700"
                           )}>
                             {item.kondisi_barang}
+                          </span>
+                        )}
+                        {hasRfid && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-indigo-100 text-indigo-700" title="Sudah ada tag RFID">
+                            <Nfc size={11} /> RFID
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Panel: foto + nama + deskripsi + stok */}
-                    <div className="rounded-xl bg-brand-purple/5 p-3 flex items-stretch gap-3 min-h-[6.5rem]">
+                    {/* Foto + nama + deskripsi + kategori/lokasi/milik */}
+                    <div className="flex gap-3.5">
                       {item.foto_urls && item.foto_urls.length > 0 ? (
-                        <div className="relative shrink-0 self-center">
+                        <div className="relative shrink-0">
                           <SignedImage
                             bucket="item-photos"
                             path={item.foto_urls[0]}
                             alt={item.nama_barang}
-                            className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm cursor-zoom-in"
-                            containerClassName="w-20 h-20 rounded-lg"
+                            className="w-24 h-24 rounded-xl object-cover ring-1 ring-brand-purple/10 shadow-sm cursor-zoom-in"
+                            containerClassName="w-24 h-24 rounded-xl"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenCarousel(item.foto_urls, 0);
                             }}
                           />
                           {item.foto_urls.length > 1 && (
-                            <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-brand-purple text-white text-[10px] font-bold shadow">
+                            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/55 backdrop-blur-sm text-white text-[10px] font-bold">
                               +{item.foto_urls.length - 1}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <div className="w-20 h-20 shrink-0 self-center rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-200" title="Belum ada foto">
-                          <AlertTriangle size={20} />
+                        <div className="w-24 h-24 shrink-0 rounded-xl bg-amber-50 border border-dashed border-amber-300 flex flex-col items-center justify-center gap-1 text-amber-500" title="Belum ada foto">
+                          <Camera size={20} />
+                          <span className="text-[9px] font-semibold">Belum ada foto</span>
                         </div>
                       )}
-                      <div className="min-w-0 flex-1 self-center">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-purple/60">Nama Barang</p>
-                        <p className="font-bold text-brand-purple leading-snug line-clamp-2 break-words">{item.nama_barang}</p>
-                        <p className="text-xs text-brand-purple/70 mt-0.5 line-clamp-2 break-words whitespace-pre-line">{item.deskripsi || '-'}</p>
-                      </div>
-                      <div className="shrink-0 pl-3 border-l border-brand-purple/10 flex flex-col items-center justify-center text-center leading-none">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-purple/60 mb-1.5">Stok</p>
-                        <p className={cn("text-2xl font-bold", item.jumlah_barang <= 5 ? "text-red-600" : "text-brand-purple")}>{item.jumlah_barang}</p>
-                      </div>
-                    </div>
-
-                    {/* Kategori, Lokasi & Milik — masing-masing diberi label + warna sendiri biar jelas */}
-                    <div className="space-y-2">
-                      <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5" title={kategoriNama}>
-                        <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-orange-700/70"><Tag size={10} /> Kategori</p>
-                        <p className="text-sm font-bold text-orange-800 line-clamp-2 break-words">{kategoriNama}</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 min-w-0" title={lokasiNama}>
-                          <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-700/70"><MapPin size={10} /> Lokasi</p>
-                          <p className="text-sm font-bold text-blue-800 line-clamp-2 break-words">{lokasiNama}</p>
-                        </div>
-                        <div className="rounded-xl border border-brand-purple/25 bg-brand-purple/10 px-3 py-1.5 min-w-0" title={kepemilikanNama}>
-                          <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand-purple/70"><UserCheck size={10} /> Milik</p>
-                          <p className="text-sm font-bold text-brand-purple line-clamp-2 break-words">{kepemilikanNama}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-brand-purple leading-snug line-clamp-2 break-words" title={item.nama_barang}>{item.nama_barang}</p>
+                        {item.deskripsi && item.deskripsi !== '-' && (
+                          <p className="text-xs text-brand-purple/60 mt-0.5 line-clamp-1 break-words">{item.deskripsi}</p>
+                        )}
+                        <div className="mt-2 space-y-1 text-xs text-brand-purple/80">
+                          <p className="flex items-center gap-1.5 min-w-0" title={`Kategori: ${kategoriNama}`}>
+                            <Tag size={12} className="shrink-0 text-orange-500" />
+                            <span className="truncate font-medium">{kategoriNama}</span>
+                          </p>
+                          <p className="flex items-center gap-1.5 min-w-0" title={`Lokasi: ${lokasiNama}`}>
+                            <MapPin size={12} className="shrink-0 text-blue-500" />
+                            <span className="truncate font-medium">{lokasiNama}</span>
+                          </p>
+                          <p className="flex items-center gap-1.5 min-w-0" title={`Milik: ${kepemilikanNama}`}>
+                            <UserCheck size={12} className="shrink-0 text-brand-purple-light" />
+                            <span className="truncate font-medium">{kepemilikanNama}</span>
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Dokumen */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-purple/60">Dokumen</span>
-                      {hasDocs ? (
-                        <>
-                          {item.dokumen_garansi_url && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_garansi_url, `${item.kode_barang} - Garansi`); }}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
-                            >
-                              <FileText size={10} /> Garansi
-                            </button>
-                          )}
-                          {item.dokumen_sertifikat_url && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_sertifikat_url, `${item.kode_barang} - Sertifikat`); }}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
-                            >
-                              <FileText size={10} /> Sertifikat
-                            </button>
-                          )}
-                          {item.dokumen_manual_url && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleOpenDocument(e, item.dokumen_manual_url, `${item.kode_barang} - Manual Book`); }}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
-                            >
-                              <FileText size={10} /> Manual
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-xs text-brand-purple/50">-</span>
-                      )}
-                    </div>
-
-                    {/* Peringatan */}
-                    {(needsDisposal || !(item.foto_urls?.length)) && (
-                      <div className="space-y-1.5">
-                        {needsDisposal && (
-                          <p className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-100">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" /> Masuk list pemusnahan · {item.kondisi_barang}
-                          </p>
-                        )}
-                        {!(item.foto_urls?.length) && (
-                          <p className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-100">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" /> Belum ada foto
-                          </p>
-                        )}
-                      </div>
+                    {needsDisposal && (
+                      <p className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700">
+                        <AlertTriangle size={12} className="shrink-0" /> Masuk list pemusnahan · {item.kondisi_barang}
+                      </p>
                     )}
 
-                    {/* Kelengkapan data (foto, garansi, sertifikat, manual, audit) */}
-                    <div className="mt-auto">
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="flex items-center gap-1.5 font-semibold text-brand-purple">
-                          <span className={cn("w-1.5 h-1.5 rounded-full", doneCount === kelengkapan.length ? "bg-green-500" : "bg-amber-500")} />
-                          Kelengkapan data
-                        </span>
-                        <span className="text-brand-purple/60">{doneCount}/{kelengkapan.length}</span>
-                      </div>
-                      <div className="grid grid-cols-5 gap-1">
-                        {kelengkapan.map(p => (
-                          <div key={p.key} title={`${p.label}: ${p.done ? 'lengkap' : 'belum ada'}`}>
-                            <div className={cn("h-1 rounded-full", p.done ? (doneCount === kelengkapan.length ? "bg-green-500" : "bg-amber-500") : "bg-brand-purple/10")} />
-                            <p className={cn("text-[9px] mt-0.5 text-center truncate", p.done ? "text-brand-purple" : "text-brand-purple/40")}>{p.label}</p>
-                          </div>
-                        ))}
+                    {/* Stok + kelengkapan data (foto, garansi, sertifikat, manual, audit).
+                        Chip dokumen yang sudah ada bisa diklik untuk dibuka. */}
+                    <div className="mt-auto pt-3 border-t border-brand-purple/10 flex items-center gap-2">
+                      <span className={cn(
+                        "shrink-0 inline-flex items-baseline gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold",
+                        lowStock ? "bg-red-50 text-red-700" : "bg-brand-purple/5 text-brand-purple/70"
+                      )}>
+                        Stok <span className={cn("text-sm font-bold", lowStock ? "text-red-700" : "text-brand-purple")}>{item.jumlah_barang}</span>
+                      </span>
+                      <div className="flex-1 grid grid-cols-5 gap-1 min-w-0" onClick={(e) => e.stopPropagation()} title={`Kelengkapan data ${doneCount}/${kelengkapan.length}`}>
+                        {kelengkapan.map(p => {
+                          const docUrl = p.key === 'garansi' ? item.dokumen_garansi_url
+                            : p.key === 'sertifikat' ? item.dokumen_sertifikat_url
+                            : p.key === 'manual' ? item.dokumen_manual_url
+                            : null;
+                          const chipClass = cn(
+                            "flex items-center justify-center gap-1 min-w-0 px-1 py-0.5 rounded-md text-[10px] font-medium transition-colors",
+                            p.done ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-400"
+                          );
+                          const content = (
+                            <>
+                              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", p.done ? "bg-green-500" : "bg-gray-300")} />
+                              <span className="truncate">{p.label}</span>
+                            </>
+                          );
+                          return docUrl ? (
+                            <button
+                              key={p.key}
+                              type="button"
+                              title={`Buka dokumen ${p.label}`}
+                              onClick={(e) => handleOpenDocument(e, docUrl, `${item.kode_barang} - ${p.label === 'Manual' ? 'Manual Book' : p.label}`)}
+                              className={cn(chipClass, "hover:bg-green-100 underline-offset-2 hover:underline")}
+                            >
+                              {content}
+                            </button>
+                          ) : (
+                            <span key={p.key} className={chipClass} title={`${p.label}: ${p.done ? 'lengkap' : 'belum ada'}`}>{content}</span>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2844,7 +2841,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                       <button
                         type="button"
                         onClick={() => handleShowDetail(item)}
-                        className="flex-1 px-3 py-2 rounded-lg bg-brand-purple/10 text-brand-purple hover:bg-brand-purple/20 text-sm font-semibold transition-colors"
+                        className="flex-1 px-4 py-2.5 sm:py-1.5 rounded-lg bg-brand-purple text-white hover:bg-brand-purple-light text-sm sm:text-xs font-semibold transition-colors"
                       >
                         Detail
                       </button>
@@ -2852,44 +2849,41 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                         <button
                           type="button"
                           onClick={() => handleOpenModal(item)}
-                          className="flex-1 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-semibold transition-colors"
+                          className="flex-1 px-4 py-2.5 sm:py-1.5 rounded-lg border border-brand-purple/25 text-brand-purple hover:bg-brand-purple/5 text-sm sm:text-xs font-semibold transition-colors"
                         >
                           Edit
                         </button>
                       )}
-                      <button
-                        type="button"
-                        title="Lihat Riwayat"
-                        onClick={() => {
-                          if (setHistorySearch) {
-                            setHistorySearch(item.kode_barang);
-                            navigate('/log-item-change');
-                          }
-                        }}
-                        className="p-2 rounded-lg border border-gray-200 bg-white text-indigo-600 hover:bg-indigo-50 transition-colors"
-                      >
-                        <History size={16} />
-                      </button>
-                      {canStockActions && (
-                        <>
-                          <button
-                            type="button"
-                            title="Ambil Barang"
-                            onClick={() => handleTakeItem(item)}
-                            className="p-2 rounded-lg border border-gray-200 bg-white text-orange-600 hover:bg-orange-50 transition-colors"
-                          >
-                            <LogOut size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Keluarkan Barang"
-                            onClick={() => handleStockOut(item)}
-                            className="p-2 rounded-lg border border-gray-200 bg-white text-red-600 hover:bg-red-50 transition-colors"
-                          >
-                            <Archive size={16} />
-                          </button>
-                        </>
-                      )}
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          title="Lihat Riwayat"
+                          onClick={() => handleOpenItemHistory(item)}
+                          className="p-2.5 sm:p-1.5 rounded-lg text-brand-purple/60 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        >
+                          <History size={16} />
+                        </button>
+                        {canStockActions && (
+                          <>
+                            <button
+                              type="button"
+                              title="Ambil Barang"
+                              onClick={() => handleTakeItem(item)}
+                              className="p-2.5 sm:p-1.5 rounded-lg text-brand-purple/60 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                            >
+                              <LogOut size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Keluarkan Barang"
+                              onClick={() => handleStockOut(item)}
+                              className="p-2.5 sm:p-1.5 rounded-lg text-brand-purple/60 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Archive size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

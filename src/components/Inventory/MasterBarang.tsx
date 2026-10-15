@@ -2753,7 +2753,7 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
                     {/* Foto + nama + deskripsi + kategori/lokasi/milik */}
                     <div className="flex gap-3.5">
                       {item.foto_urls && item.foto_urls.length > 0 ? (
-                        <div className="relative shrink-0">
+                        <div className="relative shrink-0 self-start w-24 h-24">
                           <SignedImage
                             bucket="item-photos"
                             path={item.foto_urls[0]}

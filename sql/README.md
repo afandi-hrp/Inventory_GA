@@ -8,3 +8,5 @@ Alur:
 3. Claude memverifikasi (minta hasil query cek bila perlu), mencatat perubahannya di `CLAUDE.md`, lalu **menghapus** file SQL tersebut dari folder ini.
 
 Kalau folder ini hanya berisi README, berarti tidak ada SQL yang menunggu.
+
+SQL lama/snapshot historis ada di `sql/arsip/` (di-gitignore, hanya tersimpan lokal; riwayat lamanya masih ada di git).

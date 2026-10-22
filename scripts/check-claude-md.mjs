@@ -29,7 +29,9 @@ function walk(dir, exts, out = []) {
 
 const read = p => fs.readFileSync(p, 'utf8');
 const codeFiles = [...walk(path.join(ROOT, 'src'), ['.ts', '.tsx']), ...walk(path.join(ROOT, 'api'), ['.ts', '.js'])];
-const sqlFiles = fs.readdirSync(ROOT).filter(f => f.endsWith('.sql')).map(f => path.join(ROOT, f));
+// SQL lama dipindah ke sql/arsip/ (di-gitignore) — tetap dipindai di sini.
+const sqlDirs = [ROOT, path.join(ROOT, 'sql', 'arsip')].filter(d => fs.existsSync(d));
+const sqlFiles = sqlDirs.flatMap(d => fs.readdirSync(d).filter(f => f.endsWith('.sql')).map(f => path.join(d, f)));
 const code = codeFiles.map(read).join('\n');
 // Komentar SQL dibuang dulu supaya teks di komentar tidak ikut terbaca sebagai objek
 const sql = sqlFiles.map(read).join('\n')

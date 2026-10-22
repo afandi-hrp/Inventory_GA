@@ -25,3 +25,6 @@ dist-ssr/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# SQL lama (snapshot historis) — hanya disimpan lokal
+sql/arsip/

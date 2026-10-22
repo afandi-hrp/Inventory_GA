@@ -471,7 +471,7 @@ export default function OfficeItemsRequester() {
   };
 
   // Hapus pengajuan yang masih PENDING. Pemilik & status dicek ulang di server
-  // (delete_own_spk_request, lihat supabase_spk_delete.sql); karena approval
+  // (delete_own_spk_request, lihat sql/arsip/supabase_spk_delete.sql); karena approval
   // membaca tabel yang sama, pengajuan otomatis hilang dari antrean approver.
   const deleteSelectedRequest = async () => {
     if (!selectedRequest) return;
@@ -746,7 +746,7 @@ export default function OfficeItemsRequester() {
         throw new Error(problems.join('; '));
       }
 
-      // Nomor final dibuat ulang oleh trigger database (lihat supabase_spk_qty.sql).
+      // Nomor final dibuat ulang oleh trigger database (lihat sql/arsip/supabase_spk_qty.sql).
       const nomorSpk = await generateDailyDocNumber('spk_requests', 'nomor_spk', 'SPK');
       const reqRes = await supabase.from('spk_requests').insert({
         nomor_spk: nomorSpk,

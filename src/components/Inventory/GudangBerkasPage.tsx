@@ -291,7 +291,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
   const canManage = profile?.role === 'admin' || profile?.role === 'spv';
   // Role khusus: hanya boleh membuat form & melihat/cetak PDF miliknya sendiri.
   // Tidak boleh mengedit apa pun, dan sama sekali tidak boleh melihat bagian
-  // verifikasi/logbook — dijaga juga di level RLS (lihat supabase_gudang_berkas_setup.sql),
+  // verifikasi/logbook — dijaga juga di level RLS (lihat sql/arsip/supabase_gudang_berkas_setup.sql),
   // ini cuma lapisan UI-nya.
   const isStaffGudangBerkas = profile?.role === 'gudang_berkas';
   const canCreate = canManage || isStaffGudangBerkas;

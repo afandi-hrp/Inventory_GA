@@ -197,7 +197,7 @@ const FINAL_APPROVAL_SOURCES = {
 // SATU transaksi database lewat RPC — kalau ada yang gagal, semuanya batal.
 // Dulu prosesnya dijalankan per barang dari browser, jadi bisa berhenti di
 // tengah (status APPROVED tapi sebagian barang masih ada di stok).
-// Fungsi RPC-nya cuma bisa dipanggil service_role (supabase_approval_finalize.sql).
+// Fungsi RPC-nya cuma bisa dipanggil service_role (sql/arsip/supabase_approval_finalize.sql).
 app.post('/api/approval/finalize', checkFinalApprover, async (req, res) => {
   const userId = (req as any).userId as string;
   const userRole = (req as any).userRole as string;

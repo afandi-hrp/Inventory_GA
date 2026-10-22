@@ -5,7 +5,7 @@ Follow these steps to get your inventory management system up and running with S
 ## 1. Supabase Project Setup
 1. Create a new project at [Supabase](https://supabase.com).
 2. Go to the **SQL Editor** in your Supabase dashboard.
-3. Copy the contents of `supabase_setup.sql` from this project and run it. This will create all necessary tables, triggers, and RLS policies.
+3. Copy the contents of `sql/arsip/supabase_setup.sql` (local-only, gitignored; recover from git history with `git show <commit>:supabase_setup.sql` if missing) and run it. This will create all necessary tables, triggers, and RLS policies.
 
 ## 2. Storage Configuration
 1. In the Supabase dashboard, go to **Storage**.

@@ -391,7 +391,7 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
         doc.text('Diketahui Auditor,', 90, currentY);
         doc.text('Disetujui SPV,', 128, currentY);
         doc.text('Disetujui Direktur,', 165, currentY);
-        addApprovalStamp(doc, 14, currentY + 4, selectedRequest.tanggal_pengajuan || selectedRequest.created_at);
+        addApprovalStamp(doc, 14, currentY + 4, selectedRequest.tanggal_pengajuan || selectedRequest.created_at, 'SUBMITTED');
         addApprovalStamp(doc, 52, currentY + 4, selectedRequest.tanggal_diketahui_admin);
         addApprovalStamp(doc, 90, currentY + 4, selectedRequest.tanggal_diketahui_auditor);
         addApprovalStamp(doc, 128, currentY + 4, selectedRequest.tanggal_approved_l1);

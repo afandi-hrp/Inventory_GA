@@ -24,7 +24,7 @@ export function addPdfRow(
 export const PDF_STAMP_WIDTH = 31;
 export const PDF_STAMP_HEIGHT = 13;
 
-export function addApprovalStamp(doc: jsPDF, x: number, y: number, iso: string | null | undefined) {
+export function addApprovalStamp(doc: jsPDF, x: number, y: number, iso: string | null | undefined, label = 'APPROVED') {
   if (!iso) return;
   const d = new Date(iso);
   if (isNaN(d.getTime())) return;
@@ -41,7 +41,7 @@ export function addApprovalStamp(doc: jsPDF, x: number, y: number, iso: string |
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('APPROVED', cx, y + 5.5, { align: 'center' });
+  doc.text(label, cx, y + 5.5, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);

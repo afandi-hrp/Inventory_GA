@@ -562,7 +562,7 @@ export default function OfficeItemsRequester() {
         const item = itemsToPrint[i];
 
         addPdfLogo(doc, 14, 10, 11);
-        currentY = 38;
+        currentY = 30;
 
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');

@@ -227,7 +227,7 @@ export default function DashboardHome() {
           .eq('user_id', user.id);
         if (error) throw error;
         const total = data?.length || 0;
-        const pending = (data || []).filter(r => r.status === 'PENDING_ADMIN' || r.status === 'PENDING_AUDITOR' || r.status === 'PENDING_SPV').length;
+        const pending = (data || []).filter(r => r.status === 'PENDING_ADMIN' || r.status === 'PENDING_AUDITOR' || r.status === 'PENDING_SPV' || r.status === 'PENDING_DIREKTUR').length;
         setMySpkStats({ total, pending });
       } catch (err) {
         console.error('Error fetching my SPK stats:', err);
@@ -252,6 +252,7 @@ export default function DashboardHome() {
         admin: 'PENDING_ADMIN',
         auditor: 'PENDING_AUDITOR',
         spv: 'PENDING_SPV',
+        direktur: 'PENDING_DIREKTUR',
       };
 
       try {

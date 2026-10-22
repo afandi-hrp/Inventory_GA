@@ -39,6 +39,12 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
   // Tahap milik role ini — kalau ada, tab default-nya "Perlu Tindakan Saya".
   const myStage = SPK_STAGE_BY_ROLE[profile?.role || ''];
   const [statusFilter, setStatusFilter] = useState<ApprovalFilter>(myStage ? 'ACTION' : 'ALL');
+  // SPV (tahap PENDING_SPV) dan Direktur (tahap PENDING_DIREKTUR) boleh batalkan
+  // item / tolak semua saat gilirannya.
+  const canApproveNow = !!selectedRequest && (
+    (selectedRequest.status === 'PENDING_SPV' && profile?.role === 'spv') ||
+    (selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur')
+  );
 
   const parseRejectionReason = (reasonStr: string | null) => {
     if (!reasonStr) return { alasan: '-', rejectedBy: 'Sistem', role: '' };
@@ -148,11 +154,11 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
     }
   };
 
-  const advanceStage = async (stage: 'ADMIN' | 'AUDITOR' | 'SPV') => {
+  const advanceStage = async (stage: 'ADMIN' | 'AUDITOR' | 'SPV' | 'DIREKTUR') => {
     if (!selectedRequest) return;
     setIsSubmitting(true);
     try {
-      if (stage === 'SPV') {
+      if (stage === 'DIREKTUR') {
         // Approval final (status APPROVED + barang keluar dari stok) dijalankan
         // server dalam satu transaksi — semua berhasil atau semua batal.
         await finalizeApproval('spk', selectedRequest.id);
@@ -163,10 +169,14 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
           updateData.status = 'PENDING_AUDITOR';
           updateData.diketahui_admin_oleh = profile?.full_name || 'Admin';
           updateData.tanggal_diketahui_admin = new Date().toISOString();
-        } else {
+        } else if (stage === 'AUDITOR') {
           updateData.status = 'PENDING_SPV';
           updateData.diketahui_auditor_oleh = profile?.full_name || 'Auditor';
           updateData.tanggal_diketahui_auditor = new Date().toISOString();
+        } else {
+          updateData.status = 'PENDING_DIREKTUR';
+          updateData.approved_by_l1 = profile?.full_name || 'SPV';
+          updateData.tanggal_approved_l1 = new Date().toISOString();
         }
 
         const { data: updateResult, error } = await supabase
@@ -183,7 +193,8 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
 
       showToast(
         stage === 'ADMIN' ? 'Ditandai diketahui Admin!' :
-        stage === 'AUDITOR' ? 'Ditandai diketahui Auditor!' : 'Disetujui Final oleh SPV!',
+        stage === 'AUDITOR' ? 'Ditandai diketahui Auditor!' :
+        stage === 'SPV' ? 'Disetujui SPV, diteruskan ke Direktur!' : 'Disetujui Final oleh Direktur!',
         'success'
       );
       setIsDetailView(false);
@@ -399,18 +410,20 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
 
         doc.setFontSize(9);
         doc.text('Yang mengajukan', 14, currentY);
-        doc.text('Diketahui Admin,', 62, currentY);
-        doc.text('Diketahui Auditor,', 108, currentY);
-        doc.text('Disetujui SPV,', 155, currentY);
+        doc.text('Diketahui Admin,', 52, currentY);
+        doc.text('Diketahui Auditor,', 90, currentY);
+        doc.text('Disetujui SPV,', 128, currentY);
+        doc.text('Disetujui Direktur,', 165, currentY);
         doc.setFontSize(11);
 
         currentY += 25;
 
         doc.setFontSize(8);
-        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY, { maxWidth: 44 });
-        doc.text(`(${selectedRequest.diketahui_admin_oleh || '..................'})`, 62, currentY, { maxWidth: 44 });
-        doc.text(`(${selectedRequest.diketahui_auditor_oleh || '..................'})`, 108, currentY, { maxWidth: 44 });
-        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 155, currentY, { maxWidth: 40 });
+        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.diketahui_admin_oleh || '..................'})`, 52, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.diketahui_auditor_oleh || '..................'})`, 90, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 128, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.approved_by_l2 || '..................'})`, 165, currentY, { maxWidth: 30 });
         doc.setFontSize(11);
       }
 
@@ -531,12 +544,14 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
                               req.status === 'PENDING_ADMIN' ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
                               req.status === 'PENDING_AUDITOR' ? "bg-amber-50 text-amber-700 border-amber-200" :
                               req.status === 'PENDING_SPV' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                              req.status === 'PENDING_DIREKTUR' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                               req.status === 'APPROVED' ? "bg-green-50 text-green-700 border-green-200" :
                               "bg-red-50 text-red-700 border-red-200"
                             )}>
                               {req.status === 'PENDING_ADMIN' ? 'Menunggu Diketahui Admin' :
                                req.status === 'PENDING_AUDITOR' ? 'Menunggu Diketahui Auditor' :
                                req.status === 'PENDING_SPV' ? 'Menunggu Persetujuan SPV' :
+                               req.status === 'PENDING_DIREKTUR' ? 'Menunggu Persetujuan Direktur' :
                                req.status === 'APPROVED' ? 'Disetujui' : 'Ditolak'}
                             </span>
                             <ApprovalProgressCompact data={spkProgress(req)} />
@@ -652,16 +667,18 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
                 selectedRequest.status === 'PENDING_ADMIN' ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
                 selectedRequest.status === 'PENDING_AUDITOR' ? "bg-amber-50 text-amber-700 border-amber-200" :
                 selectedRequest.status === 'PENDING_SPV' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                selectedRequest.status === 'PENDING_DIREKTUR' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                 selectedRequest.status === 'APPROVED' ? "bg-green-50 text-green-700 border-green-200" :
                 "bg-red-50 text-red-700 border-red-200"
               )}>
                 {selectedRequest.status === 'PENDING_ADMIN' ? 'Status: Menunggu Diketahui Admin' :
                  selectedRequest.status === 'PENDING_AUDITOR' ? 'Status: Menunggu Diketahui Auditor' :
-                 selectedRequest.status === 'PENDING_SPV' ? 'Status: Menunggu Persetujuan SPV (Final)' :
+                 selectedRequest.status === 'PENDING_SPV' ? 'Status: Menunggu Persetujuan SPV' :
+                 selectedRequest.status === 'PENDING_DIREKTUR' ? 'Status: Menunggu Persetujuan Direktur (Final)' :
                  selectedRequest.status === 'APPROVED' ? 'Status: Selesai Disetujui' : 'Status: Ditolak'}
               </span>
 
-              {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'PENDING_SPV') && (
+              {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'PENDING_SPV' || selectedRequest.status === 'PENDING_DIREKTUR') && (
                 <button
                   onClick={generatePDFPreview}
                   disabled={isSubmitting}
@@ -765,9 +782,8 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
                         </span>
                       )}
 
-                      {/* Reject Item button — cuma di tahap approval SPV (final), tidak di tahap "diketahui" Admin/Auditor */}
-                      {selectedRequest.status === 'PENDING_SPV' && profile?.role === 'spv' &&
-                       item.status_item !== 'REJECTED' && (
+                      {/* Reject Item button — cuma di tahap persetujuan (SPV & Direktur), tidak di tahap "diketahui" Admin/Auditor */}
+                      {canApproveNow && item.status_item !== 'REJECTED' && (
                         <button
                           onClick={() => {
                             setRejectItemModal({ isOpen: true, itemId: item.id, reason: '' });
@@ -788,13 +804,14 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
             <div className="text-sm text-brand-purple">
               {selectedRequest.status === 'PENDING_ADMIN' && 'Perlu ditandai diketahui oleh Admin.'}
               {selectedRequest.status === 'PENDING_AUDITOR' && 'Perlu ditandai diketahui oleh Auditor.'}
-              {selectedRequest.status === 'PENDING_SPV' && 'Persetujuan SPV (Final) diperlukan.'}
+              {selectedRequest.status === 'PENDING_SPV' && 'Persetujuan SPV diperlukan.'}
+              {selectedRequest.status === 'PENDING_DIREKTUR' && 'Persetujuan Direktur (Final) diperlukan.'}
               {selectedRequest.status === 'APPROVED' && 'Pengajuan telah selesai.'}
               {selectedRequest.status === 'REJECTED' && 'Pengajuan telah ditolak.'}
             </div>
 
             <div className="flex items-center space-x-3 w-full sm:w-auto">
-              {selectedRequest.status === 'PENDING_SPV' && profile?.role === 'spv' && (
+              {canApproveNow && (
                 <button
                   onClick={() => setRejectFullModal({ isOpen: true, reason: '' })}
                   disabled={isSubmitting}
@@ -828,12 +845,23 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
 
               {selectedRequest.status === 'PENDING_SPV' && profile?.role === 'spv' && (
                 <button
+                  onClick={() => advanceStage('SPV')}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
+                  <span>Setujui (SPV)</span>
+                </button>
+              )}
+
+              {selectedRequest.status === 'PENDING_DIREKTUR' && profile?.role === 'direktur' && (
+                <button
                   onClick={() => setConfirmFinalOpen(true)}
                   disabled={isSubmitting}
                   className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
                   {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
-                  <span>Setujui Final (SPV)</span>
+                  <span>Setujui Final (Direktur)</span>
                 </button>
               )}
             </div>
@@ -935,10 +963,10 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
         <ConfirmFinalApprovalModal
           nomor={selectedRequest.nomor_spk}
           itemCount={requestItems.filter(i => i.status_item !== 'REJECTED').length}
-          approverLabel="SPV"
+          approverLabel="Direktur"
           submitting={isSubmitting}
           onCancel={() => setConfirmFinalOpen(false)}
-          onConfirm={() => advanceStage('SPV')}
+          onConfirm={() => advanceStage('DIREKTUR')}
         />
       )}
 

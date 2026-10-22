@@ -181,15 +181,15 @@ app.delete('/api/admin/delete-user/:userId', checkAdmin, async (req, res) => {
   res.json({ message: 'User deleted successfully' });
 });
 
-// Only 'spv'/'direktur' can trigger a final approval (SPV finalizes SPK, Direktur
-// finalizes Disposal).
-const checkFinalApprover = requireRole(['spv', 'direktur'], 'Unauthorized: SPV or Direktur only');
+// Only 'direktur' can trigger a final approval (Direktur finalizes both Disposal
+// and SPK).
+const checkFinalApprover = requireRole(['direktur'], 'Unauthorized: Direktur only');
 
 // Per jenis pengajuan: fungsi database yang menjalankan approval final, dan
 // satu-satunya role yang boleh memberinya (harus sama dengan tahapan di UI).
 const FINAL_APPROVAL_SOURCES = {
   disposal: { rpc: 'finalize_disposal_request', finalRole: 'direktur' },
-  spk: { rpc: 'finalize_spk_request', finalRole: 'spv' },
+  spk: { rpc: 'finalize_spk_request', finalRole: 'direktur' },
 } as const;
 
 // Approval final pemusnahan/SPK. Seluruh prosesnya (status pengajuan → APPROVED,

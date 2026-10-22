@@ -62,6 +62,7 @@ const STATUS_META: Record<SPKStatus, { label: string; classes: string; notif: st
   PENDING_ADMIN: { label: 'Menunggu Diketahui Admin', classes: 'bg-yellow-50 text-yellow-700 border-yellow-200', notif: 'menunggu diketahui Admin' },
   PENDING_AUDITOR: { label: 'Menunggu Diketahui Auditor', classes: 'bg-amber-50 text-amber-700 border-amber-200', notif: 'sudah diketahui Admin, lanjut ke Auditor' },
   PENDING_SPV: { label: 'Menunggu Persetujuan SPV', classes: 'bg-blue-50 text-blue-700 border-blue-200', notif: 'sudah diketahui Auditor, menunggu persetujuan SPV' },
+  PENDING_DIREKTUR: { label: 'Menunggu Persetujuan Direktur', classes: 'bg-indigo-50 text-indigo-700 border-indigo-200', notif: 'sudah disetujui SPV, menunggu persetujuan Direktur' },
   APPROVED: { label: 'Disetujui', classes: 'bg-green-50 text-green-700 border-green-200', notif: 'DISETUJUI — surat jalan siap diunduh' },
   REJECTED: { label: 'Ditolak', classes: 'bg-red-50 text-red-700 border-red-200', notif: 'DITOLAK' },
 };
@@ -663,18 +664,20 @@ export default function OfficeItemsRequester() {
 
         doc.setFontSize(9);
         doc.text('Yang mengajukan', 14, currentY);
-        doc.text('Diketahui Admin,', 62, currentY);
-        doc.text('Diketahui Auditor,', 108, currentY);
-        doc.text('Disetujui SPV,', 155, currentY);
+        doc.text('Diketahui Admin,', 52, currentY);
+        doc.text('Diketahui Auditor,', 90, currentY);
+        doc.text('Disetujui SPV,', 128, currentY);
+        doc.text('Disetujui Direktur,', 165, currentY);
         doc.setFontSize(11);
 
         currentY += 25;
 
         doc.setFontSize(8);
-        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY, { maxWidth: 44 });
-        doc.text(`(${selectedRequest.diketahui_admin_oleh || '..................'})`, 62, currentY, { maxWidth: 44 });
-        doc.text(`(${selectedRequest.diketahui_auditor_oleh || '..................'})`, 108, currentY, { maxWidth: 44 });
-        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 155, currentY, { maxWidth: 40 });
+        doc.text(`(${selectedRequest.diajukan_oleh})`, 14, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.diketahui_admin_oleh || '..................'})`, 52, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.diketahui_auditor_oleh || '..................'})`, 90, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.approved_by_l1 || '..................'})`, 128, currentY, { maxWidth: 34 });
+        doc.text(`(${selectedRequest.approved_by_l2 || '..................'})`, 165, currentY, { maxWidth: 30 });
         doc.setFontSize(11);
       }
 
@@ -1401,8 +1404,8 @@ export default function OfficeItemsRequester() {
               <div className="bg-brand-purple/5 p-4 rounded-xl border border-brand-purple/10 flex items-start space-x-3">
                 <AlertCircle className="text-brand-purple mt-0.5 shrink-0" size={20} />
                 <p className="text-xs text-brand-purple">
-                  Anda mengajukan <strong>{cartEntries.length} barang ({cartUnits} unit)</strong>. Stok baru berkurang setelah disetujui SPV
-                  (Admin → Auditor → SPV). Jika qty = seluruh stok, barang akan keluar dari master barang.
+                  Anda mengajukan <strong>{cartEntries.length} barang ({cartUnits} unit)</strong>. Stok baru berkurang setelah disetujui Direktur
+                  (Admin → Auditor → SPV → Direktur). Jika qty = seluruh stok, barang akan keluar dari master barang.
                 </p>
               </div>
 
@@ -1633,7 +1636,7 @@ export default function OfficeItemsRequester() {
                   <p className="mt-2 text-sm text-brand-purple">
                     Pengajuan <span className="font-semibold font-mono">{selectedRequest.nomor_spk}</span>{' '}
                     ({requestItems.length || selectedRequest.jumlah || 0} barang) akan dihapus permanen dan
-                    otomatis hilang dari daftar approval Admin, Auditor, dan SPV.
+                    otomatis hilang dari daftar approval Admin, Auditor, SPV, dan Direktur.
                   </p>
                   <p className="mt-2 text-sm text-brand-purple/80">
                     Jika ingin merevisi barang atau qty, ajukan SPK baru setelah menghapus.

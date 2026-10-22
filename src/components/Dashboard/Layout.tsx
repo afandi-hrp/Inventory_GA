@@ -68,6 +68,7 @@ export default function Layout({ children, setHistorySearch }: LayoutProps) {
         admin: 'PENDING_ADMIN',
         auditor: 'PENDING_AUDITOR',
         spv: 'PENDING_SPV',
+        direktur: 'PENDING_DIREKTUR',
       };
 
       try {

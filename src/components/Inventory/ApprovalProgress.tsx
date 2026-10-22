@@ -22,6 +22,7 @@ export const SPK_STAGE_BY_ROLE: Record<string, string> = {
   admin: 'PENDING_ADMIN',
   auditor: 'PENDING_AUDITOR',
   spv: 'PENDING_SPV',
+  direktur: 'PENDING_DIREKTUR',
 };
 
 export type ApprovalFilter = 'ACTION' | 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -222,7 +223,8 @@ export function spkProgress(r: SPKRequest): ApprovalProgressData {
     { label: 'Diketahui Admin', by: r.diketahui_admin_oleh, at: r.tanggal_diketahui_admin },
     { label: 'Diketahui Auditor', by: r.diketahui_auditor_oleh, at: r.tanggal_diketahui_auditor },
     { label: 'Disetujui SPV', by: r.approved_by_l1, at: r.tanggal_approved_l1 },
-  ], r.status, { PENDING_ADMIN: 1, PENDING_AUDITOR: 2, PENDING_SPV: 3 });
+    { label: 'Disetujui Direktur', by: r.approved_by_l2, at: r.tanggal_approved_l2 },
+  ], r.status, { PENDING_ADMIN: 1, PENDING_AUDITOR: 2, PENDING_SPV: 3, PENDING_DIREKTUR: 4 });
 }
 
 function stepStates({ steps, currentIndex, rejected }: ApprovalProgressData): StepState[] {

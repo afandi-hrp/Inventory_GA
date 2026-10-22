@@ -133,7 +133,7 @@ export interface SPKRequest {
   jumlah?: number;
   keterangan?: string | null;
   lokasi_tujuan?: string | null;
-  status: 'PENDING_ADMIN' | 'PENDING_AUDITOR' | 'PENDING_SPV' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING_ADMIN' | 'PENDING_AUDITOR' | 'PENDING_SPV' | 'PENDING_DIREKTUR' | 'APPROVED' | 'REJECTED';
   tanggal_pengajuan: string;
   diketahui_admin_oleh?: string | null;
   tanggal_diketahui_admin?: string | null;

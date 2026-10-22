@@ -136,7 +136,7 @@ Modul Gudang Berkas (`supabase_gudang_berkas_setup.sql`, dipakai `GudangBerkasPa
 | `delete_item_as` | `supabase_setup.sql` | RPC lama hapus item atas nama user (service-role); endpoint pemanggilnya sudah dihapus |
 | `is_admin`, `is_active_user`, `app_role()` | `supabase_setup.sql` / `supabase_rbac_setup.sql` / audit keamanan | helper RLS (role & status aktif user) |
 | `handle_new_user` + trigger `on_auth_user_created` | `supabase_rbac_setup.sql` | bikin baris `profiles` saat user Auth dibuat |
-| `finalize_disposal_request`, `finalize_spk_request` | `supabase_approval_finalize.sql`, `supabase_spk_qty.sql` | approval final dalam 1 transaksi (hanya `service_role`, dipanggil `POST /api/approval/finalize`) |
+| `finalize_disposal_request`, `finalize_spk_request` | `supabase_approval_finalize.sql`, `supabase_spk_qty.sql` | approval final dalam 1 transaksi (hanya `service_role`, dipanggil `POST /api/approval/finalize`). `finalize_spk_request` diganti 22 Okt 2026 (live, sudah diverifikasi): wajib status `PENDING_DIREKTUR`, isi `approved_by_l2`/`tanggal_approved_l2` |
 | `validate_spk_request_item` + trigger `trg_validate_spk_request_item` | `supabase_spk_qty.sql` | tolak qty SPK > stok saat diajukan |
 | `assign_spk_number` + trigger `trg_assign_spk_number` | `supabase_spk_qty.sql` | nomor SPK `SPK-DDMMYYYY-0001` (WIB) di server, pakai advisory lock |
 | `delete_own_spk_request` (RPC) | `supabase_spk_delete.sql` | requester hapus SPK miliknya selama masih `PENDING_ADMIN` (dipanggil dari `OfficeItemsRequester.tsx`) |
@@ -165,6 +165,8 @@ Tabel `items` — beberapa policy tumpuk (permissive/OR'd):
 Storage `storage.objects`:
 - bucket `item-photos` (private): Admin Upload/Update/Delete (role='admin') + `SPV Upload/Update/Delete Photos` (**ditambahkan sesi ini**)
 - bucket `item-documents` (private): serupa + `SPV Upload/Update Documents` (**ditambahkan sesi ini**)
+
+Tahap Direktur SPK (22 Okt 2026, live & terverifikasi): CHECK `spk_requests_status_check` memuat `PENDING_DIREKTUR`; policy baru additive `Direktur can view/update spk_requests` dan `Direktur can view/update spk_request_items` (pakai `public.app_role() = 'direktur'`). SPK yang sudah APPROVED sebelum tahap ini punya `approved_by_l2` kosong (PDF: kolom Direktur kosong).
 
 Kalau butuh nambah akses role baru ke tabel/bucket manapun, **ikuti pola additive** (bikin policy BARU khusus role itu, jangan drop/replace policy admin yang udah ada) — itu pola yang dipakai & terbukti aman di sesi ini.
 

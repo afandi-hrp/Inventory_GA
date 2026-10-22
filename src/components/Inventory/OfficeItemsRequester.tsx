@@ -15,6 +15,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { jsPDF } from 'jspdf';
 import { addPdfLogo } from '../../lib/pdfLogo';
+import { addPdfRow } from '../../lib/pdfLayout';
 import {
   Search, X, Loader2, ShoppingCart, CheckSquare, Package,
   ChevronLeft, ChevronRight, ClipboardList, Calendar, AlertCircle, Eye,
@@ -560,8 +561,8 @@ export default function OfficeItemsRequester() {
 
         const item = itemsToPrint[i];
 
-        await addPdfLogo(doc, 14, 14);
-        currentY = 55;
+        addPdfLogo(doc, 14, 10, 11);
+        currentY = 38;
 
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
@@ -570,7 +571,7 @@ export default function OfficeItemsRequester() {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Nomor Permintaan : ${selectedRequest.nomor_spk}`, 105, currentY, { align: 'center' });
-        currentY += 18;
+        currentY += 14;
 
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
@@ -578,40 +579,18 @@ export default function OfficeItemsRequester() {
         const kategoriName = item.nama_kategori || (item as any).items?.categories?.nama_kategori || 'Tanpa Kategori';
         const lokasiName = item.nama_lokasi || (item as any).items?.master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi';
 
-        doc.text('Kode Barang', 14, currentY);
-        doc.text(`: ${item.kode_barang}`, 65, currentY);
+        currentY = addPdfRow(doc, 'Kode Barang', item.kode_barang, currentY);
+        currentY = addPdfRow(doc, 'Kategori Barang', kategoriName, currentY);
+        currentY = addPdfRow(doc, 'Lokasi Barang', lokasiName, currentY);
+        currentY = addPdfRow(doc, 'Nama Barang', item.nama_barang, currentY);
+        currentY = addPdfRow(doc, 'Jumlah Diambil', `${item.jumlah_barang} unit`, currentY);
+        currentY = addPdfRow(doc, 'Lokasi Tujuan', selectedRequest.lokasi_tujuan || '-', currentY);
+        currentY = addPdfRow(doc, 'Alasan Penggunaan', selectedRequest.keterangan || '-', currentY);
+        currentY = addPdfRow(doc, 'Tanggal Permintaan', new Date(selectedRequest.tanggal_pengajuan || selectedRequest.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }), currentY);
         currentY += lineSpacing;
-
-        doc.text('Kategori Barang', 14, currentY);
-        doc.text(`: ${kategoriName}`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Lokasi Barang', 14, currentY);
-        doc.text(`: ${lokasiName}`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Nama Barang', 14, currentY);
-        doc.text(`: ${item.nama_barang}`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Jumlah Diambil', 14, currentY);
-        doc.text(`: ${item.jumlah_barang} unit`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Lokasi Tujuan', 14, currentY);
-        doc.text(`: ${selectedRequest.lokasi_tujuan || '-'}`, 65, currentY, { maxWidth: 130 });
-        currentY += lineSpacing;
-
-        doc.text('Alasan Penggunaan', 14, currentY);
-        doc.text(`: ${selectedRequest.keterangan || '-'}`, 65, currentY, { maxWidth: 130 });
-        currentY += lineSpacing * 2;
-
-        doc.text('Tanggal Permintaan', 14, currentY);
-        doc.text(`: ${new Date(selectedRequest.tanggal_pengajuan || selectedRequest.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}`, 65, currentY);
-        currentY += lineSpacing * 3;
 
         doc.text('Dokumentasi Barang', 14, currentY);
-        doc.text(':', 65, currentY);
+        doc.text(':', 55, currentY);
 
         currentY += lineSpacing;
 

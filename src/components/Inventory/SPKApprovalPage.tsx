@@ -13,6 +13,7 @@ import {
 import { getSignedUrl } from '../../lib/signedStorage';
 import { jsPDF } from 'jspdf';
 import { addPdfLogo } from '../../lib/pdfLogo';
+import { addPdfRow } from '../../lib/pdfLayout';
 
 interface SPKApprovalPageProps {
   profile: Profile | null;
@@ -282,8 +283,6 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
         return;
       }
 
-      const addLogo = async (doc: jsPDF, x: number, y: number) => addPdfLogo(doc, x, y);
-
       let currentY = 20;
       const lineSpacing = 8;
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -306,8 +305,8 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
 
         const item = itemsToPrint[i];
 
-        await addLogo(doc, 14, 14);
-        currentY = 55;
+        addPdfLogo(doc, 14, 10, 11);
+        currentY = 38;
 
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
@@ -316,7 +315,7 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Nomor Permintaan : ${selectedRequest.nomor_spk}`, 105, currentY, { align: 'center' });
-        currentY += 18;
+        currentY += 14;
 
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
@@ -324,40 +323,18 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
         const kategoriName = item.nama_kategori || (item as any).items?.categories?.nama_kategori || 'Tanpa Kategori';
         const lokasiName = item.nama_lokasi || (item as any).items?.master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi';
 
-        doc.text('Kode Barang', 14, currentY);
-        doc.text(`: ${item.kode_barang}`, 65, currentY);
+        currentY = addPdfRow(doc, 'Kode Barang', item.kode_barang, currentY);
+        currentY = addPdfRow(doc, 'Kategori Barang', kategoriName, currentY);
+        currentY = addPdfRow(doc, 'Lokasi Barang', lokasiName, currentY);
+        currentY = addPdfRow(doc, 'Nama Barang', item.nama_barang, currentY);
+        currentY = addPdfRow(doc, 'Jumlah Diambil', `${item.jumlah_barang} unit`, currentY);
+        currentY = addPdfRow(doc, 'Lokasi Tujuan', selectedRequest.lokasi_tujuan || '-', currentY);
+        currentY = addPdfRow(doc, 'Alasan Penggunaan', selectedRequest.keterangan || '-', currentY);
+        currentY = addPdfRow(doc, 'Tanggal Permintaan', new Date(selectedRequest.tanggal_pengajuan || selectedRequest.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }), currentY);
         currentY += lineSpacing;
-
-        doc.text('Kategori Barang', 14, currentY);
-        doc.text(`: ${kategoriName}`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Lokasi Barang', 14, currentY);
-        doc.text(`: ${lokasiName}`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Nama Barang', 14, currentY);
-        doc.text(`: ${item.nama_barang}`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Jumlah Diambil', 14, currentY);
-        doc.text(`: ${item.jumlah_barang} unit`, 65, currentY);
-        currentY += lineSpacing;
-
-        doc.text('Lokasi Tujuan', 14, currentY);
-        doc.text(`: ${selectedRequest.lokasi_tujuan || '-'}`, 65, currentY, { maxWidth: 130 });
-        currentY += lineSpacing;
-
-        doc.text('Alasan Penggunaan', 14, currentY);
-        doc.text(`: ${selectedRequest.keterangan || '-'}`, 65, currentY, { maxWidth: 130 });
-        currentY += lineSpacing * 2;
-
-        doc.text('Tanggal Permintaan', 14, currentY);
-        doc.text(`: ${new Date(selectedRequest.tanggal_pengajuan || selectedRequest.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}`, 65, currentY);
-        currentY += lineSpacing * 3;
 
         doc.text('Dokumentasi Barang', 14, currentY);
-        doc.text(':', 65, currentY);
+        doc.text(':', 55, currentY);
 
         currentY += lineSpacing;
 

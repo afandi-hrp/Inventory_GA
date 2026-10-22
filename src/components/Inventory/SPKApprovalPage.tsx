@@ -13,7 +13,7 @@ import {
 import { getSignedUrl } from '../../lib/signedStorage';
 import { jsPDF } from 'jspdf';
 import { addPdfLogo } from '../../lib/pdfLogo';
-import { addPdfRow } from '../../lib/pdfLayout';
+import { addPdfRow, addApprovalStamp } from '../../lib/pdfLayout';
 
 interface SPKApprovalPageProps {
   profile: Profile | null;
@@ -391,6 +391,10 @@ export function SPKApprovalPage({ profile }: SPKApprovalPageProps) {
         doc.text('Diketahui Auditor,', 90, currentY);
         doc.text('Disetujui SPV,', 128, currentY);
         doc.text('Disetujui Direktur,', 165, currentY);
+        addApprovalStamp(doc, 52, currentY + 4, selectedRequest.tanggal_diketahui_admin);
+        addApprovalStamp(doc, 90, currentY + 4, selectedRequest.tanggal_diketahui_auditor);
+        addApprovalStamp(doc, 128, currentY + 4, selectedRequest.tanggal_approved_l1);
+        addApprovalStamp(doc, 165, currentY + 4, selectedRequest.tanggal_approved_l2);
         doc.setFontSize(11);
 
         currentY += 25;

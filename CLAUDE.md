@@ -54,7 +54,7 @@ src/
     beep.ts                # nada feedback scan RFID via Web Audio API (tanpa file audio)
     nativeDownload.ts      # jembatan download ke shell Android RFID (window.AndroidFileSaver), fallback <a download>
     imageCompress.ts, pdfLogo.ts, brandLogo.ts   # kompres foto upload, logo kop PDF, logo ungu Login/LockScreen
-    pdfLayout.ts          # addPdfRow(): baris "Label : isi" PDF Surat Jalan SPK, isi panjang dipecah & Y bergeser (gak saling timpa)
+    pdfLayout.ts          # addPdfRow(): baris "Label : isi" PDF Surat Jalan SPK, isi panjang dipecah & Y bergeser (gak saling timpa); addApprovalStamp(): stamp biru "APPROVED" + tanggal/jam WIB di atas nama penandatangan (diisi dari kolom tanggal_* tiap tahap, kosong kalau belum)
   types.ts                 # semua interface TS (Profile, Item, DisposalRequest, SPKRequest, dll) — SUMBER KEBENARAN kolom, cek ini duluan sebelum nebak nama kolom
 api/index.ts                # Express API terpisah, butuh SUPABASE_SERVICE_ROLE_KEY
 scripts/check-claude-md.mjs # cek semua tabel/kolom/fungsi/bucket/endpoint/route/file sudah tercatat di file ini (Stop hook)

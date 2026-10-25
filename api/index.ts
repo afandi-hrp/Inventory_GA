@@ -28,7 +28,9 @@ app.use(helmet({
       // real style="..." attributes, which CSP can't allowlist via nonce/hash).
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', ...(supabaseUrl ? [supabaseUrl] : [])],
+      // blob: dipakai preview foto lokal sebelum diunggah (URL.createObjectURL di
+      // MasterBarang "Tambah Barang"). Tanpa ini preview jadi gambar rusak di production.
+      imgSrc: ["'self'", 'data:', 'blob:', ...(supabaseUrl ? [supabaseUrl] : [])],
       mediaSrc: ["'self'"],
       connectSrc: [
         "'self'",

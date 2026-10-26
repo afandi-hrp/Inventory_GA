@@ -21,7 +21,7 @@ src/
       Login.tsx
       LoginScene.tsx      # animasi SVG "Gudang Hidup" di halaman login (CSS keyframes `ls-*` di index.css)
       LockScreen.tsx      # layar kunci (idle) — logo pakai src/lib/brandLogo.ts
-      TurnstileWidget.tsx # widget Cloudflare Turnstile (Managed, compact) dipakai Login & LockScreen; site key dari VITE_TURNSTILE_SITE_KEY
+      TurnstileWidget.tsx # widget Cloudflare Turnstile (Managed, appearance interaction-only: pill status buatan sendiri, widget persegi panjang 300x65 diskala 0.82 hanya saat butuh centang manual) dipakai Login & LockScreen; site key dari VITE_TURNSTILE_SITE_KEY
     Dashboard/
       Layout.tsx        # shell aplikasi: sidebar, sapaan pojok kanan atas, main content wrapper
       Home.tsx           # halaman /dashboard

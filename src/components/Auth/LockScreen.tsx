@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Lock, Loader2, ArrowRight, LogOut } from 'lucide-react';
 import { LOGO_PURPLE_SRC } from '../../lib/brandLogo';
+import TurnstileWidget, { TURNSTILE_SITE_KEY, type TurnstileHandle } from './TurnstileWidget';
 
 interface LockScreenProps {
   email: string;
@@ -14,6 +15,8 @@ export default function LockScreen({ email, fullName, onUnlock, onLogoutInstead 
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,12 +24,17 @@ export default function LockScreen({ email, fullName, onUnlock, onLogoutInstead 
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken: captchaToken ?? undefined },
+      });
       if (error) throw error;
       onUnlock();
     } catch (err) {
       console.error('Unlock error:', err);
       setError('Password salah, coba lagi.');
+      turnstileRef.current?.reset(); // token sekali pakai
     } finally {
       setLoading(false);
       setPassword('');
@@ -71,9 +79,11 @@ export default function LockScreen({ email, fullName, onUnlock, onLogoutInstead 
             />
           </div>
 
+          <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
+
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || !password || (!!TURNSTILE_SITE_KEY && !captchaToken)}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-brand-purple hover:bg-brand-purple-light text-white text-sm font-semibold shadow-lg shadow-brand-purple/30 transition-all disabled:opacity-50"
           >
             {loading ? <Loader2 className="animate-spin" size={16} /> : <>Buka <ArrowRight size={15} /></>}

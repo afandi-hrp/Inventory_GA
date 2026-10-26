@@ -23,7 +23,9 @@ app.use(helmet({
   contentSecurityPolicy: isProduction ? {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      // challenges.cloudflare.com: widget Turnstile (captcha login/layar kunci) —
+      // memuat script, iframe tantangan, dan memanggil endpoint verifikasinya.
+      scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
       // 'unsafe-inline' needed for React's inline style={{...}} props (compiled to
       // real style="..." attributes, which CSP can't allowlist via nonce/hash).
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
@@ -34,6 +36,7 @@ app.use(helmet({
       mediaSrc: ["'self'"],
       connectSrc: [
         "'self'",
+        'https://challenges.cloudflare.com',
         ...(supabaseUrl ? [supabaseUrl, supabaseUrl.replace(/^https:/, 'wss:')] : []),
       ],
       objectSrc: ["'none'"],
@@ -41,7 +44,7 @@ app.use(helmet({
       // approval/gudang berkas) & signed URL Supabase (dokumen barang di Master
       // Barang). Dulu 'none' → semua preview PDF ke-blok di production.
       // Situs lain tetap gak bisa nge-embed app ini (frameAncestors di bawah).
-      frameSrc: ["'self'", 'blob:', ...(supabaseUrl ? [supabaseUrl] : [])],
+      frameSrc: ["'self'", 'blob:', 'https://challenges.cloudflare.com', ...(supabaseUrl ? [supabaseUrl] : [])],
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../hooks/useSettings';
 import LoginScene from './LoginScene';
 import { AUTH_NOTICE_KEY } from '../../hooks/useAuth';
 import { LOGO_PURPLE_SRC } from '../../lib/brandLogo';
-import { Mail, Lock, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import TurnstileWidget, { TURNSTILE_SITE_KEY, type TurnstileHandle } from './TurnstileWidget';
+import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -12,21 +13,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const generateCaptcha = () => {
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-  let result = '';
-  for (let i = 0; i < 4; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
-
 export default function Login() {
   const { settings, loading: settingsLoading } = useSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [captchaInput, setCaptchaInput] = useState('');
-  const [captchaText, setCaptchaText] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +28,6 @@ export default function Login() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setCaptchaText(generateCaptcha());
-
     // Pesan dari logout paksa di useAuth (mis. akun tanpa profil).
     try {
       const notice = sessionStorage.getItem(AUTH_NOTICE_KEY);
@@ -59,16 +49,15 @@ export default function Login() {
     }
   }, [error]);
 
+  // Token Turnstile sekali pakai — wajib diminta ulang setelah tiap percobaan login.
   const handleRefreshCaptcha = () => {
-    setCaptchaText(generateCaptcha());
-    setCaptchaInput('');
+    turnstileRef.current?.reset();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (captchaInput !== captchaText) {
-      setError('Captcha does not match. Please try again.');
-      handleRefreshCaptcha();
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError('Selesaikan verifikasi keamanan dulu.');
       return;
     }
 
@@ -79,6 +68,7 @@ export default function Login() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken: captchaToken ?? undefined },
       });
 
       if (error) {
@@ -183,37 +173,14 @@ export default function Login() {
             {/* Captcha */}
             <div className="pt-0.5">
               <p className="text-[9px] sm:text-[10px] font-bold text-brand-purple/40 uppercase tracking-wider mb-1.5 ml-1">Security Verification</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  required
-                  maxLength={4}
-                  value={captchaInput}
-                  onChange={(e) => setCaptchaInput(e.target.value)}
-                  className="flex-1 min-w-0 px-4 py-2 sm:py-2.5 bg-white/60 border border-white/80 rounded-full focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple/40 focus:bg-white text-xs sm:text-sm transition-all tracking-widest placeholder:text-brand-purple/40"
-                  placeholder="4 characters"
-                />
-                <div className="flex items-center space-x-1 bg-white/60 border border-white/80 rounded-full pl-3 pr-1.5 py-1 shrink-0">
-                  <span className="font-mono text-sm sm:text-base font-bold tracking-widest text-brand-purple select-none italic">
-                    {captchaText}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleRefreshCaptcha}
-                    className="p-1.5 text-brand-purple/50 hover:text-brand-purple hover:bg-white rounded-full transition-colors"
-                    title="Refresh Captcha"
-                  >
-                    <RefreshCw size={13} />
-                  </button>
-                </div>
-              </div>
+              <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
             </div>
 
             {/* Submit */}
             <div className="flex items-center justify-end pt-1.5">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (!!TURNSTILE_SITE_KEY && !captchaToken)}
                 className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-full bg-brand-purple hover:bg-brand-purple-light text-white flex items-center justify-center shadow-lg shadow-brand-purple/30 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                 title="Log In"
               >

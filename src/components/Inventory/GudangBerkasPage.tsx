@@ -366,7 +366,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       let query = supabase
         .from('gudang_berkas_requests')
         // Ringkasan logbook ikut di-embed buat progress verifikasi di daftar.
-        // Role gudang_berkas gak punya akses baca logbook (RLS) → cukup jadi null.
+        // Role gudang_berkas gak punya akses baca logbook (RLS) → null, diisi dari RPC di bawah.
         .select('*, gudang_berkas_logbook(verified_items, total_items, is_completed)')
         .order('created_at', { ascending: false });
 
@@ -379,7 +379,27 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
       const { data, error } = await query;
 
       if (error) throw error;
-      setRequests(data || []);
+      let rows: RequestRow[] = data || [];
+
+      // Role gudang_berkas gak bisa baca logbook (RLS) → embed di atas selalu null.
+      // Progress verifikasi permohonannya sendiri diambil lewat RPC yang cuma
+      // mengembalikan 4 kolom ringkas (tanpa keterangan/verifikator).
+      if (isStaffGudangBerkas) {
+        const { data: progress, error: progressErr } = await supabase.rpc('my_gudang_berkas_progress');
+        if (progressErr) {
+          console.error('Gagal memuat progress verifikasi:', progressErr);
+        } else {
+          const byRequest = new Map<string, LogbookSummary>(
+            (progress || []).map((p: any) => [
+              p.request_id,
+              { verified_items: p.verified_items, total_items: p.total_items, is_completed: p.is_completed },
+            ])
+          );
+          rows = rows.map(r => ({ ...r, gudang_berkas_logbook: byRequest.get(r.id) ?? null }));
+        }
+      }
+
+      setRequests(rows);
     } catch (err) {
       showToast('Gagal memuat data Form Akses Gudang Berkas', 'error');
     } finally {
@@ -566,27 +586,13 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
         .select();
       if (itemsError) throw itemsError;
 
-      // Siapkan 1 baris logbook (ringkasan) + checklist verifikasi per item, isi diverifikasi belakangan oleh admin
-      const { data: logbookRow, error: logbookError } = await supabase
-        .from('gudang_berkas_logbook')
-        .insert({
-          request_id: reqData.id,
-          total_items: (insertedItems || []).length,
-          verified_items: 0,
-        })
-        .select()
-        .single();
+      // Siapkan 1 baris logbook (ringkasan) + checklist verifikasi per item, isi diverifikasi belakangan oleh admin.
+      // Lewat RPC SECURITY DEFINER: role gudang_berkas sengaja gak punya SELECT di logbook, jadi
+      // insert+baca balik dari browser ditolak RLS (sql/20261106_gb_logbook_rpc.sql).
+      const { error: logbookError } = await supabase.rpc('create_gudang_berkas_logbook', {
+        p_request_id: reqData.id,
+      });
       if (logbookError) throw logbookError;
-
-      if (insertedItems && insertedItems.length > 0) {
-        const { error: checksError } = await supabase.from('gudang_berkas_logbook_item_checks').insert(
-          insertedItems.map((it: any) => ({
-            logbook_id: logbookRow.id,
-            request_item_id: it.id,
-          }))
-        );
-        if (checksError) throw checksError;
-      }
 
       showToast(`Form Akses Gudang Berkas berhasil dibuat: ${reqData.no_kunjungan}`, 'success');
       resetCreateForm();
@@ -1237,7 +1243,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / itemsPerPage));
   const currentPage = Math.min(page, totalPages);
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const listColSpan = isStaffGudangBerkas ? 6 : 7;
+  const listColSpan = 7;
 
   // Ringkasan verifikasi di detail
   const decidedCount = logbookChecks.filter(c => c.verification_status !== 'PENDING').length;
@@ -1327,7 +1333,7 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                     <th className="px-5 py-4">Pemohon</th>
                     <th className="px-5 py-4">Jadwal</th>
                     <th className="px-5 py-4">Lokasi</th>
-                    {!isStaffGudangBerkas && <th className="px-5 py-4">Verifikasi</th>}
+                    <th className="px-5 py-4">Verifikasi</th>
                     <th className="px-5 py-4">Status</th>
                     <th className="px-5 py-4 text-right">Aksi</th>
                   </tr>
@@ -1379,20 +1385,18 @@ export function GudangBerkasPage({ profile }: GudangBerkasPageProps) {
                               <MapPin size={11} /> {req.lokasi_gudang || '-'}
                             </span>
                           </td>
-                          {!isStaffGudangBerkas && (
-                            <td className="px-5 py-4">
-                              {lb ? (
-                                <div className="w-28">
-                                  <div className="h-1.5 rounded-full bg-brand-purple/10 overflow-hidden">
-                                    <div className={cn('h-full rounded-full', lb.is_completed ? 'bg-green-500' : 'bg-brand-purple')} style={{ width: `${pct}%` }} />
-                                  </div>
-                                  <p className="text-[11px] text-brand-purple/70 mt-1">{lb.verified_items}/{lb.total_items} item</p>
+                          <td className="px-5 py-4">
+                            {lb ? (
+                              <div className="w-28">
+                                <div className="h-1.5 rounded-full bg-brand-purple/10 overflow-hidden">
+                                  <div className={cn('h-full rounded-full', lb.is_completed ? 'bg-green-500' : 'bg-brand-purple')} style={{ width: `${pct}%` }} />
                                 </div>
-                              ) : (
-                                <span className="text-xs text-brand-purple/40">-</span>
-                              )}
-                            </td>
-                          )}
+                                <p className="text-[11px] text-brand-purple/70 mt-1">{lb.verified_items}/{lb.total_items} item</p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-brand-purple/40">-</span>
+                            )}
+                          </td>
                           <td className="px-5 py-4"><StatusBadge status={req.status} /></td>
                           <td className="px-5 py-4 text-right">
                             {isStaffGudangBerkas ? (

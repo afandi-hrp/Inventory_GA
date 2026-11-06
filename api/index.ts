@@ -48,7 +48,11 @@ app.use(helmet({
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
-      upgradeInsecureRequests: [],
+      // Sengaja dimatikan: direktif ini bikin browser memaksa semua sub-resource
+      // (JS/CSS) ke https://, padahal akses LAN http://172.16.9.5:8088 tidak punya
+      // TLS → halaman blank. Di domain publik (https via Cloudflare) tidak perlu:
+      // semua URL aplikasi relatif/https, dan browser sudah blok mixed content.
+      upgradeInsecureRequests: null,
     },
   } : false,
   crossOriginEmbedderPolicy: false,

@@ -170,11 +170,13 @@ export default function Login() {
               </span>
             </div>
 
-            {/* Captcha */}
-            <div className="pt-0.5">
-              <p className="text-[9px] sm:text-[10px] font-bold text-brand-purple/40 uppercase tracking-wider mb-1.5 ml-1">Security Verification</p>
-              <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
-            </div>
+            {/* Captcha (disembunyikan kalau VITE_TURNSTILE_SITE_KEY kosong) */}
+            {TURNSTILE_SITE_KEY && (
+              <div className="pt-0.5">
+                <p className="text-[9px] sm:text-[10px] font-bold text-brand-purple/40 uppercase tracking-wider mb-1.5 ml-1">Security Verification</p>
+                <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
+              </div>
+            )}
 
             {/* Submit */}
             <div className="flex items-center justify-end pt-1.5">

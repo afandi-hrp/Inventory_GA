@@ -125,9 +125,9 @@ const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>(({ onT
     };
   }, []);
 
-  if (!TURNSTILE_SITE_KEY) {
-    return <p className="text-[10px] text-red-600 text-center">Captcha belum dikonfigurasi (VITE_TURNSTILE_SITE_KEY kosong).</p>;
-  }
+  // Site key kosong = captcha sengaja dimatikan (mis. akses LAN sementara): tidak render apa pun.
+  // Login/LockScreen juga tidak lagi menunggu token kalau key kosong.
+  if (!TURNSTILE_SITE_KEY) return null;
 
   const interactive = status === 'interactive';
 
